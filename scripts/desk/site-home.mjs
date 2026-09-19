@@ -30,9 +30,7 @@ export async function writeStatic(fontNames) {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#1c1914"/><path fill="#f4efe4" d="M9 6h7v14h8v6H9z"/><rect x="9" y="27.5" width="14" height="1.5" fill="#6e2f22"/></svg>',
   );
   const ogOk = await copyOg();
-  const verify = "google-site-verification: googlece6d31c0feb18c8c.html";
-  await write("googlece6d31c0feb18c8c.html", verify);
-  await write("googlece6d31c0feb18c8c/index.html", verify);
+  await write("googlece6d31c0feb18c8c.html", "google-site-verification: googlece6d31c0feb18c8c.html");
   await write(
     "robots.txt",
     [
@@ -113,17 +111,6 @@ export async function writeLlms(briefs) {
       "/googlece6d31c0feb18c8c",
       "  Content-Type: text/html; charset=utf-8",
       "  X-Robots-Tag: noindex",
-      "/googlece6d31c0feb18c8c/",
-      "  Content-Type: text/html; charset=utf-8",
-      "  X-Robots-Tag: noindex",
-      "",
-    ].join("\n"),
-  );
-  await write(
-    "_redirects",
-    [
-      "/googlece6d31c0feb18c8c /googlece6d31c0feb18c8c.html 200",
-      "/googlece6d31c0feb18c8c/ /googlece6d31c0feb18c8c.html 200",
       "",
     ].join("\n"),
   );
