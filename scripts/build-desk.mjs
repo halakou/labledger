@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-const SITE = (process.env.SITE_URL || "https://labledgerdesk.halakou.workers.dev").replace(/\/$/, "");
+const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
 const CHANNEL = "https://t.me/labledger";
 const OUT = "dist-site";
 const AMP = "\x26";

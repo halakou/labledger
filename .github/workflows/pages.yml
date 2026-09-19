@@ -19,7 +19,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          SITE_URL: https://labledgerdesk.halakou.workers.dev
+          SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/build-desk.mjs
       - name: Publish public site
         uses: cloudflare/wrangler-action@v3
@@ -27,17 +27,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           command: deploy --config cloudflare/labledgerdesk.toml
-      - name: Create pages.dev project
-        continue-on-error: true
+      - name: Publish pages.dev
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
-          command: pages project create labledgerdesk --production-branch=main
-      - name: Try pages.dev host
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          wranglerVersion: "4.135.0"
-          command: pages deploy dist-site --project-name=labledgerdesk --commit-dirty=true
+          command: pages deploy dist-site --project-name=labledgerdesk --branch=main --commit-dirty=true
