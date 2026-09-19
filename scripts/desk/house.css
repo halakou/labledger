@@ -1,3 +1,4 @@
+
 @font-face{font-family:Fraunces;font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/fraunces-600.woff2) format("woff2")}
 @font-face{font-family:Fraunces;font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/fraunces-700.woff2) format("woff2")}
 @font-face{font-family:"Source Sans 3";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/source-sans-3-400.woff2) format("woff2")}
@@ -35,6 +36,10 @@ nav a:hover{color:var(--ink)}
 .row{display:grid;grid-template-columns:1fr;gap:1rem;border:1px solid var(--rule);background:var(--card);padding:1.05rem 1.1rem;text-decoration:none;transition:border-color .15s ease}
 @media(min-width:700px){.row{grid-template-columns:80px 1fr auto;align-items:start}}
 .row:hover{border-color:var(--ink)}
+a.headline{display:block;text-decoration:none}
+a.headline:hover{color:var(--accent)}
+.kicker a{text-decoration:none;color:var(--muted)}
+.kicker a:hover{color:var(--ink)}
 .mark{width:80px;height:80px;padding:7px;display:grid;place-items:center;color:#fffaf2}
 .mark.letter{padding:0;font-family:Fraunces,Georgia,serif;font-size:1.9rem;font-weight:700}
 .mark.sm{width:56px;height:56px;padding:5px}
@@ -46,8 +51,9 @@ nav a:hover{color:var(--ink)}
 .headline{font-family:Fraunces,Georgia,serif;font-size:1.45rem;font-weight:600;line-height:1.2;margin:.2rem 0;letter-spacing:-.02em}
 .dek{color:var(--muted)}
 .row-meta{display:flex;flex-wrap:wrap;gap:.55rem;align-items:center;font-size:.78rem;color:var(--muted);margin-top:.45rem}
-.kind{display:inline-flex;align-items:center;min-height:22px;padding:0 .45rem;border:1px solid var(--rule);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--ink)}
-.tag{font-size:.75rem;color:var(--muted)}
+.kind{display:inline-flex;align-items:center;min-height:28px;padding:0 .55rem;border:1px solid var(--rule);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--ink);text-decoration:none}
+.tag{display:inline-flex;align-items:center;min-height:28px;font-size:.75rem;color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+a.kind:hover,a.tag:hover{color:var(--ink);border-color:var(--ink)}
 .row-id{font-size:.75rem;color:var(--muted);text-align:right}
 .labs{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem 1rem;margin:1.5rem 0 0;padding-top:1.4rem}
 @media(min-width:700px){.labs{grid-template-columns:repeat(3,1fr)}}
@@ -81,5 +87,5 @@ article.brief h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-
 .subscribe h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 .45rem}
 .week-day{margin-top:1.6rem}
 .week-day h2{font-family:Fraunces,Georgia,serif;font-size:1.25rem;letter-spacing:-.02em;text-transform:none;color:var(--ink);margin:0 0 .7rem}
-a.row[hidden]{display:none}
+a.row[hidden],article.row[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
