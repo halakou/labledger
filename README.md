@@ -1,8 +1,8 @@
-# Lab Ledger
+# Lab Ledger Desk
 
 Public register of official AI-lab announcements.
 
-Live desk: https://labledgerdesk.pages.dev
-Telegram: https://t.me/labledger
+Live site: https://labledgerdesk.pages.dev  
+Telegram: https://t.me/labledgerdesk
 
-The hourly GitHub Action rebuilds the board from official lab RSS and publishes it. Telegram posts the same brief when a lab publishes something new.
+The hourly job reads allow-listed official RSS. Anthropic has no RSS, so it reads the official `/news` listing and the article’s own Open Graph / first paragraph. Empty RSS summaries are filled from the same host. Old brief URLs stay on the ledger. Telegram posts after the page exists. There is no email list.
