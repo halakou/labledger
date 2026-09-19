@@ -1,0 +1,15 @@
+name = "labledger-desk"
+main = "src/index.js"
+compatibility_date = "2026-09-19"
+
+[triggers]
+crons = ["17 * * * *"]
+
+[[kv_namespaces]]
+binding = "DESK"
+id = "80019ea38abb4797b802973d3f4fe161"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "labledger"
+database_id = "396168a9-a3c2-469b-9ead-df86570f3b04"

@@ -1,0 +1,29 @@
+name: desk
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Ping Lab Ledger ingest
+        env:
+          DESK_URL: ${{ secrets.DESK_URL }}
+          INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+        run: |
+          set -eu
+          test -n "${DESK_URL:-}"
+          test -n "${INGEST_SECRET:-}"
+          case "$DESK_URL" in
+            https://*) ;;
+            *) echo "DESK_URL must be https"; exit 1 ;;
+          esac
+          curl -fsS -X POST "$DESK_URL/api/ingest" \
+            -H "Authorization: Bearer $INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 60
