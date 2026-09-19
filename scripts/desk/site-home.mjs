@@ -32,6 +32,14 @@ export async function writeStatic(fontNames) {
   const ogOk = await copyOg();
   await write("googlece6d31c0feb18c8c.html", "google-site-verification: googlece6d31c0feb18c8c.html");
   await write(
+    "desk-status.json",
+    JSON.stringify({
+      ok: true,
+      builtAt: new Date().toISOString(),
+      service: "labledger-desk",
+    }),
+  );
+  await write(
     "robots.txt",
     [
       "User-agent: *",
@@ -111,6 +119,9 @@ export async function writeLlms(briefs) {
       "/googlece6d31c0feb18c8c",
       "  Content-Type: text/html; charset=utf-8",
       "  X-Robots-Tag: noindex",
+      "/desk-status.json",
+      "  Content-Type: application/json; charset=utf-8",
+      "  Cache-Control: public, max-age=60, must-revalidate",
       "",
     ].join("\n"),
   );
