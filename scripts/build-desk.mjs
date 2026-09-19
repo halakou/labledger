@@ -22,13 +22,13 @@ import {
   ensureFonts,
   fetchFeed,
   fetchListing,
-  fetchMark,
   fillEmptySummaries,
   isBoilerplate,
   loadJson,
   makeBrief,
   reviveBrief,
 } from "./desk/net.mjs";
+import { fetchMark } from "./desk/fetch-mark.mjs";
 import { publishSite } from "./desk/pages.mjs";
 
 const fontNames = await ensureFonts();
@@ -166,5 +166,6 @@ await writeFile(
     })),
   }),
 );
+
 
 await publishSite({ allBriefs, briefs, today, fontNames, markMap });
