@@ -1,11 +1,11 @@
 name: clock
 
-# Tiny scheduled workflow. GitHub's scheduler has been silent on pages.yml
-# since the five-minute cron was added; a second workflow is how schedules
-# get re-registered. pages.yml publishes when this run completes.
+# Independent ticker on GitHub's free scheduler. Completing this run
+# starts pages.yml (site first, then Telegram). No Grok. No paid plan.
 on:
   schedule:
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+    - cron: "4,14,24,34,44,54 * * * *"
+    - cron: "17 4 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   keepalive:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' && github.event.schedule == '17 4 * * 1'
     runs-on: ubuntu-latest
     permissions:
       actions: write

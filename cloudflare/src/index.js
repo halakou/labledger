@@ -5,12 +5,8 @@ const GH_HEADERS = {
   "user-agent": "labledger-desk/1.0 (+https://labledgerdesk.pages.dev)",
   "x-github-api-version": "2022-11-28",
 };
-const GH_RUNS = [
-  "https://api.github.com/repos/halakou/labledger/actions/workflows/pages.yml/runs?per_page=1",
-  "https://api.github.com/repos/halakou/labledger/actions/runs?per_page=1",
-];
 const GH_DISPATCH = "https://api.github.com/repos/halakou/labledger/actions/workflows/pages.yml/dispatches";
-const STALE_MS = 8 * 60 * 1000;
+const STALE_MS = 12 * 60 * 1000;
 
 function siteUrl(env) {
   const raw = String(env.SITE_URL || SITE).trim().replace(/\/$/, "");
@@ -104,24 +100,16 @@ async function handleTelegram(request, env) {
   return new Response("ok");
 }
 
-async function latestRun() {
-  let githubHttp = null;
-  for (const url of GH_RUNS) {
-    try {
-      const res = await fetch(url, {
-        headers: GH_HEADERS,
-        signal: AbortSignal.timeout(8000),
-      });
-      githubHttp = res.status;
-      if (!res.ok) continue;
-      const data = await res.json();
-      const run = data.workflow_runs?.[0] || null;
-      if (run) return { run, githubHttp };
-    } catch {
-      githubHttp = githubHttp || "err";
-    }
+async function siteBuiltAt(env) {
+  const url = siteUrl(env) + "/desk-status.json";
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return { http: res.status, builtAt: null };
+    const data = await res.json();
+    return { http: res.status, builtAt: data.builtAt || null };
+  } catch {
+    return { http: "err", builtAt: null };
   }
-  return { run: null, githubHttp };
 }
 
 async function dispatchPages(env) {
@@ -142,15 +130,14 @@ async function dispatchPages(env) {
 
 async function tick(env) {
   const heartbeat = new Date().toISOString();
-  let found = { run: null, githubHttp: null };
+  let found = { http: null, builtAt: null };
   let dispatch = "skip";
   try {
-    found = await latestRun();
+    found = await siteBuiltAt(env);
   } catch {
-    found = { run: null, githubHttp: "err" };
+    found = { http: "err", builtAt: null };
   }
-  const run = found.run;
-  const created = run?.created_at ? Date.parse(run.created_at) : 0;
+  const created = found.builtAt ? Date.parse(found.builtAt) : 0;
   const age = created ? Date.now() - created : Number.POSITIVE_INFINITY;
   if (age > STALE_MS) {
     try {
@@ -161,10 +148,9 @@ async function tick(env) {
   }
   const last = {
     heartbeat,
-    githubAt: run?.created_at || null,
-    githubEvent: run?.event || null,
-    githubStatus: run?.status || null,
-    githubHttp: found.githubHttp,
+    builtAt: found.builtAt,
+    siteHttp: found.http,
+    ageMs: Number.isFinite(age) ? age : null,
     dispatch,
   };
   if (env.DESK) await env.DESK.put("last", JSON.stringify(last));

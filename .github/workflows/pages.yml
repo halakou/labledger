@@ -4,9 +4,10 @@ on:
   push:
     branches: [main]
   schedule:
-    # Offset from :00/:05 so GitHub is less likely to drop the slot.
-    - cron: "1,6,11,16,21,26,31,36,41,46,51,56 * * * *"
-    - cron: "3 * * * *"
+    # Hourly backup if the clock workflow is silent. GitHub keeps hourly.
+    - cron: "8 * * * *"
+    # Weekly re-enable so GitHub does not disable schedules after 60 quiet days.
+    - cron: "19 4 * * 1"
   workflow_dispatch:
   workflow_run:
     workflows: ["clock"]
@@ -18,7 +19,7 @@ concurrency:
 
 jobs:
   keepalive:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' && github.event.schedule == '19 4 * * 1'
     runs-on: ubuntu-latest
     permissions:
       actions: write
