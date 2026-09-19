@@ -220,17 +220,15 @@ function sentences(text) {
 }
 
 function factsFor(b) {
-  const from = sentences(b.what);
-  const out = [];
-  for (const s of from) {
-    if (out.length >= 3) break;
-    if (!out.includes(s)) out.push(s);
-  }
-  if (out.length < 2) {
-    out.push(b.lab + " published this on " + b.dateLabel + ".");
-    out.push("Primary source host: " + (hostOf(b.source) || b.source) + ".");
-  }
-  return out.slice(0, 4);
+  const host = hostOf(b.source) || b.source;
+  const out = [
+    "Filed from the official " + b.lab + " feed on " + b.dateLabel + ".",
+    "Primary source host: " + host + ".",
+  ];
+  const claim = sentences(b.what)[0];
+  if (claim && claim.length < 220 && !out.some((s) => s.includes(claim.slice(0, 36)))) out.push(claim);
+  if (out.length < 3) out.push("The desk does not add a second source.");
+  return out.slice(0, 3);
 }
 
 async function fetchFeed(url) {
@@ -307,13 +305,13 @@ nav a:hover{color:var(--ink)}
 article.brief{max-width:38rem;margin:0 auto;padding:2.2rem 0 2.8rem}
 article.brief h1{font-size:clamp(2rem,5vw,2.7rem);margin:.55rem 0 0}
 article.brief .dek{font-size:1.25rem;margin-top:.85rem}
-article.brief h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:2rem 0 0;font-weight:600}
-article.brief h2+p{margin:.55rem 0 0}
-.facts{border:1px solid var(--rule);background:var(--card);padding:1rem 1.1rem;margin-top:1.3rem}
-.facts h2{margin-top:0}
-.facts ul{margin:.55rem 0 0;padding-left:1.15rem}
-.facts li{margin:.25rem 0}
-.record{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:1rem 0;margin-top:1.3rem;font-size:.95rem}
+article.brief h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);margin:0;font-weight:600}
+.block{margin-top:1.55rem;padding:0 0 .05rem 1.05rem;border-left:2px solid var(--ink)}
+.block p{margin:.5rem 0 0}
+.block ul{list-style:none;margin:.5rem 0 0;padding:0}
+.block li{position:relative;margin:.4rem 0 0;padding-left:1.1rem;line-height:1.45}
+.block li:before{content:"—";position:absolute;left:0;color:var(--accent)}
+.record{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:1rem 0;margin-top:1.7rem;font-size:.95rem}
 .record a{color:var(--accent)}
 .actions{display:flex;flex-direction:column;align-items:flex-start;margin-top:1.2rem}.tg{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--ink);padding:0 .9rem;margin:0;text-decoration:none;font-size:.9rem}
 .tg:hover{background:var(--ink);color:var(--paper)}
@@ -751,9 +749,9 @@ for (const b of briefs) {
       "<p class=\"kicker\">", esc(b.lab), " · ", esc(b.dateLabel), "</p>",
       "<h1>", esc(b.headline), "</h1>",
       "<p class=\"dek\">", esc(b.dek), "</p>",
-      "<h2>What moved</h2><p>", esc(b.what), "</p>",
-      "<h2>Why it matters</h2><p>", esc(b.why), "</p>",
-      "<div class=\"facts\"><h2>On the record</h2><ul>", factList.map((f) => "<li>" + esc(f) + "</li>").join(""), "</ul></div>",
+      "<section class=\"block\"><h2>What moved</h2><p>", esc(b.what), "</p></section>",
+      "<section class=\"block\"><h2>Why it matters</h2><p>", esc(b.why), "</p></section>",
+      "<section class=\"block\"><h2>On the record</h2><ul>", factList.map((f) => "<li>" + esc(f) + "</li>").join(""), "</ul></section>",
       "<div class=\"record\"><div><b>Primary source</b><br><a href=\"", esc(b.source), "\" rel=\"noreferrer noopener\" target=\"_blank\">", esc(hostOf(b.source) || b.source), "</a></div>",
       "<div><b>Desk</b><br>Logged as brief ", esc(b.briefNo), "</div></div>",
       "<div class=\"actions\">",
