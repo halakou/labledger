@@ -7,6 +7,7 @@ const PHOTO = "assets/channel.jpg";
 const TITLE = "Lab Ledger Desk";
 const DESCRIPTION =
   "Official AI-lab briefs. One sourced page per move. The desk does not invent launches. labledgerdesk.pages.dev";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function handleFrom(raw) {
   if (!raw) return "";
@@ -40,6 +41,54 @@ function channelUrl() {
 function redactChat(chat) {
   if (/^-?\d+$/.test(chat)) return "numeric-id";
   return chat;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, "&")
+    .replace(/</g, "<")
+    .replace(/>/g, ">")
+    .replace(/"/g, """);
+}
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
+}
+
+function clipDek(text, max) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;–-]+$/, "") + "…";
+}
+
+function messageIdFrom(url) {
+  const m = String(url || "").match(/\/(\d+)\/?$/);
+  return m ? Number(m[1]) : 0;
+}
+
+function composeMessage(post) {
+  const url = SITE + post.path;
+  const lab = escHtml(post.lab || "Desk");
+  const date = formatDate(post.publishedAt);
+  const headline = escHtml(post.headline || "");
+  const dek = clipDek(post.dek || "", 220);
+  const lines = ["<b>" + lab + "</b>" + (date ? "  ·  " + date : ""), "", "<b>" + headline + "</b>"];
+  if (dek) lines.push("", "<blockquote>" + escHtml(dek) + "</blockquote>");
+  lines.push("", "<i>Filed from the official feed. Source stays on the page.</i>");
+  return {
+    text: lines.join("\n"),
+    payload: {
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
+      reply_markup: {
+        inline_keyboard: [[{ text: "Read the brief", url }]],
+      },
+    },
+  };
 }
 
 async function tg(token, method, body) {
@@ -95,10 +144,7 @@ async function diagnose(token, chat) {
 
 async function setupChannel(token, chat, info) {
   const currentTitle = info?.chat?.title || "";
-  if (currentTitle && currentTitle !== TITLE) {
-    const res = await tg(token, "setChatTitle", { chat_id: chat, title: TITLE });
-    console.log("telegram setChatTitle:", res.ok ? "ok" : res.description || res.error_code);
-  } else if (!currentTitle) {
+  if (currentTitle !== TITLE) {
     const res = await tg(token, "setChatTitle", { chat_id: chat, title: TITLE });
     console.log("telegram setChatTitle:", res.ok ? "ok" : res.description || res.error_code);
   } else {
@@ -160,6 +206,7 @@ await setupChannel(token, chat, info);
 const queue = await loadJson(QUEUE_FILE, { briefs: [] });
 const posted = await loadJson(POSTED_FILE, {});
 const briefs = Array.isArray(queue.briefs) ? queue.briefs : [];
+const byGuid = Object.fromEntries(briefs.filter((b) => b.guid).map((b) => [b.guid, b]));
 const hourAgo = Date.now() - 70 * 60 * 1000;
 const postedCount = Object.keys(posted).length;
 let toSend = briefs.filter((b) => {
@@ -173,19 +220,36 @@ if (postedCount === 0) {
   console.log("telegram fresh window:", toSend.length, "posted cache:", postedCount);
 }
 
+let edited = 0;
+for (const [guid, url] of Object.entries(posted)) {
+  const post = byGuid[guid];
+  const mid = messageIdFrom(url);
+  if (!post?.headline || !post?.path || !mid) continue;
+  const msg = composeMessage(post);
+  const data = await tg(token, "editMessageText", {
+    chat_id: chat,
+    message_id: mid,
+    text: msg.text,
+    ...msg.payload,
+  });
+  if (data?.ok || /not modified/i.test(String(data.description || ""))) {
+    edited += 1;
+    console.log("telegram edited", mid, post.path);
+  } else {
+    console.log("telegram edit FAILED:", data.description || data.error_code, post.path);
+  }
+}
+
 let sent = 0;
 let failed = 0;
 for (const post of toSend) {
   if (!post?.headline || !post?.path) continue;
-  if (posted[post.guid]) {
-    console.log("telegram skip already posted:", post.path);
-    continue;
-  }
-  const text = post.headline + "\n" + SITE + post.path;
+  if (posted[post.guid]) continue;
+  const msg = composeMessage(post);
   const data = await tg(token, "sendMessage", {
     chat_id: chat,
-    text,
-    disable_web_page_preview: false,
+    text: msg.text,
+    ...msg.payload,
   });
   const mid = data?.result?.message_id;
   if (data?.ok && mid) {
@@ -199,5 +263,5 @@ for (const post of toSend) {
 }
 
 await writeFile(POSTED_FILE, JSON.stringify(posted));
-console.log("telegram done sent", sent, "failed", failed, "cache", Object.keys(posted).length);
-if (failed && !sent) process.exit(1);
+console.log("telegram done sent", sent, "edited", edited, "failed", failed, "cache", Object.keys(posted).length);
+if (failed && !sent && !edited) process.exit(1);

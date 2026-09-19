@@ -488,6 +488,8 @@ await writeFile(QUEUE_FILE, JSON.stringify({
     guid: b.guid,
     headline: b.headline,
     path: b.path,
+    lab: b.lab,
+    dek: b.dek,
     publishedAt: b.publishedAt.toISOString(),
   })),
 }));
