@@ -27,6 +27,13 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           command: deploy --config cloudflare/labledgerdesk.toml
+      - name: Create pages.dev project
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4.135.0"
+          command: pages project create labledgerdesk --production-branch=main
       - name: Try pages.dev host
         continue-on-error: true
         uses: cloudflare/wrangler-action@v3
