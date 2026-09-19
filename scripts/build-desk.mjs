@@ -5,6 +5,7 @@ const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace
 const OUT = "dist-site";
 const AMP = "\x26";
 const POSTED_FILE = ".desk-posted.json";
+const QUEUE_FILE = ".desk-queue.json";
 const OG_CANDIDATES = ["assets/og.jpg", "public/og.jpg", "/workspace/public/og.jpg"];
 
 const LABS = [
@@ -408,43 +409,6 @@ async function loadPosted() {
   }
 }
 
-async function savePosted(map) {
-  await writeFile(POSTED_FILE, JSON.stringify(map));
-}
-
-async function postTelegram(posts, posted) {
-  const token = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
-  const chat = telegramChatId();
-  if (!token || !posts.length) return posted;
-  for (const post of posts) {
-    if (posted[post.guid]) {
-      post.telegramUrl = posted[post.guid];
-      continue;
-    }
-    const text = post.headline + "\n" + SITE + post.path;
-    try {
-      const res = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chat,
-          text,
-          disable_web_page_preview: false,
-        }),
-        signal: AbortSignal.timeout(10000),
-      });
-      const data = await res.json().catch(() => ({}));
-      const mid = data?.result?.message_id;
-      if (data?.ok && mid) {
-        const url = CHANNEL + "/" + mid;
-        posted[post.guid] = url;
-        post.telegramUrl = url;
-      }
-    } catch {}
-  }
-  return posted;
-}
-
 function makeBrief(pack, item) {
   const { year, month, day } = ymd(item.publishedAt);
   const slug = slugify(item.title);
@@ -515,14 +479,18 @@ briefs.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
 briefs.forEach((b, i) => { b.briefNo = String(i + 1).padStart(3, "0"); });
 
 const today = new Date().toISOString().slice(0, 10);
-const hourAgo = Date.now() - 70 * 60 * 1000;
-const fresh = briefs.filter((b) => b.publishedAt.getTime() >= hourAgo);
-let posted = await loadPosted();
-posted = await postTelegram(fresh, posted);
-await savePosted(posted);
+const posted = await loadPosted();
 for (const b of briefs) {
   if (!b.telegramUrl && posted[b.guid]) b.telegramUrl = posted[b.guid];
 }
+await writeFile(QUEUE_FILE, JSON.stringify({
+  briefs: briefs.map((b) => ({
+    guid: b.guid,
+    headline: b.headline,
+    path: b.path,
+    publishedAt: b.publishedAt.toISOString(),
+  })),
+}));
 
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
@@ -803,4 +771,4 @@ await write(
     "</channel></rss>",
 );
 
-console.log("wrote " + briefs.length + " briefs, telegram queued " + fresh.length + ", og " + ogOk + ", channel " + CHANNEL);
+console.log("wrote " + briefs.length + " briefs, telegram queue " + briefs.length + ", posted cache " + Object.keys(posted).length + ", og " + ogOk + ", channel " + CHANNEL);

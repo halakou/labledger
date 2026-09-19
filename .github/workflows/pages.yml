@@ -17,10 +17,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: .desk-posted.json
-          key: desk-posted-v1
+          key: desk-posted-${{ github.run_id }}
+          restore-keys: |
+            desk-posted-
       - name: Build desk
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -40,3 +42,15 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           command: pages deploy dist-site --project-name=labledgerdesk --branch=main --commit-dirty=true
+      - name: Post to Telegram after pages exist
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
+          SITE_URL: https://labledgerdesk.pages.dev
+        run: node scripts/telegram-desk.mjs
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .desk-posted.json
+          key: desk-posted-${{ github.run_id }}

@@ -1,8 +1,8 @@
 name: desk
 
+# Live desk is pages.yml (RSS → Cloudflare Pages → Telegram).
+# This leftover ingest ping has no DESK_URL and must not run on the hour.
 on:
-  schedule:
-    - cron: "17 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -11,48 +11,5 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Ping Lab Ledger ingest
-        env:
-          DESK_URL: ${{ secrets.DESK_URL }}
-          INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          set -eu
-          test -n "${DESK_URL:-}"
-          test -n "${INGEST_SECRET:-}"
-          case "$DESK_URL" in
-            https://*) ;;
-            *) echo "DESK_URL must be https"; exit 1 ;;
-          esac
-          BODY=$(curl -fsS -X POST "$DESK_URL/api/ingest" \
-            -H "Authorization: Bearer $INGEST_SECRET" \
-            -H "Content-Type: application/json" \
-            --max-time 60)
-          export BODY
-          python3 - <<'PY'
-          import json, os, urllib.request
-          token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-          chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-          if not token or not chat:
-              raise SystemExit(0)
-          data = json.loads(os.environ.get("BODY") or "{}")
-          desk = os.environ.get("DESK_URL", "").rstrip("/")
-          for post in data.get("posts") or []:
-              headline = str(post.get("headline") or "").strip()
-              path = str(post.get("path") or "").strip()
-              if not headline:
-                  continue
-              text = f"{headline}\n{desk}{path}" if path else headline
-              req = urllib.request.Request(
-                  f"https://api.telegram.org/bot{token}/sendMessage",
-                  data=json.dumps({
-                      "chat_id": chat,
-                      "text": text,
-                      "disable_web_page_preview": True,
-                  }).encode(),
-                  headers={"Content-Type": "application/json"},
-                  method="POST",
-              )
-              urllib.request.urlopen(req, timeout=10).read()
-          PY
+      - name: Skip leftover ingest
+        run: echo "Live automation is pages.yml. This workflow is retired."
