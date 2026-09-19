@@ -1,5 +1,8 @@
 const SITE = "https://labledgerdesk.pages.dev";
 const CHANNEL = "https://t.me/labledgerdesk";
+const GH_RUNS = "https://api.github.com/repos/halakou/labledger/actions/workflows/pages.yml/runs?per_page=1";
+const GH_DISPATCH = "https://api.github.com/repos/halakou/labledger/actions/workflows/pages.yml/dispatches";
+const STALE_MS = 12 * 60 * 1000;
 
 function siteUrl(env) {
   const raw = String(env.SITE_URL || SITE).trim().replace(/\/$/, "");
@@ -93,14 +96,79 @@ async function handleTelegram(request, env) {
   return new Response("ok");
 }
 
+async function latestRun() {
+  const res = await fetch(GH_RUNS, {
+    headers: {
+      accept: "application/vnd.github+json",
+      "user-agent": "labledger-desk",
+    },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.workflow_runs?.[0] || null;
+}
+
+async function dispatchPages(env) {
+  const token = String(env.GITHUB_DISPATCH_TOKEN || "").trim();
+  if (!token) return "no-token";
+  const res = await fetch(GH_DISPATCH, {
+    method: "POST",
+    headers: {
+      accept: "application/vnd.github+json",
+      authorization: "Bearer " + token,
+      "user-agent": "labledger-desk",
+    },
+    body: JSON.stringify({ ref: "main" }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (res.status === 204) return "dispatched";
+  return "dispatch-" + res.status;
+}
+
+async function tick(env) {
+  const heartbeat = new Date().toISOString();
+  let run = null;
+  let dispatch = "skip";
+  try {
+    run = await latestRun();
+  } catch {
+    run = null;
+  }
+  const created = run?.created_at ? Date.parse(run.created_at) : 0;
+  const age = created ? Date.now() - created : Number.POSITIVE_INFINITY;
+  if (age > STALE_MS) {
+    try {
+      dispatch = await dispatchPages(env);
+    } catch {
+      dispatch = "dispatch-fail";
+    }
+  }
+  const last = {
+    heartbeat,
+    githubAt: run?.created_at || null,
+    githubEvent: run?.event || null,
+    githubStatus: run?.status || null,
+    dispatch,
+  };
+  if (env.DESK) await env.DESK.put("last", JSON.stringify(last));
+  return last;
+}
+
 export default {
   async scheduled(_controller, env) {
-    if (env.DESK) await env.DESK.put("last", "heartbeat " + new Date().toISOString());
+    await tick(env);
   },
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/health") {
-      const last = env.DESK ? await env.DESK.get("last") : null;
+      const raw = env.DESK ? await env.DESK.get("last") : null;
+      let last = raw;
+      try {
+        last = raw ? JSON.parse(raw) : null;
+      } catch {
+        last = raw;
+      }
       return Response.json({ ok: true, last, service: "labledger-desk" });
     }
     if (url.pathname === "/telegram" && request.method === "POST") {

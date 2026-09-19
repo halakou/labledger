@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
   schedule:
-    # Every five minutes, off the hour. GitHub cron is best-effort;
-    # a missed slot is five minutes, not an hour. Page first, then Telegram.
-    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 * * * *"
+    # Shortest GitHub interval. Cloudflare Worker is the reliable clock
+    # and will dispatch this workflow if a tick is missed.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 concurrency:
@@ -14,6 +14,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: liskin/gh-workflow-keepalive@v1
+
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -53,13 +61,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           command: pages deploy dist-site --project-name=labledgerdesk --branch=main --commit-dirty=true
-      - name: Publish desk worker
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          wranglerVersion: "4.135.0"
-          command: deploy --name labledger-desk --config cloudflare/wrangler.toml
       - name: Post to Telegram after pages exist
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
