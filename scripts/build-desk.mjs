@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
@@ -14,7 +14,18 @@ const LABS = [
   { id: "deepmind", label: "DeepMind", mark: "D", color: "#3d3a2e", feed: "https://deepmind.google/blog/rss.xml", hosts: ["deepmind.google"] },
   { id: "mistral", label: "Mistral", mark: "M", color: "#4a3b28", feed: "https://mistral.ai/news/rss", hosts: ["mistral.ai"] },
   { id: "huggingface", label: "Hugging Face", mark: "H", color: "#1c1914", feed: "https://huggingface.co/blog/feed.xml", hosts: ["huggingface.co"] },
+  { id: "microsoft", label: "Microsoft Research", mark: "W", color: "#2c3d4f", feed: "https://www.microsoft.com/en-us/research/feed/", hosts: ["microsoft.com"] },
+  { id: "nvidia", label: "NVIDIA", mark: "N", color: "#3d4a2e", feed: "https://blogs.nvidia.com/blog/category/generative-ai/feed/", hosts: ["blogs.nvidia.com"] },
+  { id: "aws", label: "AWS", mark: "B", color: "#4a3228", feed: "https://aws.amazon.com/blogs/machine-learning/feed/", hosts: ["aws.amazon.com"] },
+  { id: "apple", label: "Apple", mark: "P", color: "#2a2a28", feed: "https://machinelearning.apple.com/rss.xml", hosts: ["machinelearning.apple.com"] },
+  { id: "gresearch", label: "Google Research", mark: "R", color: "#355046", feed: "https://research.google/blog/rss/", hosts: ["research.google"] },
+  { id: "bair", label: "BAIR", mark: "K", color: "#4a2e3d", feed: "https://bair.berkeley.edu/blog/feed.xml", hosts: ["bair.berkeley.edu"] },
+  { id: "mit", label: "MIT News", mark: "I", color: "#8a2a22", feed: "https://news.mit.edu/rss/topic/artificial-intelligence2", hosts: ["news.mit.edu"] },
+  { id: "mittr", label: "MIT Review", mark: "T", color: "#243044", feed: "https://www.technologyreview.com/topic/artificial-intelligence/feed/", hosts: ["technologyreview.com"] },
 ];
+const MAX_BRIEFS = 28;
+const PER_FEED = 6;
+const RECENT_MS = 21 * 24 * 60 * 60 * 1000;
 
 function handleFrom(raw) {
   if (!raw) return "";
@@ -117,7 +128,8 @@ function parseFeed(xml) {
     const end = endItem >= 0 ? endItem : endEntry;
     const chunk = end >= 0 ? block.slice(0, end) : block;
     const title = strip(tag(chunk, "title"));
-    const link = href(chunk).split("?")[0];
+    let link = href(chunk).split("?")[0];
+    if (link.startsWith("http://")) link = "https://" + link.slice(7);
     if (!title || !link.startsWith("https://")) continue;
     const summary = strip(tag(chunk, "description") || tag(chunk, "summary") || tag(chunk, "content") || tag(chunk, "content:encoded"));
     items.push({
@@ -125,7 +137,7 @@ function parseFeed(xml) {
       link,
       guid: strip(tag(chunk, "guid") || tag(chunk, "id") || link),
       publishedAt: published(chunk),
-      summary: summary.slice(0, 1200),
+      summary: summary.slice(0, 2500),
     });
   }
   return items;
@@ -157,11 +169,54 @@ function clip(text, max) {
   return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;–-]+$/, "") + "…";
 }
 
+function wordCount(text) {
+  return String(text).trim().split(/\s+/).filter(Boolean).length;
+}
+
+function clipWords(text, max) {
+  const words = String(text).replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (words.length <= max) return words.join(" ");
+  const acc = [];
+  for (const w of words) {
+    acc.push(w);
+    if (acc.length >= max - 8 && /[.!?]"?$/.test(w)) break;
+    if (acc.length >= max) break;
+  }
+  let out = acc.join(" ");
+  if (!/[.!?]$/.test(out)) out = out.replace(/[,:;–—-]+$/, "") + ".";
+  return out;
+}
+
+function composeWhat(summary, lab, headline, dateLabel) {
+  let body = String(summary || "").replace(/\s+/g, " ").trim();
+  if (!body) body = lab + " published “" + headline + "” on " + dateLabel + ".";
+  if (wordCount(body) >= 70) return clipWords(body, 80);
+  const extras = [
+    lab + " issued this as an official post on " + dateLabel + ".",
+    "The desk files the title and summary from the allow-listed feed, not a rewrite of claims the source did not make.",
+    "No second outlet is added, and no launch is invented.",
+    "The primary source stays on this page so the original wording remains the claim of record.",
+  ];
+  for (const extra of extras) {
+    if (wordCount(body) >= 70) break;
+    body = (body + " " + extra).trim();
+  }
+  return clipWords(body, 80);
+}
+
+function composeWhy(lab, dateLabel) {
+  return clipWords(
+    "This brief exists so the official " + lab + " claim on " + dateLabel +
+      " has a dated, public file. The desk does not add a second source or a launch the publisher did not post.",
+    40,
+  );
+}
+
 function sentences(text) {
   return text
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
-    .filter((s) => s.length > 24 && s.length < 240);
+    .filter((s) => s.length > 24 && s.length < 400);
 }
 
 function factsFor(b) {
@@ -245,7 +300,7 @@ nav a:hover{color:var(--ink)}
 .row-id{font-size:.75rem;color:var(--muted);text-align:right}
 .labs{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem 1rem;margin:1.5rem 0 0;padding-top:1.4rem}
 @media(min-width:700px){.labs{grid-template-columns:repeat(3,1fr)}}
-@media(min-width:900px){.labs{grid-template-columns:repeat(6,1fr)}}
+@media(min-width:900px){.labs{grid-template-columns:repeat(4,1fr)}}
 .labs a{border-top:2px solid var(--ink);padding-top:.55rem;text-decoration:none}
 .labs b{display:block;font-family:Fraunces,Georgia,serif;font-size:1.15rem}
 .labs span{display:block;color:var(--muted);font-size:.78rem;margin-top:.15rem}
@@ -260,9 +315,9 @@ article.brief h2+p{margin:.55rem 0 0}
 .facts li{margin:.25rem 0}
 .record{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:1rem 0;margin-top:1.3rem;font-size:.95rem}
 .record a{color:var(--accent)}
-.tg{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--ink);padding:0 .9rem;margin-top:1rem;text-decoration:none;font-size:.9rem}
+.actions{display:flex;flex-direction:column;align-items:flex-start;margin-top:1.2rem}.tg{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--ink);padding:0 .9rem;margin:0;text-decoration:none;font-size:.9rem}
 .tg:hover{background:var(--ink);color:var(--paper)}
-.back{display:inline-block;margin-top:1.4rem;color:var(--muted);text-decoration:none}
+.back{display:block;margin-top:1rem;color:var(--muted);text-decoration:none}
 .method{max-width:38rem;padding:2.4rem 0 3rem}
 .method h1{font-size:2.5rem;margin:.4rem 0 0}
 .method h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:2rem 0 .5rem}
@@ -290,7 +345,7 @@ function shell({ title, description, path, body, extra = "", ogType = "website" 
     "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Lab Ledger Desk\" href=\"", SITE, "/rss.xml\">",
     "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">",
     "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>",
-    "<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600&display=swap\">",
+    "<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&amp;family=Source+Sans+3:wght@400;500;600&amp;display=swap\">",
     "<link rel=\"stylesheet\" href=\"/styles.css\">",
     "<meta property=\"og:site_name\" content=\"Lab Ledger Desk\">",
     "<meta property=\"og:type\" content=\"", esc(ogType), "\">",
@@ -392,13 +447,42 @@ async function postTelegram(posts, posted) {
   return posted;
 }
 
+function makeBrief(pack, item) {
+  const { year, month, day } = ymd(item.publishedAt);
+  const slug = slugify(item.title);
+  const path = "/b/" + year + "/" + month + "/" + day + "/" + slug + "/";
+  const headline = item.title;
+  const summary = item.summary;
+  const dateLabel = year + "-" + month + "-" + day;
+  const dek = clip(summary || (pack.lab.label + " published “" + headline + ".”"), 158);
+  const what = composeWhat(summary, pack.lab.label, headline, dateLabel);
+  const why = composeWhy(pack.lab.label, dateLabel);
+  return {
+    lab: pack.lab.label,
+    labId: pack.lab.id,
+    mark: pack.lab.mark,
+    color: pack.lab.color,
+    headline,
+    dek,
+    what,
+    why,
+    source: item.link,
+    guid: item.guid || item.link,
+    year, month, day, slug, path,
+    dateLabel,
+    publishedAt: item.publishedAt,
+    telegramUrl: null,
+    briefNo: "000",
+  };
+}
+
 const packs = await Promise.all(
   LABS.filter((l) => l.feed).map(async (lab) => {
     try {
       const xml = await fetchFeed(lab.feed);
       const items = parseFeed(xml)
         .filter((item) => lab.hosts.includes(hostOf(item.link) || ""))
-        .slice(0, 8);
+        .slice(0, PER_FEED * 2);
       return { lab, items };
     } catch {
       return { lab, items: [] };
@@ -408,38 +492,29 @@ const packs = await Promise.all(
 
 const briefs = [];
 const used = new Set();
-for (let i = 0; i < 8; i += 1) {
-  for (const pack of packs) {
-    if (briefs.length >= 12) break;
-    const item = pack.items[i];
-    if (!item || used.has(item.link)) continue;
-    used.add(item.link);
-    const { year, month, day } = ymd(item.publishedAt);
-    const slug = slugify(item.title);
-    const path = "/b/" + year + "/" + month + "/" + day + "/" + slug + "/";
-    const headline = item.title;
-    const summary = item.summary;
-    const dek = clip(summary || (pack.lab.label + " published “" + headline + ".”"), 220);
-    const what = summary || (pack.lab.label + " published “" + headline + ".”");
-    briefs.push({
-      lab: pack.lab.label,
-      labId: pack.lab.id,
-      mark: pack.lab.mark,
-      color: pack.lab.color,
-      headline,
-      dek,
-      what,
-      why: "The desk files the official " + pack.lab.label + " claim on " + year + "-" + month + "-" + day + ". It does not add a second source or a launch the lab did not publish.",
-      source: item.link,
-      guid: item.guid || item.link,
-      year, month, day, slug, path,
-      dateLabel: year + "-" + month + "-" + day,
-      publishedAt: item.publishedAt,
-      telegramUrl: null,
-      briefNo: String(briefs.length + 1).padStart(3, "0"),
-    });
+const now = Date.now();
+function takeRoundRobin(pred) {
+  for (let i = 0; i < PER_FEED * 2; i += 1) {
+    for (const pack of packs) {
+      if (briefs.length >= MAX_BRIEFS) return;
+      const item = pack.items[i];
+      if (!item || used.has(item.link)) continue;
+      if (pred && !pred(item)) continue;
+      used.add(item.link);
+      briefs.push(makeBrief(pack, item));
+    }
   }
 }
+for (const pack of packs) {
+  const item = pack.items[0];
+  if (!item || used.has(item.link) || briefs.length >= MAX_BRIEFS) continue;
+  used.add(item.link);
+  briefs.push(makeBrief(pack, item));
+}
+takeRoundRobin((item) => now - item.publishedAt.getTime() <= RECENT_MS);
+takeRoundRobin(null);
+briefs.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+briefs.forEach((b, i) => { b.briefNo = String(i + 1).padStart(3, "0"); });
 
 const today = new Date().toISOString().slice(0, 10);
 const hourAgo = Date.now() - 70 * 60 * 1000;
@@ -451,6 +526,7 @@ for (const b of briefs) {
   if (!b.telegramUrl && posted[b.guid]) b.telegramUrl = posted[b.guid];
 }
 
+await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
 await write("styles.css", CSS);
 await write("favicon.svg", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#1c1914"/><path fill="#f4efe4" d="M9 6h7v14h8v6H9z"/><rect x="9" y="27.5" width="14" height="1.5" fill="#6e2f22"/></svg>');
@@ -477,7 +553,7 @@ await write("robots.txt", [
 await write("llms.txt", [
   "# Lab Ledger Desk",
   "",
-  "> Public register of official AI-lab announcements. One brief per move. Primary source on the page.",
+  "> Public register of official AI announcements. One brief per move, about 100 words. Primary source on the page.",
   "",
   "Canonical host: " + SITE,
   "Telegram: " + CHANNEL,
@@ -493,7 +569,7 @@ await write("llms.txt", [
   ...LABS.map((l) => "- " + SITE + "/lab/" + l.id + "/ — " + l.label + " archive"),
   "",
   "## Latest briefs",
-  ...briefs.slice(0, 12).map((b) => "- " + b.dateLabel + " · " + b.lab + " · " + b.headline + " — " + SITE + b.path),
+  ...briefs.slice(0, 20).map((b) => "- " + b.dateLabel + " · " + b.lab + " · " + b.headline + " — " + SITE + b.path),
   "",
 ].join("\n"));
 await write("_headers", [
@@ -541,8 +617,8 @@ const homeSchema = {
     {
       "@type": "FAQPage",
       mainEntity: [
-        { "@type": "Question", name: "What does Lab Ledger Desk file?", acceptedAnswer: { "@type": "Answer", text: "Official announcements from named AI labs. One brief per move, with the primary source on the page." } },
-        { "@type": "Question", name: "Which labs are on the board?", acceptedAnswer: { "@type": "Answer", text: "OpenAI, Anthropic, Google, DeepMind, Mistral, and Hugging Face. Anthropic is listed but has no official RSS, so the desk does not scrape it." } },
+        { "@type": "Question", name: "What does Lab Ledger Desk file?", acceptedAnswer: { "@type": "Answer", text: "Official announcements from named AI labs, research groups, and MIT Technology Review. One brief per move, about 100 words, with the primary source on the page." } },
+        { "@type": "Question", name: "Which sources are on the board?", acceptedAnswer: { "@type": "Answer", text: "OpenAI, Anthropic, Google, DeepMind, Mistral, Hugging Face, Microsoft Research, NVIDIA, AWS, Apple, Google Research, BAIR, MIT News, and MIT Technology Review. Anthropic is listed but has no official RSS, so the desk does not scrape it. Meta and xAI publish no official RSS either." } },
         { "@type": "Question", name: "Does the desk invent launches?", acceptedAnswer: { "@type": "Answer", text: "No. It files the official claim and keeps the source on the page." } },
       ],
     },
@@ -551,12 +627,12 @@ const homeSchema = {
 
 await write("index.html", shell({
   title: "Lab Ledger Desk — Primary moves from the labs",
-  description: "A public ledger of official announcements from OpenAI, Anthropic, Google DeepMind, Mistral, and Hugging Face. Dated, sourced, kept.",
+  description: "A public ledger of official AI announcements from named labs, research groups, and MIT Technology Review. Dated, sourced, kept.",
   path: "/",
   extra: jsonLdScript(homeSchema),
   body: [
     "<section class=\"hero\"><div><h1>What the labs moved. Sourced, dated, kept.</h1>",
-    "<p>A public ledger of official announcements from the model makers. One brief per move, with the primary source on the page.</p>",
+    "<p>A public ledger of official AI announcements. Named sources only. One brief per move, about 100 words, with the primary source on the page.</p>",
     "<div class=\"meta\"><span>Desk date <strong><time datetime=\"", esc(today), "\">", esc(today), "</time></strong></span>",
     "<span>Open briefs <strong>", String(briefs.length), "</strong></span>",
     "<span>Desk <strong>live</strong></span></div></div>",
@@ -567,8 +643,8 @@ await write("index.html", shell({
     board,
     "<div class=\"labs\">", labGrid, "</div></section>",
     "<article class=\"method\"><h2>What does the desk file?</h2>",
-    "<p>Official announcements from the model makers. One brief per move. The primary source stays on the page.</p>",
-    "<h2>Which labs are on the board?</h2>",
+    "<p>Official announcements from named labs, research groups, and MIT Technology Review. One brief per move, about 100 words. The primary source stays on the page.</p>",
+    "<h2>Which sources are on the board?</h2>",
     "<ul>", LABS.map((l) => "<li><a href=\"/lab/" + l.id + "/\">" + esc(l.label) + "</a> — " + (l.feed ? "official RSS" : "no official RSS, not scraped") + "</li>").join(""), "</ul>",
     "<h2>Does the desk invent launches?</h2>",
     "<p>No. It reads allow-listed feeds, fills a fixed template, and mirrors the same brief to <a href=\"", esc(CHANNEL), "\" rel=\"noreferrer noopener\">Telegram</a> after the page exists.</p>",
@@ -584,16 +660,16 @@ await write("method/index.html", shell({
     "@context": "https://schema.org",
     "@type": "FAQPage",
     mainEntity: [
-      { "@type": "Question", name: "What is Lab Ledger Desk?", acceptedAnswer: { "@type": "Answer", text: "A public register of official announcements from named AI labs. Each page is a brief: what moved, why it matters, and the primary source." } },
+      { "@type": "Question", name: "What is Lab Ledger Desk?", acceptedAnswer: { "@type": "Answer", text: "A public register of official AI announcements from named labs, research groups, and MIT Technology Review. Each page is a brief of about 100 words: what moved, why it matters, and the primary source." } },
       { "@type": "Question", name: "Does it invent news?", acceptedAnswer: { "@type": "Answer", text: "No. It does not invent launches, rewrite claims, or scrape labs that publish no feed." } },
       { "@type": "Question", name: "Where is the Telegram channel?", acceptedAnswer: { "@type": "Answer", text: CHANNEL } },
     ],
   }),
   body: [
     "<article class=\"method\"><p class=\"kicker\">Method</p><h1>How the desk works</h1>",
-    "<h2>What is this?</h2><p>Lab Ledger Desk is a public register of official announcements from AI labs. Each page is a brief: what moved, why it matters, and the primary source.</p>",
+    "<h2>What is this?</h2><p>Lab Ledger Desk is a public register of official AI announcements from named labs, research groups, and MIT Technology Review. Each page is a brief of about 100 words: what moved, why it matters, and the primary source.</p>",
     "<h2>What is this not?</h2><p>It is not a newspaper with invented reporters. It does not copy lab posts in full. It does not invent launches. It does not scrape labs that publish no feed.</p>",
-    "<h2>How is a brief made?</h2><p>Official RSS feeds are read. Only allow-listed lab hosts are fetched. Duplicates are dropped. A fixed template is filled from the title and summary. If a required field is missing, the brief stays off the board. Telegram carries the same brief after the site file is written.</p>",
+    "<h2>How is a brief made?</h2><p>Official RSS feeds are read. Only allow-listed hosts are fetched. Duplicates are dropped. A fixed template is filled from the title and summary to about 100 words. If a required field is missing, the brief stays off the board. Volume follows the feeds — typically twenty to thirty open briefs. Telegram carries the same brief after the site file is written.</p>",
     "<h2>Channel</h2><p>The public desk channel is <a href=\"", esc(CHANNEL), "\" rel=\"noreferrer noopener\">", esc(CHANNEL), "</a>.</p></article>",
   ].join(""),
 }));
@@ -680,10 +756,11 @@ for (const b of briefs) {
       "<div class=\"facts\"><h2>On the record</h2><ul>", factList.map((f) => "<li>" + esc(f) + "</li>").join(""), "</ul></div>",
       "<div class=\"record\"><div><b>Primary source</b><br><a href=\"", esc(b.source), "\" rel=\"noreferrer noopener\" target=\"_blank\">", esc(hostOf(b.source) || b.source), "</a></div>",
       "<div><b>Desk</b><br>Logged as brief ", esc(b.briefNo), "</div></div>",
+      "<div class=\"actions\">",
       b.telegramUrl
         ? "<a class=\"tg\" href=\"" + esc(b.telegramUrl) + "\" rel=\"noreferrer noopener\">Open the matching Telegram post</a>"
         : "<a class=\"tg\" href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Follow the desk on Telegram</a>",
-      "<a class=\"back\" href=\"/\">← Back to the board</a></article>",
+      "<a class=\"back\" href=\"/\">← Back to the board</a></div></article>",
     ].join(""),
   }));
 }
