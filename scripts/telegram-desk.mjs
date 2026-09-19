@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 
 const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
@@ -7,7 +8,17 @@ const PHOTO = "assets/channel.jpg";
 const TITLE = "Lab Ledger Desk";
 const DESCRIPTION =
   "Official AI-lab briefs. One sourced page per move. The desk does not invent launches. labledgerdesk.pages.dev";
+const BOT_SHORT = "Official AI-lab briefs. Named sources only.";
+const BOT_ABOUT =
+  "Lab Ledger Desk files official announcements from named AI labs. One brief per move, about 100 words, with the primary source on the page. Follow the channel @labledgerdesk. Direct messages are not a news tip line.";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const FRESH_MS = 25 * 60 * 1000;
+const COMMANDS = [
+  { command: "start", description: "Open the board" },
+  { command: "board", description: "The public ledger" },
+  { command: "method", description: "How the desk files" },
+  { command: "channel", description: "Follow the desk" },
+];
 
 function handleFrom(raw) {
   if (!raw) return "";
@@ -43,6 +54,13 @@ function redactChat(chat) {
   return chat;
 }
 
+function hookSecret(token) {
+  return createHash("sha256")
+    .update("labledger-desk:" + token)
+    .digest("hex")
+    .slice(0, 32);
+}
+
 function escHtml(s) {
   const amp = "\x26";
   return String(s)
@@ -63,7 +81,7 @@ function clipDek(text, max) {
   if (t.length <= max) return t;
   const cut = t.slice(0, max - 1);
   const sp = cut.lastIndexOf(" ");
-  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;\u2013-]+$/, "") + "\u2026";
+  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;–-]+$/, "") + "…";
 }
 
 function messageIdFrom(url) {
@@ -77,8 +95,8 @@ function composeMessage(post) {
   const date = formatDate(post.publishedAt);
   const headline = escHtml(post.headline || "");
   const dek = clipDek(post.dek || "", 220);
-  const kind = post.kind ? "  \u00b7  " + escHtml(post.kind) : "";
-  const lines = ["<b>" + lab + "</b>" + kind + (date ? "  \u00b7  " + date : ""), "", "<b>" + headline + "</b>"];
+  const kind = post.kind ? "  ·  " + escHtml(post.kind) : "";
+  const lines = ["<b>" + lab + "</b>" + kind + (date ? "  ·  " + date : ""), "", "<b>" + headline + "</b>"];
   if (dek) lines.push("", "<blockquote>" + escHtml(dek) + "</blockquote>");
   lines.push("", "<i>Filed from the official source. The brief stays on the page.</i>");
   return {
@@ -182,6 +200,55 @@ async function setupChannel(token, chat, info) {
   }
 }
 
+async function setupBot(token, info) {
+  const name = info?.me?.first_name || "";
+  if (name !== TITLE) {
+    const res = await tg(token, "setMyName", { name: TITLE });
+    console.log("telegram setMyName:", res.ok ? "ok" : res.description || res.error_code);
+  } else {
+    console.log("telegram setMyName: already set");
+  }
+
+  const short = await tg(token, "getMyShortDescription", {});
+  if ((short.result?.short_description || "") !== BOT_SHORT) {
+    const res = await tg(token, "setMyShortDescription", { short_description: BOT_SHORT });
+    console.log("telegram setMyShortDescription:", res.ok ? "ok" : res.description || res.error_code);
+  } else {
+    console.log("telegram setMyShortDescription: already set");
+  }
+
+  const about = await tg(token, "getMyDescription", {});
+  if ((about.result?.description || "") !== BOT_ABOUT) {
+    const res = await tg(token, "setMyDescription", { description: BOT_ABOUT });
+    console.log("telegram setMyDescription:", res.ok ? "ok" : res.description || res.error_code);
+  } else {
+    console.log("telegram setMyDescription: already set");
+  }
+
+  const cmds = await tg(token, "getMyCommands", {});
+  const have = JSON.stringify((cmds.result || []).map((c) => c.command + ":" + c.description));
+  const want = JSON.stringify(COMMANDS.map((c) => c.command + ":" + c.description));
+  if (have !== want) {
+    const res = await tg(token, "setMyCommands", { commands: COMMANDS, scope: { type: "all_private_chats" } });
+    console.log("telegram setMyCommands:", res.ok ? "ok" : res.description || res.error_code);
+  } else {
+    console.log("telegram setMyCommands: already set");
+  }
+
+  const hook = String(process.env.TELEGRAM_WEBHOOK_URL || "").trim();
+  if (hook.startsWith("https://")) {
+    const res = await tg(token, "setWebhook", {
+      url: hook,
+      secret_token: hookSecret(token),
+      allowed_updates: ["message"],
+      drop_pending_updates: false,
+    });
+    console.log("telegram setWebhook:", res.ok ? "ok " + hook : res.description || res.error_code);
+  } else {
+    console.log("telegram setWebhook skipped");
+  }
+}
+
 async function loadJson(path, fallback) {
   try {
     return JSON.parse(await readFile(path, "utf8"));
@@ -208,21 +275,20 @@ if (!token) {
 
 const info = await diagnose(token, chat);
 await setupChannel(token, chat, info);
+await setupBot(token, info);
 
 const queue = await loadJson(QUEUE_FILE, { briefs: [] });
 const posted = await loadJson(POSTED_FILE, {});
 const briefs = Array.isArray(queue.briefs) ? queue.briefs : [];
-const byGuid = Object.fromEntries(briefs.filter((b) => b.guid).map((b) => [b.guid, b]));
-const hourAgo = Date.now() - 70 * 60 * 1000;
 const postedCount = Object.keys(posted).length;
 const unposted = briefs.filter((b) => b.guid && b.headline && b.path && !posted[b.guid]);
+const now = Date.now();
 const fresh = unposted.filter((b) => {
   const t = Date.parse(b.publishedAt || "");
-  return Number.isFinite(t) && t >= hourAgo;
+  return Number.isFinite(t) && now - t <= FRESH_MS;
 });
 const rest = unposted.filter((b) => !fresh.includes(b));
-const cap = postedCount === 0 ? 6 : 8;
-const toSend = [...fresh, ...rest].slice(0, cap);
+const toSend = fresh.length ? fresh.slice(0, 5) : rest.slice(0, postedCount === 0 ? 6 : 2);
 console.log(
   "telegram sync unposted:",
   unposted.length,
@@ -233,27 +299,6 @@ console.log(
   "posted cache:",
   postedCount,
 );
-
-let edited = 0;
-for (const [guid, url] of Object.entries(posted)) {
-  const post = byGuid[guid];
-  const mid = messageIdFrom(url);
-  if (!post?.headline || !post?.path || !mid) continue;
-  const msg = composeMessage(post);
-  const data = await tg(token, "editMessageText", {
-    chat_id: chat,
-    message_id: mid,
-    text: msg.text,
-    ...msg.payload,
-  });
-  if (data?.ok || /not modified/i.test(String(data.description || ""))) {
-    edited += 1;
-    console.log("telegram edited", mid, post.path);
-  } else {
-    console.log("telegram edit FAILED:", data.description || data.error_code, post.path);
-  }
-  await sleep(350);
-}
 
 let sent = 0;
 let failed = 0;
@@ -279,5 +324,5 @@ for (const post of toSend) {
 }
 
 await writeFile(POSTED_FILE, JSON.stringify(posted));
-console.log("telegram done sent", sent, "edited", edited, "failed", failed, "cache", Object.keys(posted).length);
-if (failed && !sent && !edited) process.exit(1);
+console.log("telegram done sent", sent, "failed", failed, "cache", Object.keys(posted).length);
+if (failed && !sent) process.exit(1);
