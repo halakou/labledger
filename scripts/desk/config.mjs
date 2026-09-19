@@ -39,7 +39,7 @@ export const LABS = [
     feed: "https://openai.com/news/rss.xml",
     listing: null,
     hosts: ["openai.com"],
-    icons: ["https://openai.com/favicon.ico", "https://openai.com/favicon-32x32.png"],
+    icons: ["https://openai.com/apple-touch-icon-180x180.png", "https://openai.com/favicon.ico", "https://openai.com/favicon-32x32.png"],
   },
   {
     id: "anthropic",
@@ -69,6 +69,7 @@ export const LABS = [
     feed: "https://deepmind.google/blog/rss.xml",
     listing: null,
     hosts: ["deepmind.google"],
+    iconHosts: ["deepmind.google"],
     icons: ["https://deepmind.google/favicon.ico"],
   },
   {
@@ -109,7 +110,8 @@ export const LABS = [
     feed: "https://blogs.nvidia.com/blog/category/generative-ai/feed/",
     listing: null,
     hosts: ["blogs.nvidia.com"],
-    icons: ["https://blogs.nvidia.com/favicon.ico"],
+    iconHosts: ["blogs.nvidia.com", "nvidia.com"],
+    icons: ["https://blogs.nvidia.com/favicon.ico", "https://www.nvidia.com/favicon.ico"],
   },
   {
     id: "aws",
@@ -139,7 +141,8 @@ export const LABS = [
     feed: "https://research.google/blog/rss/",
     listing: null,
     hosts: ["research.google"],
-    icons: ["https://research.google/static/images/google_logo.svg", "https://research.google/favicon.ico"],
+    iconHosts: ["research.google", "google.com"],
+    icons: ["https://www.google.com/favicon.ico", "https://research.google/favicon.ico"],
   },
   {
     id: "bair",
@@ -159,7 +162,8 @@ export const LABS = [
     feed: "https://news.mit.edu/rss/topic/artificial-intelligence2",
     listing: null,
     hosts: ["news.mit.edu"],
-    icons: ["https://news.mit.edu/favicon.ico", "https://news.mit.edu/themes/mitnews/favicon.ico"],
+    iconHosts: ["news.mit.edu", "mit.edu"],
+    icons: ["https://www.mit.edu/favicon.ico", "https://news.mit.edu/favicon.ico"],
   },
   {
     id: "mittr",
@@ -169,7 +173,8 @@ export const LABS = [
     feed: "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
     listing: null,
     hosts: ["technologyreview.com"],
-    icons: ["https://www.technologyreview.com/favicon.ico"],
+    iconHosts: ["technologyreview.com", "wp.technologyreview.com"],
+    icons: ["https://wp.technologyreview.com/favicon.ico", "https://www.technologyreview.com/favicon.ico"],
   },
 ];
 
@@ -178,7 +183,7 @@ export const MAX_BRIEFS = 28;
 export const PER_FEED = 6;
 export const RECENT_MS = 21 * 24 * 60 * 60 * 1000;
 export const ARCHIVE_MAX = 500;
-export const MARK_MAX = 24 * 1024;
+export const MARK_MAX = 96 * 1024;
 
 export function handleFrom(raw) {
   if (!raw) return "";
