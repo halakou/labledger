@@ -1,11 +1,34 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { gunzipSync } from "node:zlib";
+import { mkdir, rm } from "node:fs/promises";
+import { CHANNEL, OUT, runLog } from "./core.mjs";
+import { writeArchives } from "./archives.mjs";
+import { writeHome, writeLlms, writeStatic } from "./site-home.mjs";
+import { writeDigest } from "./site-digest.mjs";
 
-const dir = dirname(fileURLToPath(import.meta.url));
-const packed = (await readFile(join(dir, "pages.pack.b64"), "utf8")).replace(/\s+/g, "");
-const out = join(dir, ".pages.unpacked.mjs");
-await writeFile(out, gunzipSync(Buffer.from(packed, "base64")));
-const mod = await import(pathToFileURL(out).href);
-export const publishSite = mod.publishSite;
+export async function publishSite({ allBriefs, briefs, today, fontNames, markMap }) {
+  await rm(OUT, { recursive: true, force: true });
+  await mkdir(OUT, { recursive: true });
+  await mkdir(OUT + "/fonts", { recursive: true });
+  await mkdir(OUT + "/marks", { recursive: true });
+  const ogOk = await writeStatic(fontNames);
+  await writeLlms(briefs);
+  await writeHome({ allBriefs, briefs, today });
+  const weekCount = await writeDigest({ allBriefs, briefs, today });
+  await writeArchives({ allBriefs, briefs, today });
+  console.log(
+    "wrote board " +
+      briefs.length +
+      ", ledger " +
+      allBriefs.length +
+      ", week " +
+      weekCount +
+      ", marks " +
+      Object.values(markMap).filter(Boolean).length +
+      ", fonts " +
+      fontNames.length +
+      ", og " +
+      ogOk +
+      ", channel " +
+      CHANNEL,
+  );
+  console.log("run: " + runLog.join(" | "));
+}
