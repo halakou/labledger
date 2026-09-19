@@ -83,7 +83,7 @@ export async function writeLlms(briefs) {
       ...KINDS.map((k) => "- " + SITE + "/kind/" + k.id + "/ — " + k.label),
       "",
       "## Latest briefs",
-      ...briefs.slice(0, 20).map((b) => "- " + b.dateLabel + " · " + b.lab + " · " + b.headline + " — " + SITE + b.path),
+      ...briefs.slice(0, 20).map((b) => "- " + b.dateLabel + " \u00b7 " + b.lab + " \u00b7 " + b.headline + " — " + SITE + b.path),
       "",
     ].join("\n"),
   );
@@ -98,6 +98,8 @@ export async function writeLlms(briefs) {
       "",
       "/og.jpg",
       "  Cache-Control: public, max-age=86400",
+      "/og/*",
+      "  Cache-Control: public, max-age=86400",
       "/fonts/*",
       "  Cache-Control: public, max-age=31536000, immutable",
       "/marks/*",
@@ -107,17 +109,16 @@ export async function writeLlms(briefs) {
   );
 }
 
-function chips(items, key) {
+function chips(items, hrefBase) {
   return items
     .map(
       (item) =>
-        '<button type="button" class="chip" data-filter="' +
-        key +
-        '" data-value="' +
+        '<a class="chip" href="' +
+        hrefBase +
         item.id +
-        '">' +
+        '/">' +
         esc(item.label) +
-        "</button>",
+        "</a>",
     )
     .join("");
 }
@@ -146,13 +147,27 @@ export async function writeHome({ allBriefs, briefs, today }) {
         },
       },
       {
-        "@type": "Organization",
+        "@type": "NewsMediaOrganization",
         "@id": SITE + "/#org",
         name: "Lab Ledger Desk",
         url: SITE + "/",
-        logo: SITE + "/favicon.svg",
+        logo: SITE + "/og.jpg",
         sameAs: [CHANNEL],
+        publishingPrinciples: SITE + "/method/",
         dateModified: today + "T00:00:00Z",
+      },
+      {
+        "@type": "ItemList",
+        "@id": SITE + "/#board",
+        name: "Today's board",
+        numberOfItems: briefs.length,
+        itemListOrder: "https://schema.org/ItemListOrderDescending",
+        itemListElement: briefs.map((b, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          url: SITE + b.path,
+          name: b.headline,
+        })),
       },
       {
         "@type": "FAQPage",
@@ -208,13 +223,13 @@ export async function writeHome({ allBriefs, briefs, today }) {
         String(allBriefs.length),
         "</strong></span></div></div>",
         "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Look up a lab, a launch, or a topic</label>",
-        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Anthropic, hardware, Claude…\" autocomplete=\"off\">",
+        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Anthropic, hardware, Claude\u2026\" autocomplete=\"off\">",
         "<div class=\"chips\">",
-        chips(KINDS, "kind"),
-        chips(TOPICS, "topic"),
+        chips(KINDS, "/kind/"),
+        chips(TOPICS, "/topic/"),
         "</div>",
         "<div class=\"chips\">",
-        chips(LABS, "lab"),
+        chips(LABS, "/lab/"),
         "</div></form></section>",
         "<section class=\"board\" id=\"today\"><div class=\"board-head\"><span>The board</span><span id=\"count\">",
         String(briefs.length),
