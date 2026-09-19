@@ -18,3 +18,10 @@ jobs:
           wranglerVersion: "4.135.0"
           workingDirectory: cloudflare
           command: deploy --config wrangler.toml
+      - name: Give the Worker a GitHub dispatch token
+        if: ${{ secrets.GITHUB_DISPATCH_TOKEN != '' }}
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GITHUB_DISPATCH_TOKEN: ${{ secrets.GITHUB_DISPATCH_TOKEN }}
+        run: printf '%s' "$GITHUB_DISPATCH_TOKEN" | npx --yes wrangler@4.135.0 secret put GITHUB_DISPATCH_TOKEN --name labledger-desk --config wrangler.toml
