@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 
 const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
 const POSTED_FILE = ".desk-posted.json";
@@ -19,6 +19,11 @@ const COMMANDS = [
   { command: "method", description: "How the desk files" },
   { command: "channel", description: "Follow the desk" },
 ];
+const KIND = {
+  launch: { label: "Launch", mark: "▸" },
+  research: { label: "Research", mark: "◆" },
+  note: { label: "Note", mark: "·" },
+};
 
 function handleFrom(raw) {
   if (!raw) return "";
@@ -84,9 +89,39 @@ function clipDek(text, max) {
   return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;–-]+$/, "") + "…";
 }
 
-function messageIdFrom(url) {
-  const m = String(url || "").match(/\/(\d+)\/?$/);
-  return m ? Number(m[1]) : 0;
+function kindOf(post) {
+  const raw = String(post.kind || post.kindLabel || "").toLowerCase();
+  if (raw.startsWith("launch")) return KIND.launch;
+  if (raw.startsWith("research")) return KIND.research;
+  return KIND.note;
+}
+
+function sourceUrl(post) {
+  const src = String(post.source || "").trim();
+  if (!src.startsWith("https://")) return "";
+  try {
+    const u = new URL(src);
+    if (u.protocol !== "https:") return "";
+    return u.toString();
+  } catch {
+    return "";
+  }
+}
+
+function ogFile(post) {
+  const p = String(post.path || "").replace(/\/$/, "");
+  if (!p.startsWith("/b/")) return "";
+  return "dist-site/og" + p + ".png";
+}
+
+async function fileExists(path) {
+  if (!path) return false;
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function composeMessage(post) {
@@ -95,18 +130,30 @@ function composeMessage(post) {
   const date = formatDate(post.publishedAt);
   const headline = escHtml(post.headline || "");
   const dek = clipDek(post.dek || "", 220);
-  const kind = post.kind ? "  ·  " + escHtml(post.kind) : "";
-  const lines = ["<b>" + lab + "</b>" + kind + (date ? "  ·  " + date : ""), "", "<b>" + headline + "</b>"];
+  const k = kindOf(post);
+  const kicker =
+    escHtml(k.mark + " " + k.label) +
+    "  ·  <b>" +
+    lab +
+    "</b>" +
+    (date ? "  ·  " + escHtml(date) : "");
+  const lines = [kicker, "", "<b>" + headline + "</b>"];
   if (dek) lines.push("", "<blockquote>" + escHtml(dek) + "</blockquote>");
   lines.push("", "<i>Filed from the official source. The brief stays on the page.</i>");
+  const buttons = [[{ text: "Read the brief", url }]];
+  const src = sourceUrl(post);
+  if (src) buttons[0].push({ text: "Official source", url: src });
   return {
     text: lines.join("\n"),
+    url,
     payload: {
       parse_mode: "HTML",
-      link_preview_options: { is_disabled: true },
-      reply_markup: {
-        inline_keyboard: [[{ text: "Read the brief", url }]],
+      link_preview_options: {
+        url,
+        prefer_large_media: true,
+        show_above_text: true,
       },
+      reply_markup: { inline_keyboard: buttons },
     },
   };
 }
@@ -119,6 +166,42 @@ async function tg(token, method, body) {
     signal: AbortSignal.timeout(20000),
   });
   return res.json().catch(() => ({ ok: false, description: "non-json " + res.status }));
+}
+
+async function tgPhoto(token, chat, filePath, msg) {
+  const bytes = await readFile(filePath);
+  const form = new FormData();
+  form.set("chat_id", chat);
+  form.set("photo", new Blob([bytes], { type: "image/png" }), "card.png");
+  form.set("caption", msg.text);
+  form.set("parse_mode", "HTML");
+  form.set("reply_markup", JSON.stringify(msg.payload.reply_markup));
+  const res = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(30000),
+  });
+  return res.json().catch(() => ({ ok: false, description: "non-json " + res.status }));
+}
+
+async function sendPost(token, chat, post) {
+  const msg = composeMessage(post);
+  const photo = ogFile(post);
+  if (await fileExists(photo)) {
+    try {
+      const data = await tgPhoto(token, chat, photo, msg);
+      if (data?.ok && data.result?.message_id) return { data, how: "photo" };
+      console.log("telegram photo FAILED, sending text:", data.description || data.error_code || "unknown");
+    } catch (err) {
+      console.log("telegram photo FAILED, sending text:", err?.message || err);
+    }
+  }
+  const data = await tg(token, "sendMessage", {
+    chat_id: chat,
+    text: msg.text,
+    ...msg.payload,
+  });
+  return { data, how: "text" };
 }
 
 async function diagnose(token, chat) {
@@ -305,17 +388,12 @@ let failed = 0;
 for (const post of toSend) {
   if (!post?.headline || !post?.path) continue;
   if (posted[post.guid]) continue;
-  const msg = composeMessage(post);
-  const data = await tg(token, "sendMessage", {
-    chat_id: chat,
-    text: msg.text,
-    ...msg.payload,
-  });
+  const { data, how } = await sendPost(token, chat, post);
   const mid = data?.result?.message_id;
   if (data?.ok && mid) {
     posted[post.guid] = channel + "/" + mid;
     sent += 1;
-    console.log("telegram sent", mid, post.path);
+    console.log("telegram sent", how, mid, post.path);
   } else {
     failed += 1;
     console.log("telegram send FAILED:", data.description || data.error_code || "unknown", post.path);

@@ -30,6 +30,9 @@ export async function writeStatic(fontNames) {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#1c1914"/><path fill="#f4efe4" d="M9 6h7v14h8v6H9z"/><rect x="9" y="27.5" width="14" height="1.5" fill="#6e2f22"/></svg>',
   );
   const ogOk = await copyOg();
+  const verify = "google-site-verification: googlece6d31c0feb18c8c.html";
+  await write("googlece6d31c0feb18c8c.html", verify);
+  await write("googlece6d31c0feb18c8c/index.html", verify);
   await write(
     "robots.txt",
     [
@@ -83,7 +86,7 @@ export async function writeLlms(briefs) {
       ...KINDS.map((k) => "- " + SITE + "/kind/" + k.id + "/ — " + k.label),
       "",
       "## Latest briefs",
-      ...briefs.slice(0, 20).map((b) => "- " + b.dateLabel + " \u00b7 " + b.lab + " \u00b7 " + b.headline + " — " + SITE + b.path),
+      ...briefs.slice(0, 20).map((b) => "- " + b.dateLabel + " · " + b.lab + " · " + b.headline + " — " + SITE + b.path),
       "",
     ].join("\n"),
   );
@@ -104,6 +107,23 @@ export async function writeLlms(briefs) {
       "  Cache-Control: public, max-age=31536000, immutable",
       "/marks/*",
       "  Cache-Control: public, max-age=86400",
+      "/googlece6d31c0feb18c8c.html",
+      "  Content-Type: text/html; charset=utf-8",
+      "  X-Robots-Tag: noindex",
+      "/googlece6d31c0feb18c8c",
+      "  Content-Type: text/html; charset=utf-8",
+      "  X-Robots-Tag: noindex",
+      "/googlece6d31c0feb18c8c/",
+      "  Content-Type: text/html; charset=utf-8",
+      "  X-Robots-Tag: noindex",
+      "",
+    ].join("\n"),
+  );
+  await write(
+    "_redirects",
+    [
+      "/googlece6d31c0feb18c8c /googlece6d31c0feb18c8c.html 200",
+      "/googlece6d31c0feb18c8c/ /googlece6d31c0feb18c8c.html 200",
       "",
     ].join("\n"),
   );
@@ -223,7 +243,7 @@ export async function writeHome({ allBriefs, briefs, today }) {
         String(allBriefs.length),
         "</strong></span></div></div>",
         "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Look up a lab, a launch, or a topic</label>",
-        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Anthropic, hardware, Claude\u2026\" autocomplete=\"off\">",
+        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Anthropic, hardware, Claude…\" autocomplete=\"off\">",
         "<div class=\"chips\">",
         chips(KINDS, "/kind/"),
         chips(TOPICS, "/topic/"),
