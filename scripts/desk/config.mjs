@@ -174,7 +174,7 @@ export const LABS = [
     listing: null,
     hosts: ["technologyreview.com"],
     iconHosts: ["technologyreview.com", "wp.technologyreview.com"],
-    icons: ["https://wp.technologyreview.com/favicon.ico", "https://www.technologyreview.com/favicon.ico"],
+    icons: ["https://www.technologyreview.com/static/media/favicon.1cfcdb44759a0f93ddf5feb5405dd4cc.ico", "https://wp.technologyreview.com/favicon.ico", "https://www.technologyreview.com/favicon.ico"],
   },
 ];
 
