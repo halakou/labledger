@@ -521,6 +521,7 @@ const homeSchema = {
       name: "Lab Ledger Desk",
       url: SITE + "/",
       description: "A public ledger of official AI-lab announcements.",
+      dateModified: today + "T00:00:00Z",
       publisher: { "@id": SITE + "/#org" },
       potentialAction: {
         "@type": "SearchAction",
@@ -535,6 +536,15 @@ const homeSchema = {
       url: SITE + "/",
       logo: SITE + "/favicon.svg",
       sameAs: [CHANNEL],
+      dateModified: today + "T00:00:00Z",
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+        { "@type": "Question", name: "What does Lab Ledger Desk file?", acceptedAnswer: { "@type": "Answer", text: "Official announcements from named AI labs. One brief per move, with the primary source on the page." } },
+        { "@type": "Question", name: "Which labs are on the board?", acceptedAnswer: { "@type": "Answer", text: "OpenAI, Anthropic, Google, DeepMind, Mistral, and Hugging Face. Anthropic is listed but has no official RSS, so the desk does not scrape it." } },
+        { "@type": "Question", name: "Does the desk invent launches?", acceptedAnswer: { "@type": "Answer", text: "No. It files the official claim and keeps the source on the page." } },
+      ],
     },
   ],
 };
@@ -547,7 +557,7 @@ await write("index.html", shell({
   body: [
     "<section class=\"hero\"><div><h1>What the labs moved. Sourced, dated, kept.</h1>",
     "<p>A public ledger of official announcements from the model makers. One brief per move, with the primary source on the page.</p>",
-    "<div class=\"meta\"><span>Desk date <strong>", esc(today), "</strong></span>",
+    "<div class=\"meta\"><span>Desk date <strong><time datetime=\"", esc(today), "\">", esc(today), "</time></strong></span>",
     "<span>Open briefs <strong>", String(briefs.length), "</strong></span>",
     "<span>Desk <strong>live</strong></span></div></div>",
     "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Look up a lab or a move</label>",
@@ -556,6 +566,13 @@ await write("index.html", shell({
     "<section class=\"board\" id=\"today\"><div class=\"board-head\"><span>The board</span><span>", String(briefs.length), " logged</span></div>",
     board,
     "<div class=\"labs\">", labGrid, "</div></section>",
+    "<article class=\"method\"><h2>What does the desk file?</h2>",
+    "<p>Official announcements from the model makers. One brief per move. The primary source stays on the page.</p>",
+    "<h2>Which labs are on the board?</h2>",
+    "<ul>", LABS.map((l) => "<li><a href=\"/lab/" + l.id + "/\">" + esc(l.label) + "</a> — " + (l.feed ? "official RSS" : "no official RSS, not scraped") + "</li>").join(""), "</ul>",
+    "<h2>Does the desk invent launches?</h2>",
+    "<p>No. It reads allow-listed feeds, fills a fixed template, and mirrors the same brief to <a href=\"", esc(CHANNEL), "\" rel=\"noreferrer noopener\">Telegram</a> after the page exists.</p>",
+    "</article>",
   ].join(""),
 }));
 
@@ -574,9 +591,9 @@ await write("method/index.html", shell({
   }),
   body: [
     "<article class=\"method\"><p class=\"kicker\">Method</p><h1>How the desk works</h1>",
-    "<h2>What this is</h2><p>Lab Ledger Desk is a public register of official announcements from AI labs. Each page is a brief: what moved, why it matters, and the primary source.</p>",
-    "<h2>What this is not</h2><p>It is not a newspaper with invented reporters. It does not copy lab posts in full. It does not invent launches. It does not scrape labs that publish no feed.</p>",
-    "<h2>How a brief is made</h2><p>Official RSS feeds are read. Only allow-listed lab hosts are fetched. Duplicates are dropped. A fixed template is filled from the title and summary. If a required field is missing, the brief stays off the board. Telegram carries the same brief after the site file is written.</p>",
+    "<h2>What is this?</h2><p>Lab Ledger Desk is a public register of official announcements from AI labs. Each page is a brief: what moved, why it matters, and the primary source.</p>",
+    "<h2>What is this not?</h2><p>It is not a newspaper with invented reporters. It does not copy lab posts in full. It does not invent launches. It does not scrape labs that publish no feed.</p>",
+    "<h2>How is a brief made?</h2><p>Official RSS feeds are read. Only allow-listed lab hosts are fetched. Duplicates are dropped. A fixed template is filled from the title and summary. If a required field is missing, the brief stays off the board. Telegram carries the same brief after the site file is written.</p>",
     "<h2>Channel</h2><p>The public desk channel is <a href=\"", esc(CHANNEL), "\" rel=\"noreferrer noopener\">", esc(CHANNEL), "</a>.</p></article>",
   ].join(""),
 }));
@@ -620,8 +637,8 @@ for (const b of briefs) {
         dateModified: b.publishedAt.toISOString(),
         mainEntityOfPage: articleUrl,
         image: [SITE + "/og.jpg"],
-        author: { "@type": "Organization", name: "Lab Ledger Desk", url: SITE + "/" },
-        publisher: { "@type": "Organization", name: "Lab Ledger Desk", url: SITE + "/", logo: { "@type": "ImageObject", url: SITE + "/og.jpg" } },
+        author: { "@type": "Organization", name: "Lab Ledger Desk", url: SITE + "/", sameAs: [CHANNEL] },
+        publisher: { "@type": "Organization", name: "Lab Ledger Desk", url: SITE + "/", logo: { "@type": "ImageObject", url: SITE + "/og.jpg" }, sameAs: [CHANNEL] },
         citation: { "@type": "CreativeWork", name: b.lab + " primary source", url: b.source },
         isAccessibleForFree: true,
       },
