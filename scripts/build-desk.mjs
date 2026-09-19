@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-const SITE = "https://labledgerdesk.pages.dev";
+const SITE = (process.env.SITE_URL || "https://labledgerdesk.halakou.workers.dev").replace(/\/$/, "");
 const CHANNEL = "https://t.me/labledger";
 const OUT = "dist-site";
 const AMP = "\x26";
@@ -144,6 +144,7 @@ const CSS = [
   ".headline{font-size:1.35rem;margin:.2rem 0}.dek{color:var(--muted)}",
   "article{max-width:36rem;margin:0 auto;padding:2rem 0}",
   ".source{margin-top:1.4rem;padding-top:1rem;border-top:1px solid var(--rule)}.source a{color:var(--accent)}",
+  "a.row[hidden]{display:none}",
 ].join("");
 
 function shell(title, body, extra) {
@@ -159,7 +160,9 @@ function shell(title, body, extra) {
     "<nav><a href=/>Today</a><a href=/method/>Method</a><a href=", CHANNEL, " rel=noreferrer>Channel</a></nav>",
     "</header>", body,
     "<footer><p>Lab Ledger records official lab posts. It does not invent launches.</p><a href=/method/>How the desk works</a></footer>",
-    "</div></body></html>",
+    "</div><script>",
+    "(function(){var q=document.getElementById('q');if(!q)return;var rows=[].slice.call(document.querySelectorAll('.row'));function apply(){var n=(q.value||'').trim().toLowerCase();rows.forEach(function(r){r.hidden=n.length>0&&r.textContent.toLowerCase().indexOf(n)<0;});}q.addEventListener('input',apply);var p=new URLSearchParams(location.search).get('q');if(p){q.value=p;apply();}})();",
+    "</script></body></html>",
   ].join("");
 }
 
@@ -249,6 +252,7 @@ await write("index.html", shell("Lab Ledger", [
   "<input id=q name=q placeholder='Anthropic, Gemini, weights'><div class=chips>", chipBar, "</div></form></section><section>", board, "</section>",
 ].join("")));
 await write("method/index.html", shell("Method — Lab Ledger", "<article><p class=kicker>Method</p><h1>How the desk works</h1><p>The desk reads official RSS from named labs, writes a brief in a fixed template, and files it by date. It does not invent launches or rewrite the claim.</p><p>Sources stay on the page. Telegram carries the same brief after the site file is written.</p></article>"));
+await write("404.html", shell("Not found — Lab Ledger", "<article><p class=kicker>404</p><h1>This brief is not on the ledger.</h1><p class=dek>The desk only files official lab posts it has already read.</p><p><a href=/>Back to today</a></p></article>"));
 for (const lab of LABS) {
   const rows = briefs.filter((b) => b.labId === lab.id);
   await write("lab/" + lab.id + "/index.html", shell(lab.label + " — Lab Ledger", [

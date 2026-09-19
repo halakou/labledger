@@ -15,4 +15,6 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4.135.0"
           workingDirectory: cloudflare
+          command: deploy --config wrangler.toml

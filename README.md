@@ -2,7 +2,7 @@
 
 Public register of official AI-lab announcements.
 
-Chosen public host: `https://labledgerdesk.pages.dev`
-(`labledger.pages.dev` is already another product.)
+Live desk: https://labledgerdesk.halakou.workers.dev
+Telegram: https://t.me/labledger
 
-This repo keeps the desk awake. Telegram and ingest secrets live in GitHub Actions secrets, not in this file.
+The hourly GitHub Action rebuilds the board from official lab RSS and publishes it. Telegram posts the same brief when a lab publishes something new.
