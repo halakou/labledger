@@ -1,0 +1,27 @@
+name: clock
+
+# Tiny scheduled workflow. GitHub's scheduler has been silent on pages.yml
+# since the five-minute cron was added; a second workflow is how schedules
+# get re-registered. pages.yml publishes when this run completes.
+on:
+  schedule:
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: desk-clock
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: liskin/gh-workflow-keepalive@v1
+
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "desk clock"

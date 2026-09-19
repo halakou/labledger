@@ -1,8 +1,16 @@
 const SITE = "https://labledgerdesk.pages.dev";
 const CHANNEL = "https://t.me/labledgerdesk";
-const GH_RUNS = "https://api.github.com/repos/halakou/labledger/actions/workflows/pages.yml/runs?per_page=1";
+const GH_HEADERS = {
+  accept: "application/vnd.github+json",
+  "user-agent": "labledger-desk/1.0 (+https://labledgerdesk.pages.dev)",
+  "x-github-api-version": "2022-11-28",
+};
+const GH_RUNS = [
+  "https://api.github.com/repos/halakou/labledger/actions/workflows/pages.yml/runs?per_page=1",
+  "https://api.github.com/repos/halakou/labledger/actions/runs?per_page=1",
+];
 const GH_DISPATCH = "https://api.github.com/repos/halakou/labledger/actions/workflows/pages.yml/dispatches";
-const STALE_MS = 12 * 60 * 1000;
+const STALE_MS = 8 * 60 * 1000;
 
 function siteUrl(env) {
   const raw = String(env.SITE_URL || SITE).trim().replace(/\/$/, "");
@@ -97,16 +105,23 @@ async function handleTelegram(request, env) {
 }
 
 async function latestRun() {
-  const res = await fetch(GH_RUNS, {
-    headers: {
-      accept: "application/vnd.github+json",
-      "user-agent": "labledger-desk",
-    },
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.workflow_runs?.[0] || null;
+  let githubHttp = null;
+  for (const url of GH_RUNS) {
+    try {
+      const res = await fetch(url, {
+        headers: GH_HEADERS,
+        signal: AbortSignal.timeout(8000),
+      });
+      githubHttp = res.status;
+      if (!res.ok) continue;
+      const data = await res.json();
+      const run = data.workflow_runs?.[0] || null;
+      if (run) return { run, githubHttp };
+    } catch {
+      githubHttp = githubHttp || "err";
+    }
+  }
+  return { run: null, githubHttp };
 }
 
 async function dispatchPages(env) {
@@ -115,9 +130,8 @@ async function dispatchPages(env) {
   const res = await fetch(GH_DISPATCH, {
     method: "POST",
     headers: {
-      accept: "application/vnd.github+json",
+      ...GH_HEADERS,
       authorization: "Bearer " + token,
-      "user-agent": "labledger-desk",
     },
     body: JSON.stringify({ ref: "main" }),
     signal: AbortSignal.timeout(8000),
@@ -128,13 +142,14 @@ async function dispatchPages(env) {
 
 async function tick(env) {
   const heartbeat = new Date().toISOString();
-  let run = null;
+  let found = { run: null, githubHttp: null };
   let dispatch = "skip";
   try {
-    run = await latestRun();
+    found = await latestRun();
   } catch {
-    run = null;
+    found = { run: null, githubHttp: "err" };
   }
+  const run = found.run;
   const created = run?.created_at ? Date.parse(run.created_at) : 0;
   const age = created ? Date.now() - created : Number.POSITIVE_INFINITY;
   if (age > STALE_MS) {
@@ -149,6 +164,7 @@ async function tick(env) {
     githubAt: run?.created_at || null,
     githubEvent: run?.event || null,
     githubStatus: run?.status || null,
+    githubHttp: found.githubHttp,
     dispatch,
   };
   if (env.DESK) await env.DESK.put("last", JSON.stringify(last));

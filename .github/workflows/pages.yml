@@ -4,10 +4,13 @@ on:
   push:
     branches: [main]
   schedule:
-    # Shortest GitHub interval. Cloudflare Worker is the reliable clock
-    # and will dispatch this workflow if a tick is missed.
-    - cron: "*/5 * * * *"
+    # Offset from :00/:05 so GitHub is less likely to drop the slot.
+    - cron: "1,6,11,16,21,26,31,36,41,46,51,56 * * * *"
+    - cron: "3 * * * *"
   workflow_dispatch:
+  workflow_run:
+    workflows: ["clock"]
+    types: [completed]
 
 concurrency:
   group: desk-publish
@@ -23,6 +26,7 @@ jobs:
       - uses: liskin/gh-workflow-keepalive@v1
 
   publish:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     permissions:
