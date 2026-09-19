@@ -4,12 +4,19 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17 * * * *"
+    # Every five minutes, off the hour. GitHub cron is best-effort;
+    # a missed slot is five minutes, not an hour. Page first, then Telegram.
+    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 * * * *"
   workflow_dispatch:
+
+concurrency:
+  group: desk-publish
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     permissions:
       contents: read
     steps:
@@ -46,11 +53,23 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           command: pages deploy dist-site --project-name=labledgerdesk --branch=main --commit-dirty=true
+      - name: Publish desk worker
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4.135.0"
+          command: deploy --config cloudflare/wrangler.toml
+          secrets: |
+            TELEGRAM_BOT_TOKEN
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       - name: Post to Telegram after pages exist
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
+          TELEGRAM_WEBHOOK_URL: ${{ secrets.TELEGRAM_WEBHOOK_URL }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/telegram-desk.mjs
       - uses: actions/cache/save@v4
