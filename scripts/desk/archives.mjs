@@ -20,7 +20,7 @@ export async function writeArchives({ allBriefs, briefs, today }) {
     await write(
       "lab/" + lab.id + "/index.html",
       shell({
-        title: lab.label + " \u2014 Lab Ledger Desk",
+        title: lab.label + " — Lab Ledger Desk",
         description: "Official " + lab.label + " announcements filed by Lab Ledger Desk.",
         path: "/lab/" + lab.id + "/",
         body: [
@@ -39,20 +39,50 @@ export async function writeArchives({ allBriefs, briefs, today }) {
   }
 
   for (const topic of TOPICS) {
-    const rows = briefs.filter((b) => (b.topics || []).includes(topic.id));
+    const rows = allBriefs.filter((b) => (b.topics || []).includes(topic.id));
     await write(
       "topic/" + topic.id + "/index.html",
       shell({
-        title: topic.label + " \u2014 Lab Ledger Desk",
+        title: topic.label + " — Lab Ledger Desk",
         description: "Official AI-lab briefs tagged " + topic.label + " from allow-listed sources.",
         path: "/topic/" + topic.id + "/",
+        extra: jsonLdScript({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "CollectionPage",
+              name: topic.label + " — Lab Ledger Desk",
+              url: SITE + "/topic/" + topic.id + "/",
+              dateModified: today,
+              about: topic.label,
+              publisher: {
+                "@type": "NewsMediaOrganization",
+                name: "Lab Ledger Desk",
+                url: SITE + "/",
+              },
+              mainEntity: {
+                "@type": "ItemList",
+                name: topic.label + " briefs from every lab",
+                numberOfItems: rows.length,
+                itemListElement: rows.slice(0, 40).map((b, i) => ({
+                  "@type": "ListItem",
+                  position: i + 1,
+                  url: SITE + b.path,
+                  name: b.headline,
+                })),
+              },
+            },
+          ],
+        }),
         body: [
           "<article class=\"method\"><p class=\"kicker\">Topic</p><h1>",
           esc(topic.label),
           "</h1>",
-          "<p class=\"dek\">Keyword tag from the official title and summary. Not extra reporting.</p></article>",
+          "<p class=\"dek\">Every filed brief tagged ",
+          esc(topic.label),
+          " — from every lab on the desk. Keyword tag from the official title and summary.</p></article>",
           "<section class=\"board\">",
-          rows.map(rowHtml).join("") || "<p class=\"empty\">No open brief currently tagged " + esc(topic.label) + ".</p>",
+          rows.map(rowHtml).join("") || "<p class=\"empty\">No filed brief currently tagged " + esc(topic.label) + ".</p>",
           "</section>",
         ].join(""),
       }),
@@ -60,20 +90,46 @@ export async function writeArchives({ allBriefs, briefs, today }) {
   }
 
   for (const kind of KINDS) {
-    const rows = briefs.filter((b) => b.kind === kind.id);
+    const rows = allBriefs.filter((b) => b.kind === kind.id);
     await write(
       "kind/" + kind.id + "/index.html",
       shell({
-        title: kind.label + " \u2014 Lab Ledger Desk",
+        title: kind.label + " — Lab Ledger Desk",
         description: "Official AI-lab briefs labelled " + kind.label + ".",
         path: "/kind/" + kind.id + "/",
+        extra: jsonLdScript({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "CollectionPage",
+              name: kind.label + " — Lab Ledger Desk",
+              url: SITE + "/kind/" + kind.id + "/",
+              dateModified: today,
+              publisher: {
+                "@type": "NewsMediaOrganization",
+                name: "Lab Ledger Desk",
+                url: SITE + "/",
+              },
+              mainEntity: {
+                "@type": "ItemList",
+                numberOfItems: rows.length,
+                itemListElement: rows.slice(0, 40).map((b, i) => ({
+                  "@type": "ListItem",
+                  position: i + 1,
+                  url: SITE + b.path,
+                  name: b.headline,
+                })),
+              },
+            },
+          ],
+        }),
         body: [
           "<article class=\"method\"><p class=\"kicker\">Type</p><h1>",
           esc(kind.label),
           "</h1>",
-          "<p class=\"dek\">Launch, Research, or Note \u2014 a keyword label on the official claim.</p></article>",
+          "<p class=\"dek\">Launch, Research, or Note — a keyword label on the official claim, across every lab.</p></article>",
           "<section class=\"board\">",
-          rows.map(rowHtml).join("") || "<p class=\"empty\">No open brief currently labelled " + esc(kind.label) + ".</p>",
+          rows.map(rowHtml).join("") || "<p class=\"empty\">No filed brief currently labelled " + esc(kind.label) + ".</p>",
           "</section>",
         ].join(""),
       }),
@@ -83,6 +139,8 @@ export async function writeArchives({ allBriefs, briefs, today }) {
   for (const b of allBriefs) {
     const factList = factsFor(b);
     const articleUrl = SITE + b.path;
+    const ogImg = b.ogImage ? (b.ogImage.startsWith("http") ? b.ogImage : SITE + b.ogImage) : SITE + "/og.jpg";
+    const sourceHost = hostOf(b.source);
     const schema = {
       "@context": "https://schema.org",
       "@graph": [
@@ -95,15 +153,17 @@ export async function writeArchives({ allBriefs, briefs, today }) {
           mainEntityOfPage: articleUrl,
           articleSection: b.lab,
           keywords: [kindLabel(b.kind), ...(b.topics || []).map(topicLabel)].join(", "),
-          image: [SITE + "/og.jpg"],
-          author: { "@type": "Organization", name: "Lab Ledger Desk", url: SITE + "/", sameAs: [CHANNEL] },
+          image: [ogImg],
+          author: { "@type": "Organization", name: b.lab, url: sourceHost ? "https://" + sourceHost + "/" : b.source },
           publisher: {
-            "@type": "Organization",
+            "@type": "NewsMediaOrganization",
             name: "Lab Ledger Desk",
             url: SITE + "/",
-            logo: { "@type": "ImageObject", url: SITE + "/og.jpg" },
+            logo: { "@type": "ImageObject", url: SITE + "/og.jpg", width: 1200, height: 630 },
             sameAs: [CHANNEL],
+            publishingPrinciples: SITE + "/method/",
           },
+          isBasedOn: b.source,
           citation: { "@type": "CreativeWork", name: b.lab + " primary source", url: b.source },
           isAccessibleForFree: true,
         },
@@ -126,10 +186,11 @@ export async function writeArchives({ allBriefs, briefs, today }) {
       ],
     };
     await write("b/" + b.year + "/" + b.month + "/" + b.day + "/" + b.slug + "/index.html", shell({
-      title: b.headline + " \u2014 Lab Ledger Desk",
+      title: b.headline + " — Lab Ledger Desk",
       description: b.dek,
       path: b.path,
       ogType: "article",
+      ogImage: ogImg,
       extra: [
         "<meta property=\"article:published_time\" content=\"",
         b.publishedAt,
@@ -137,16 +198,21 @@ export async function writeArchives({ allBriefs, briefs, today }) {
         "<meta property=\"article:section\" content=\"",
         esc(b.lab),
         "\">",
+        (b.topics || []).map((t) => "<meta property=\"article:tag\" content=\"" + esc(topicLabel(t)) + "\">").join(""),
         jsonLdScript(schema),
       ].join(""),
       body: [
         "<article class=\"brief\">",
         markHtml(b, "sm"),
-        "<p class=\"kicker\">",
+        "<p class=\"kicker\"><a href=\"/lab/",
+        esc(b.labId),
+        "/\">",
         esc(b.lab),
-        " \u00b7 ",
+        "</a> · <a href=\"/kind/",
+        esc(b.kind),
+        "/\">",
         esc(kindLabel(b.kind)),
-        " \u00b7 ",
+        "</a> · ",
         esc(b.dateLabel),
         "</p>",
         "<h1>",
@@ -157,9 +223,7 @@ export async function writeArchives({ allBriefs, briefs, today }) {
         "</p>",
         (b.topics || []).length
           ? "<div class=\"row-meta\">" +
-            (b.topics || [])
-              .map((t) => "<a class=\"tag\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t)) + "</a>")
-              .join("") +
+            (b.topics || []).map((t) => "<a class=\"tag\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t)) + "</a>").join("") +
             "</div>"
           : "",
         "<section class=\"block\"><h2>What moved</h2><p>",
