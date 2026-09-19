@@ -1,6 +1,7 @@
 import { mkdir, rm } from "node:fs/promises";
 import { CHANNEL, OUT, runLog } from "./core.mjs";
 import { writeArchives } from "./archives.mjs";
+import { writeOgCards } from "./ogcard.mjs";
 import { writeHome, writeLlms, writeStatic } from "./site-home.mjs";
 import { writeDigest } from "./site-digest.mjs";
 
@@ -11,6 +12,7 @@ export async function publishSite({ allBriefs, briefs, today, fontNames, markMap
   await mkdir(OUT + "/marks", { recursive: true });
   const ogOk = await writeStatic(fontNames);
   await writeLlms(briefs);
+  const ogCount = await writeOgCards(allBriefs);
   await writeHome({ allBriefs, briefs, today });
   const weekCount = await writeDigest({ allBriefs, briefs, today });
   await writeArchives({ allBriefs, briefs, today });
@@ -27,6 +29,8 @@ export async function publishSite({ allBriefs, briefs, today, fontNames, markMap
       fontNames.length +
       ", og " +
       ogOk +
+      ", cards " +
+      ogCount +
       ", channel " +
       CHANNEL,
   );
