@@ -44,11 +44,12 @@ function redactChat(chat) {
 }
 
 function escHtml(s) {
+  const amp = "\x26";
   return String(s)
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, """);
+    .replace(/&/g, amp + "amp;")
+    .replace(/</g, amp + "lt;")
+    .replace(/>/g, amp + "gt;")
+    .replace(/"/g, amp + "quot;");
 }
 
 function formatDate(iso) {
