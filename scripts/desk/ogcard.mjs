@@ -1,7 +1,8 @@
 import { deflateSync } from "node:zlib";
 import { dirname, join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
-import { OUT, kindLabel } from "./core.mjs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { MARK_DIR, OUT, kindLabel } from "./core.mjs";
+import { blitContain, decodeMark } from "./raster.mjs";
 
 const W = 1200;
 const H = 630;
@@ -33,7 +34,7 @@ const FONT = {
   U: "100011000110001100011000101110",
   V: "100011000110001100010101000100",
   W: "100011000110001101011101110001",
-  X: "100011000101010001001000110001",
+  X: "100011000101010001000110001",
   Y: "100011000101010001000010000100",
   Z: "111110000100010001000100011111",
   "0": "011101000110001100011000101110",
@@ -44,7 +45,7 @@ const FONT = {
   "5": "111111000011110000011000111110",
   "6": "011111000011110100011000101110",
   "7": "111110000100010001000100001000",
-  "8": "011101000101110100011000101110",
+  "8": "011101000110001011101000101110",
   "9": "011101000110001011110000111110",
   " ": "000000000000000000000000000000",
   "-": "000000000000000111110000000000",
@@ -53,6 +54,8 @@ const FONT = {
   ":": "000000110001100000000110001100",
   "/": "000010001000100010001000100000",
   "'": "001000010000100000000000000000",
+  "\u201c": "010010100101001000000000000000",
+  "\u201d": "000000000000000010010100101001",
 };
 
 function hexToRgb(hex) {
@@ -118,7 +121,7 @@ function drawText(rgb, str, x, y, scale, color) {
 }
 
 function wrapDraw(rgb, str, x, y, scale, color, maxChars, maxLines) {
-  const words = String(str || "").toUpperCase().replace(/[^A-Z0-9 ,.'\/-]/g, " ").split(/\s+/).filter(Boolean);
+  const words = String(str || "").toUpperCase().replace(/[^A-Z0-9 ,.'\u2019/\-]/g, " ").split(/\s+/).filter(Boolean);
   const lines = [];
   let cur = "";
   for (const w of words) {
@@ -160,9 +163,23 @@ export async function writeOgCard(brief) {
   fillRect(rgb, 0, 0, 18, H, r, g, b);
   fillRect(rgb, 56, 70, 132, 132, r, g, b);
   fillRect(rgb, 68, 82, 108, 108, 255, 250, 242);
-  drawText(rgb, (brief.mark || brief.lab || "?").slice(0, 1), 100, 114, 8, [r, g, b]);
+  let drewMark = false;
+  if (brief.markFile) {
+    try {
+      const name = String(brief.markFile).split("/").pop();
+      const raw = await readFile(join(MARK_DIR, name));
+      const img = decodeMark(raw);
+      if (img) {
+        blitContain(rgb, W, img, 74, 88, 96, 96);
+        drewMark = true;
+      }
+    } catch {
+      drewMark = false;
+    }
+  }
+  if (!drewMark) drawText(rgb, (brief.mark || brief.lab || "?").slice(0, 1), 100, 114, 8, [r, g, b]);
   drawText(rgb, brief.lab || "DESK", 212, 92, 4, INK);
-  drawText(rgb, (kindLabel(brief.kind) + "  ·  " + (brief.dateLabel || "")).toUpperCase(), 212, 140, 3, MUTED);
+  drawText(rgb, (kindLabel(brief.kind) + "  \u00b7  " + (brief.dateLabel || "")).toUpperCase(), 212, 140, 3, MUTED);
   wrapDraw(rgb, brief.headline || "", 56, 250, 6, INK, 28, 3);
   drawText(rgb, "LAB LEDGER DESK", 56, 560, 3, MUTED);
   fillRect(rgb, 56, 600, 180, 6, r, g, b);
