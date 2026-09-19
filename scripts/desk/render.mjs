@@ -26,9 +26,11 @@ export function jsonLdScript(obj) {
   return "<script type=\"application/ld+json\">" + JSON.stringify(obj).replace(/</g, "\\u003c") + "</script>";
 }
 
-export function shell({ title, description, path, body, extra = "", ogType = "website" }) {
+export function shell({ title, description, path, body, extra = "", ogType = "website", ogImage }) {
   const url = SITE + path;
   const desc = clip(description, 158);
+  const image = ogImage || SITE + "/og.jpg";
+  const absImage = image.startsWith("http") ? image : SITE + image;
   return [
     "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
@@ -45,13 +47,15 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     "<meta property=\"og:title\" content=\"", esc(title), "\">",
     "<meta property=\"og:description\" content=\"", esc(desc), "\">",
     "<meta property=\"og:url\" content=\"", esc(url), "\">",
-    "<meta property=\"og:image\" content=\"", SITE, "/og.jpg\">",
+    "<meta property=\"og:image\" content=\"", esc(absImage), "\">",
     "<meta property=\"og:image:width\" content=\"1200\">",
     "<meta property=\"og:image:height\" content=\"630\">",
+    "<meta property=\"og:image:alt\" content=\"", esc(title), "\">",
     "<meta name=\"twitter:card\" content=\"summary_large_image\">",
     "<meta name=\"twitter:title\" content=\"", esc(title), "\">",
     "<meta name=\"twitter:description\" content=\"", esc(desc), "\">",
-    "<meta name=\"twitter:image\" content=\"", SITE, "/og.jpg\">",
+    "<meta name=\"twitter:image\" content=\"", esc(absImage), "\">",
+    "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
     extra,
     "</head><body><div class=\"wrap\"><header>",
     "<a class=\"brand\" href=\"/\">Lab Ledger<span class=\"desk\">Desk</span></a>",
@@ -64,7 +68,7 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     esc(CHANNEL),
     "\" rel=\"noreferrer noopener\">Telegram</a> · <a href=\"/rss.xml\">RSS</a></p>",
     "</footer></div>",
-    "<script>(function(){var q=document.getElementById('q');var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));if(!rows.length)return;var state={kind:'',topic:'',lab:''};function norm(s){return (s||'').toLowerCase();}function apply(){var n=norm(q&&q.value);var vis=0;rows.forEach(function(r){var ok=true;if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;if(state.kind&&r.getAttribute('data-kind')!==state.kind)ok=false;if(state.topic&&(r.getAttribute('data-topics')||'').indexOf(state.topic)<0)ok=false;if(state.lab&&r.getAttribute('data-lab')!==state.lab)ok=false;r.hidden=!ok;if(ok)vis++;});var c=document.getElementById('count');if(c)c.textContent=vis+' logged';}if(q)q.addEventListener('input',apply);document.querySelectorAll('[data-filter]').forEach(function(btn){btn.addEventListener('click',function(e){e.preventDefault();var key=btn.getAttribute('data-filter');var val=btn.getAttribute('data-value');state[key]=state[key]===val?'':val;document.querySelectorAll('[data-filter=\"'+key+'\"]').forEach(function(b){b.removeAttribute('aria-current');});if(state[key])btn.setAttribute('aria-current','page');apply();});});var p=new URLSearchParams(location.search);if(q&&p.get('q'))q.value=p.get('q');['kind','topic','lab'].forEach(function(key){if(p.get(key))state[key]=p.get(key);});document.querySelectorAll('[data-filter]').forEach(function(btn){var key=btn.getAttribute('data-filter');if(state[key]===btn.getAttribute('data-value'))btn.setAttribute('aria-current','page');});apply();})();</script>",
+    "<script>(function(){var q=document.getElementById('q');var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));if(!rows.length)return;function norm(s){return (s||'').toLowerCase();}function apply(){var n=norm(q&&q.value);var vis=0;rows.forEach(function(r){var ok=true;if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;r.hidden=!ok;if(ok)vis++;});var c=document.getElementById('count');if(c)c.textContent=vis+' logged';}if(q){q.addEventListener('input',apply);var p=new URLSearchParams(location.search);if(p.get('q'))q.value=p.get('q');apply();}})();</script>",
     "</body></html>",
   ].join("");
 }
@@ -74,9 +78,7 @@ export function rowHtml(b) {
     .join(" ")
     .toLowerCase();
   return [
-    "<a class=\"row\" href=\"",
-    esc(b.path),
-    "\" data-search=\"",
+    "<article class=\"row\" data-search=\"",
     esc(search),
     "\" data-kind=\"",
     esc(b.kind),
@@ -87,30 +89,36 @@ export function rowHtml(b) {
     "\">",
     markHtml(b, "md"),
     "<div>",
-    "<div class=\"kicker\">",
+    "<div class=\"kicker\"><a href=\"/lab/",
+    esc(b.labId),
+    "/\">",
     esc(b.lab),
-    " · ",
+    "</a> · ",
     esc(b.dateLabel),
     "</div>",
-    "<div class=\"headline\">",
+    "<a class=\"headline\" href=\"",
+    esc(b.path),
+    "\">",
     esc(b.headline),
-    "</div>",
+    "</a>",
     "<div class=\"dek\">",
     esc(b.dek),
     "</div>",
-    "<div class=\"row-meta\"><span class=\"kind\">",
+    "<div class=\"row-meta\"><a class=\"kind\" href=\"/kind/",
+    esc(b.kind),
+    "/\">",
     esc(kindLabel(b.kind)),
-    "</span>",
+    "</a>",
     (b.topics || [])
-      .map((t) => "<span class=\"tag\">" + esc(topicLabel(t)) + "</span>")
+      .map((t) => "<a class=\"tag\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t)) + "</a>")
       .join(""),
-    "<span>",
+    "<a class=\"tag\" href=\"/lab/" + esc(b.labId) + "/\">",
     esc(b.lab),
-    "</span><span>",
+    "</a><span>",
     esc(b.dateLabel),
     "</span></div>",
     "</div><div class=\"row-id\">Brief ",
     esc(b.briefNo),
-    "</div></a>",
+    "</div></article>",
   ].join("");
 }
