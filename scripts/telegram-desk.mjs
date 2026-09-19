@@ -63,7 +63,7 @@ function clipDek(text, max) {
   if (t.length <= max) return t;
   const cut = t.slice(0, max - 1);
   const sp = cut.lastIndexOf(" ");
-  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;–-]+$/, "") + "…";
+  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;\u2013-]+$/, "") + "\u2026";
 }
 
 function messageIdFrom(url) {
@@ -77,8 +77,8 @@ function composeMessage(post) {
   const date = formatDate(post.publishedAt);
   const headline = escHtml(post.headline || "");
   const dek = clipDek(post.dek || "", 220);
-  const kind = post.kind ? "  ·  " + escHtml(post.kind) : "";
-  const lines = ["<b>" + lab + "</b>" + kind + (date ? "  ·  " + date : ""), "", "<b>" + headline + "</b>"];
+  const kind = post.kind ? "  \u00b7  " + escHtml(post.kind) : "";
+  const lines = ["<b>" + lab + "</b>" + kind + (date ? "  \u00b7  " + date : ""), "", "<b>" + headline + "</b>"];
   if (dek) lines.push("", "<blockquote>" + escHtml(dek) + "</blockquote>");
   lines.push("", "<i>Filed from the official source. The brief stays on the page.</i>");
   return {
@@ -190,6 +190,10 @@ async function loadJson(path, fallback) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 const token = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
 const chat = telegramChatId();
 const channel = channelUrl();
@@ -211,16 +215,24 @@ const briefs = Array.isArray(queue.briefs) ? queue.briefs : [];
 const byGuid = Object.fromEntries(briefs.filter((b) => b.guid).map((b) => [b.guid, b]));
 const hourAgo = Date.now() - 70 * 60 * 1000;
 const postedCount = Object.keys(posted).length;
-let toSend = briefs.filter((b) => {
+const unposted = briefs.filter((b) => b.guid && b.headline && b.path && !posted[b.guid]);
+const fresh = unposted.filter((b) => {
   const t = Date.parse(b.publishedAt || "");
   return Number.isFinite(t) && t >= hourAgo;
 });
-if (postedCount === 0) {
-  toSend = briefs.slice(0, 6);
-  console.log("telegram seed: cache empty, queueing", toSend.length, "newest briefs");
-} else {
-  console.log("telegram fresh window:", toSend.length, "posted cache:", postedCount);
-}
+const rest = unposted.filter((b) => !fresh.includes(b));
+const cap = postedCount === 0 ? 6 : 8;
+const toSend = [...fresh, ...rest].slice(0, cap);
+console.log(
+  "telegram sync unposted:",
+  unposted.length,
+  "fresh:",
+  fresh.length,
+  "queueing:",
+  toSend.length,
+  "posted cache:",
+  postedCount,
+);
 
 let edited = 0;
 for (const [guid, url] of Object.entries(posted)) {
@@ -240,6 +252,7 @@ for (const [guid, url] of Object.entries(posted)) {
   } else {
     console.log("telegram edit FAILED:", data.description || data.error_code, post.path);
   }
+  await sleep(350);
 }
 
 let sent = 0;
@@ -262,6 +275,7 @@ for (const post of toSend) {
     failed += 1;
     console.log("telegram send FAILED:", data.description || data.error_code || "unknown", post.path);
   }
+  await sleep(350);
 }
 
 await writeFile(POSTED_FILE, JSON.stringify(posted));
