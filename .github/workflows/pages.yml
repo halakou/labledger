@@ -59,11 +59,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
-          command: deploy --config cloudflare/wrangler.toml
-          secrets: |
-            TELEGRAM_BOT_TOKEN
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          command: deploy --name labledger-desk --config cloudflare/wrangler.toml
       - name: Post to Telegram after pages exist
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
