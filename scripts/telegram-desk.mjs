@@ -77,9 +77,10 @@ function composeMessage(post) {
   const date = formatDate(post.publishedAt);
   const headline = escHtml(post.headline || "");
   const dek = clipDek(post.dek || "", 220);
-  const lines = ["<b>" + lab + "</b>" + (date ? "  ·  " + date : ""), "", "<b>" + headline + "</b>"];
+  const kind = post.kind ? "  ·  " + escHtml(post.kind) : "";
+  const lines = ["<b>" + lab + "</b>" + kind + (date ? "  ·  " + date : ""), "", "<b>" + headline + "</b>"];
   if (dek) lines.push("", "<blockquote>" + escHtml(dek) + "</blockquote>");
-  lines.push("", "<i>Filed from the official feed. Source stays on the page.</i>");
+  lines.push("", "<i>Filed from the official source. The brief stays on the page.</i>");
   return {
     text: lines.join("\n"),
     payload: {
