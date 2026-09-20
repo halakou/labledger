@@ -3,12 +3,35 @@
 import { readFile } from "node:fs/promises";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const chat = process.env.TELEGRAM_CHAT_ID;
+const rawChat = process.env.TELEGRAM_CHAT_ID || "";
 const url = process.env.SITE_URL || "https://labledgerdesk.pages.dev";
 const postedFile = process.env.POSTED_FILE || ".desk-posted.json";
 
-if (!token || !chat) {
-  console.error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID required");
+function handleFrom(raw) {
+  if (!raw) return "";
+  let v = String(raw).trim();
+  v = v.replace(/^https?:\/\/(www\.)?(t\.me|telegram\.me)\//i, "");
+  v = v.replace(/^@/, "");
+  v = v.split(/[/?#]/)[0];
+  if (/^-?\d+$/.test(v)) return "";
+  if (/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(v)) return v;
+  return "";
+}
+
+function telegramChatId() {
+  const chat = rawChat.trim();
+  const h = handleFrom(chat);
+  if (h) return "@" + h;
+  if (/^-?\d+$/.test(chat)) return chat;
+  const fromUrl = handleFrom(process.env.TELEGRAM_CHANNEL_URL || "");
+  if (fromUrl) return "@" + fromUrl;
+  return "@labledgerdesk";
+}
+
+const chat = telegramChatId();
+
+if (!token) {
+  console.error("TELEGRAM_BOT_TOKEN required");
   process.exit(1);
 }
 
