@@ -177,6 +177,38 @@ export const LABS = [
     iconHosts: ["technologyreview.com", "wp.technologyreview.com"],
     icons: ["https://www.technologyreview.com/static/media/favicon.1cfcdb44759a0f93ddf5feb5405dd4cc.ico", "https://wp.technologyreview.com/favicon.ico", "https://www.technologyreview.com/favicon.ico"],
   },
+  {
+    id: "wired",
+    label: "WIRED",
+    mark: "W",
+    color: "#1c1914",
+    feed: "https://www.wired.com/feed/tag/ai/latest/rss",
+    listing: null,
+    hosts: ["wired.com"],
+    iconHosts: ["wired.com", "www.wired.com"],
+    icons: ["https://www.wired.com/favicon.ico"],
+  },
+  {
+    id: "techcrunch",
+    label: "TechCrunch",
+    mark: "X",
+    color: "#2f4a3d",
+    feed: "https://techcrunch.com/category/artificial-intelligence/feed/",
+    listing: null,
+    hosts: ["techcrunch.com"],
+    iconHosts: ["techcrunch.com", "www.techcrunch.com"],
+    icons: ["https://techcrunch.com/favicon.ico"],
+  },
+  {
+    id: "msftai",
+    label: "Microsoft AI",
+    mark: "Q",
+    color: "#2c3d4f",
+    feed: "https://www.microsoft.com/en-us/microsoft-cloud/blog/feed/",
+    listing: null,
+    hosts: ["microsoft.com"],
+    icons: ["https://www.microsoft.com/favicon.ico"],
+  },
 ];
 
 const GH_ICONS = ["github.com", "avatars.githubusercontent.com", "githubusercontent.com"];
@@ -273,6 +305,32 @@ export const OPEN_PROJECTS = [
     icons: ["https://github.com/deepspeedai.png"],
   },
   {
+    id: "llamacpp",
+    label: "llama.cpp",
+    mark: "G",
+    color: "#2a2a28",
+    kind: "github",
+    repo: "ggerganov/llama.cpp",
+    feed: "https://github.com/ggerganov/llama.cpp/releases.atom",
+    hosts: ["github.com"],
+    iconHosts: ["github.com", "avatars.githubusercontent.com", "githubusercontent.com"],
+    pathPrefix: "/ggerganov/llama.cpp/releases",
+    icons: ["https://github.com/ggerganov.png"],
+  },
+  {
+    id: "langchain",
+    label: "LangChain",
+    mark: "C",
+    color: "#3d4a2e",
+    kind: "github",
+    repo: "langchain-ai/langchain",
+    feed: "https://github.com/langchain-ai/langchain/releases.atom",
+    hosts: ["github.com"],
+    iconHosts: ["github.com", "avatars.githubusercontent.com", "githubusercontent.com"],
+    pathPrefix: "/langchain-ai/langchain/releases",
+    icons: ["https://github.com/langchain-ai.png"],
+  },
+  {
     id: "jax",
     label: "JAX",
     mark: "J",
@@ -288,6 +346,13 @@ export const OPEN_PROJECTS = [
 ];
 
 export const LAB_BY_ID = Object.fromEntries(LABS.map((l) => [l.id, l]));
+export const OPEN_BLOCK = [
+  // noisy auto-release patterns: skip daily CI build numbers and pre-release tags
+  /^b\d{4,}$/,            // llama.cpp daily builds like b11065
+  /-rc\d+$/,             // release candidates
+  /==/,                   // python distribution version artifacts
+];
+
 export const OPEN_BY_ID = Object.fromEntries(OPEN_PROJECTS.map((p) => [p.id, p]));
 export const MAX_BRIEFS = 28;
 export const PER_FEED = 6;

@@ -73,6 +73,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
           TELEGRAM_WEBHOOK_URL: ${{ secrets.TELEGRAM_WEBHOOK_URL }}
+          DESK_WORKER_URL: https://labledger-desk.halakou.workers.dev
+          GITHUB_DISPATCH_TOKEN: ${{ secrets.GITHUB_DISPATCH_TOKEN }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/telegram-desk.mjs
       - uses: actions/cache/save@v4

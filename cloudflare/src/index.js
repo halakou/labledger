@@ -128,7 +128,7 @@ async function dispatchPages(env) {
   return "dispatch-" + res.status;
 }
 
-async function tick(env) {
+async function tick(env, postedLedger) {
   const heartbeat = new Date().toISOString();
   let found = { http: null, builtAt: null };
   let dispatch = "skip";
@@ -153,7 +153,13 @@ async function tick(env) {
     ageMs: Number.isFinite(age) ? age : null,
     dispatch,
   };
-  if (env.DESK) await env.DESK.put("last", JSON.stringify(last));
+  if (env.DESK) {
+    await env.DESK.put("last", JSON.stringify(last));
+    // Mirror the posted ledger into KV so a lost GitHub Actions cache
+    // does not re-post every brief ever filed. Telegram message ids are
+    // stable, so this is a cheap, durable second copy.
+    if (postedLedger) await env.DESK.put("posted", JSON.stringify(postedLedger));
+  }
   return last;
 }
 
@@ -172,6 +178,26 @@ export default {
         last = raw;
       }
       return Response.json({ ok: true, last, service: "labledger-desk" });
+    }
+    if (url.pathname === "/posted" && (request.method === "POST" || request.method === "GET")) {
+      // GitHub Actions mirrors the posted ledger here after each successful run,
+      // so a lost Actions cache cannot re-post every brief ever filed.
+      const token = String(env.GITHUB_DISPATCH_TOKEN || "").trim();
+      if (!token) return new Response("no token", { status: 503 });
+      const got = request.headers.get("authorization") || "";
+      if (got !== "Bearer " + token) return new Response("denied", { status: 401 });
+      if (request.method === "GET") {
+        const raw = env.DESK ? await env.DESK.get("posted") : null;
+        let body = null;
+        try { body = raw ? JSON.parse(raw) : null; } catch { body = raw; }
+        return Response.json({ ok: true, posted: body });
+      }
+      const body = await request.json().catch(() => null);
+      if (!body || typeof body !== "object") return new Response("bad body", { status: 400 });
+      const n = Object.keys(body).length;
+      if (n > 5000) return new Response("too large", { status: 413 });
+      if (env.DESK) await env.DESK.put("posted", JSON.stringify(body));
+      return Response.json({ ok: true, posted: n });
     }
     if (url.pathname === "/telegram" && request.method === "POST") {
       return handleTelegram(request, env);

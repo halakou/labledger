@@ -13,7 +13,7 @@ import {
 import { write } from "./net.mjs";
 import { jsonLdScript, markHtml, rowHtml, shell } from "./render.mjs";
 
-export async function writeArchives({ allBriefs, briefs, today }) {
+export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpen = [], today }) {
   for (const lab of LABS) {
     const rows = allBriefs.filter((b) => b.labId === lab.id).slice(0, 80);
     const how = lab.listing && !lab.feed ? "Official /news listing, filed as briefs." : lab.feed ? "Official RSS, filed as briefs." : "No official source.";
@@ -136,7 +136,7 @@ export async function writeArchives({ allBriefs, briefs, today }) {
     );
   }
 
-  for (const b of allBriefs) {
+  for (const b of [...allBriefs, ...allOpen]) {
     const factList = factsFor(b);
     const articleUrl = SITE + b.path;
     const ogImg = b.ogImage ? (b.ogImage.startsWith("http") ? b.ogImage : SITE + b.ogImage) : SITE + "/og.jpg";
@@ -256,10 +256,13 @@ export async function writeArchives({ allBriefs, briefs, today }) {
     ["/", today],
     ["/method/", today],
     ["/week/", today],
+    ["/open/", today],
+    ["/open/rss.xml", today],
     ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
     ...TOPICS.map((t) => ["/topic/" + t.id + "/", today]),
     ...KINDS.map((k) => ["/kind/" + k.id + "/", today]),
     ...allBriefs.map((b) => [b.path, b.dateLabel]),
+    ...allOpen.map((b) => [b.path, b.dateLabel]),
   ];
   await write(
     "sitemap.xml",
