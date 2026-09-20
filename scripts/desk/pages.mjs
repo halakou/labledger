@@ -5,22 +5,24 @@ import { writeOgCards } from "./ogcard.mjs";
 import { writeHome, writeLlms, writeStatic } from "./site-home.mjs";
 import { writeDigest } from "./site-digest.mjs";
 
-export async function publishSite({ allBriefs, briefs, today, fontNames, markMap }) {
+export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap }) {
   await rm(OUT, { recursive: true, force: true });
   await mkdir(OUT, { recursive: true });
   await mkdir(OUT + "/fonts", { recursive: true });
   await mkdir(OUT + "/marks", { recursive: true });
   const ogOk = await writeStatic(fontNames);
-  await writeLlms(briefs);
-  const ogCount = await writeOgCards(allBriefs);
-  await writeHome({ allBriefs, briefs, today });
-  const weekCount = await writeDigest({ allBriefs, briefs, today });
-  await writeArchives({ allBriefs, briefs, today });
+  await writeLlms(briefs, openBriefs);
+  const ogCount = await writeOgCards([...allBriefs, ...allOpen]);
+  await writeHome({ allBriefs, briefs, openBriefs, today });
+  const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
+  await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });
   console.log(
     "wrote board " +
       briefs.length +
       ", ledger " +
       allBriefs.length +
+      ", open " +
+      openBriefs.length +
       ", week " +
       weekCount +
       ", marks " +
