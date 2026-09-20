@@ -369,7 +369,7 @@ const posted = await loadJson(POSTED_FILE, {});
 if (!Object.keys(posted).length) {
   try {
     const wk = String(process.env.DESK_WORKER_URL || "").trim();
-    const tok = String(process.env.GITHUB_DISPATCH_TOKEN || "").trim();
+    const tok = String(process.env.DISPATCH_TOKEN || "").trim();
     if (wk.startsWith("https://") && tok) {
       const res = await fetch(wk.replace(/\/$/, "") + "/posted", {
         headers: { authorization: "Bearer " + tok },
@@ -445,7 +445,7 @@ await writeFile(POSTED_FILE, JSON.stringify(posted));
 // cannot re-post every brief ever filed. Best effort: never fails the run.
 try {
   const wk = String(process.env.DESK_WORKER_URL || "").trim();
-  const tok = String(process.env.GITHUB_DISPATCH_TOKEN || "").trim();
+  const tok = String(process.env.DISPATCH_TOKEN || "").trim();
   if (wk.startsWith("https://") && tok) {
     const res = await fetch(wk.replace(/\/$/, "") + "/posted", {
       method: "POST",

@@ -113,7 +113,7 @@ async function siteBuiltAt(env) {
 }
 
 async function dispatchPages(env) {
-  const token = String(env.GITHUB_DISPATCH_TOKEN || "").trim();
+  const token = String(env.DISPATCH_TOKEN || "").trim();
   if (!token) return "no-token";
   const res = await fetch(GH_DISPATCH, {
     method: "POST",
@@ -182,7 +182,7 @@ export default {
     if (url.pathname === "/posted" && (request.method === "POST" || request.method === "GET")) {
       // GitHub Actions mirrors the posted ledger here after each successful run,
       // so a lost Actions cache cannot re-post every brief ever filed.
-      const token = String(env.GITHUB_DISPATCH_TOKEN || "").trim();
+      const token = String(env.DISPATCH_TOKEN || "").trim();
       if (!token) return new Response("no token", { status: 503 });
       const got = request.headers.get("authorization") || "";
       if (got !== "Bearer " + token) return new Response("denied", { status: 401 });
