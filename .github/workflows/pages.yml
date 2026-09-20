@@ -77,6 +77,12 @@ jobs:
           DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/telegram-desk.mjs
+      - name: Announce the cost ledger once
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SITE_URL: https://labledgerdesk.pages.dev
+        run: node scripts/post-donate-announce.mjs
       - uses: actions/cache/save@v4
         if: always()
         with:
