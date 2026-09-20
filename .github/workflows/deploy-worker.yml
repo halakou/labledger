@@ -23,11 +23,12 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GITHUB_DISPATCH_TOKEN: ${{ secrets.GITHUB_DISPATCH_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           cd cloudflare
           if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
-            npx --yes wrangler@4.135.0 secret put TELEGRAM_BOT_TOKEN <<< "$TELEGRAM_BOT_TOKEN"
+            printf '%s' "$TELEGRAM_BOT_TOKEN" | npx --yes wrangler@4.135.0 secret put TELEGRAM_BOT_TOKEN
           fi
           if [ -n "$GITHUB_DISPATCH_TOKEN" ]; then
-            npx --yes wrangler@4.135.0 secret put GITHUB_DISPATCH_TOKEN <<< "$GITHUB_DISPATCH_TOKEN"
+            printf '%s' "$GITHUB_DISPATCH_TOKEN" | npx --yes wrangler@4.135.0 secret put GITHUB_DISPATCH_TOKEN
           fi
