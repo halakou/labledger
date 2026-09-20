@@ -2,7 +2,8 @@ import { mkdir, rm } from "node:fs/promises";
 import { CHANNEL, OUT, runLog } from "./core.mjs";
 import { writeArchives } from "./archives.mjs";
 import { writeOgCards } from "./ogcard.mjs";
-import { writeHome, writeLlms, writeStatic } from "./site-home.mjs";
+import { writeHome, writeLlms, writeOpenBoard, writeStatic } from "./site-home.mjs";
+import { writeOpenArchives, writeOpenRss } from "./open-archives.mjs";
 import { writeDigest } from "./site-digest.mjs";
 
 export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap }) {
@@ -14,6 +15,9 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeLlms(briefs, openBriefs);
   const ogCount = await writeOgCards([...allBriefs, ...allOpen]);
   await writeHome({ allBriefs, briefs, openBriefs, today });
+  await writeOpenBoard({ openBriefs, today });
+  await writeOpenArchives({ allOpen, today });
+  await writeOpenRss(openBriefs);
   const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
   await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });
   console.log(

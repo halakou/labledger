@@ -30,6 +30,7 @@ import {
 } from "./desk/net.mjs";
 import { fetchMark } from "./desk/fetch-mark.mjs";
 import { publishSite } from "./desk/pages.mjs";
+import { OPEN_PROJECTS, PER_OPEN, MAX_OPEN, OPEN_ARCHIVE_FILE, OPEN_ARCHIVE_MAX, OPEN_BLOCK } from "./desk/config.mjs";
 
 const fontNames = await ensureFonts();
 const markMap = {};
@@ -40,6 +41,32 @@ await Promise.all(
     markMap[lab.id] = file;
   }),
 );
+// Open releases rail: fetch marks for open projects too, so cards can carry them.
+await Promise.all(
+  OPEN_PROJECTS.map(async (proj) => {
+    if (proj.kind !== "github") return;
+    const file = await fetchMark(proj);
+    proj.markFile = file;
+    markMap[proj.id] = file;
+  }),
+);
+
+async function fetchOpenPack(proj) {
+  if (proj.kind === "blog" && proj.feed) {
+    const xml = await fetchFeed(proj.feed, proj.hosts);
+    const items = parseFeed(xml).filter((item) => hostAllowed(item.link, proj.hosts)).slice(0, PER_OPEN * 2);
+    return { proj, items };
+  }
+  if (proj.kind === "github" && proj.feed) {
+    const xml = await fetchFeed(proj.feed, proj.hosts);
+    const items = parseFeed(xml)
+      .filter((item) => item.link.startsWith("https://github.com/"))
+      .filter((item) => !OPEN_BLOCK.some((re) => re.test(item.title.trim())))
+      .slice(0, PER_OPEN * 2);
+    return { proj, items };
+  }
+  return { proj, items: [] };
+}
 
 const packs = await Promise.all(
   LABS.map(async (lab) => {
@@ -152,6 +179,72 @@ await writeFile(
 
 const briefs = allBriefs.slice(0, MAX_BRIEFS);
 const today = new Date().toISOString().slice(0, 10);
+
+// --- Open releases rail -------------------------------------------------
+const openPacks = await Promise.all(
+  OPEN_PROJECTS.map(async (proj) => {
+    try {
+      const pack = await fetchOpenPack(proj);
+      runLog.push(proj.label + ": open " + pack.items.length);
+      return pack;
+    } catch (err) {
+      runLog.push(proj.label + ": open fail " + (err?.message || err));
+      return { proj, items: [] };
+    }
+  }),
+);
+
+const openArchiveRaw = await loadJson(OPEN_ARCHIVE_FILE, { briefs: [], nextId: 1 });
+const openByGuid = new Map();
+for (const raw of openArchiveRaw.briefs || []) {
+  if (!raw?.guid) continue;
+  openByGuid.set(raw.guid, reviveBrief(raw));
+}
+let openNextId = Number(openArchiveRaw.nextId) || 1;
+if (openByGuid.size) {
+  const maxId = Math.max(0, ...[...openByGuid.values()].map((b) => Number(b.ledgerId) || 0));
+  openNextId = Math.max(openNextId, maxId + 1);
+}
+
+// newest-first across all open projects, at most PER_OPEN per project
+const openPool = [];
+for (const { proj, items } of openPacks) {
+  for (const item of items.slice(0, PER_OPEN)) {
+    const guid = item.guid || item.link;
+    if (openByGuid.has(guid)) continue;
+    const fakePack = { lab: { ...proj, label: proj.label } };
+    const brief = makeBrief(fakePack, item, openNextId);
+    brief.lab = proj.label;
+    brief.labId = proj.id;
+    brief.mark = proj.mark;
+    brief.color = proj.color;
+    brief.markFile = proj.markFile || null;
+    brief.via = proj.kind === "github" ? "github release" : "official blog";
+    openPool.push(brief);
+    openNextId += 1;
+  }
+}
+openPool.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+for (const brief of openPool) {
+  if (openByGuid.has(brief.guid)) continue;
+  openByGuid.set(brief.guid, brief);
+}
+
+let allOpen = [...openByGuid.values()].sort(
+  (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+);
+if (allOpen.length > OPEN_ARCHIVE_MAX) allOpen = allOpen.slice(0, OPEN_ARCHIVE_MAX);
+await writeFile(
+  OPEN_ARCHIVE_FILE,
+  JSON.stringify({
+    nextId: openNextId,
+    briefs: allOpen.map((b) => ({
+      ...b,
+      publishedAt: typeof b.publishedAt === "string" ? b.publishedAt : new Date(b.publishedAt).toISOString(),
+    })),
+  }),
+);
+const openBriefs = allOpen.slice(0, MAX_OPEN);
 await writeFile(
   QUEUE_FILE,
   JSON.stringify({
@@ -166,8 +259,18 @@ await writeFile(
       source: b.source,
       publishedAt: b.publishedAt,
     })),
+    open: openBriefs.map((b) => ({
+      guid: b.guid,
+      headline: b.headline,
+      path: b.path,
+      lab: b.lab,
+      dek: b.dek,
+      kind: b.kind,
+      kindLabel: kindLabel(b.kind),
+      source: b.source,
+      publishedAt: b.publishedAt,
+    })),
   }),
 );
 
-
-await publishSite({ allBriefs, briefs, today, fontNames, markMap });
+await publishSite({ allBriefs, briefs, openBriefs, allOpen, today, fontNames, markMap });

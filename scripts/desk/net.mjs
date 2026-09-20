@@ -26,6 +26,7 @@ import {
   timeDatetime,
   ymd,
 } from "./core.mjs";
+import { OPEN_BY_ID } from "./config.mjs";
 
 export async function fetchHttps(url, accept, hosts) {
   if (!hostAllowed(url, hosts) && !hosts.includes("fonts.googleapis.com") && !hosts.includes("fonts.gstatic.com")) {
@@ -337,7 +338,7 @@ export function makeBrief(pack, item, ledgerId) {
 }
 
 export function reviveBrief(raw) {
-  const lab = LAB_BY_ID[raw.labId];
+  const lab = LAB_BY_ID[raw.labId] || OPEN_BY_ID[raw.labId];
   const publishedAt = new Date(raw.publishedAt);
   const kind = raw.kind || classifyKind(raw.headline || "", raw.dek || "");
   const topics = Array.isArray(raw.topics) ? raw.topics : classifyTopics(raw.headline || "", raw.dek || "");

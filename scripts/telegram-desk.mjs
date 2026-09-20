@@ -362,7 +362,33 @@ await setupBot(token, info);
 
 const queue = await loadJson(QUEUE_FILE, { briefs: [] });
 const posted = await loadJson(POSTED_FILE, {});
-const briefs = Array.isArray(queue.briefs) ? queue.briefs : [];
+
+// If the GitHub Actions cache was evicted, the local posted ledger is empty.
+// Recover it from the Worker's KV mirror before deciding what to send, so a
+// cache miss cannot cause every brief ever filed to be re-posted.
+if (!Object.keys(posted).length) {
+  try {
+    const wk = String(process.env.DESK_WORKER_URL || "").trim();
+    const tok = String(process.env.GITHUB_DISPATCH_TOKEN || "").trim();
+    if (wk.startsWith("https://") && tok) {
+      const res = await fetch(wk.replace(/\/$/, "") + "/posted", {
+        headers: { authorization: "Bearer " + tok },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.ok) {
+        const kv = await res.json().catch(() => null);
+        const n = kv && typeof kv === "object" ? Object.keys(kv).length : 0;
+        if (n) {
+          for (const k of Object.keys(kv)) posted[k] = kv[k];
+          console.log("posted recovered from KV:", n);
+        }
+      }
+    }
+  } catch (err) {
+    console.log("posted recover FAILED:", err?.message || err);
+  }
+}
+const briefs = [...(Array.isArray(queue.briefs) ? queue.briefs : []), ...(Array.isArray(queue.open) ? queue.open : [])];
 const postedCount = Object.keys(posted).length;
 const unposted = briefs.filter((b) => b.guid && b.headline && b.path && !posted[b.guid]);
 const now = Date.now();
@@ -371,7 +397,13 @@ const fresh = unposted.filter((b) => {
   return Number.isFinite(t) && now - t <= FRESH_MS;
 });
 const rest = unposted.filter((b) => !fresh.includes(b));
-const toSend = fresh.length ? fresh.slice(0, 5) : rest.slice(0, postedCount === 0 ? 6 : 2);
+// Quiet hours: the channel is read during the day. Hold non-fresh backfill
+// between 22:00-07:00 UTC so overnight release notes land in the morning,
+// while fresh briefs still go out immediately.
+const hourUTC = new Date().getUTCHours();
+const quiet = hourUTC >= 22 || hourUTC < 7;
+const cap = quiet ? 0 : fresh.length ? 5 : rest.length ? (postedCount === 0 ? 6 : 3) : 2;
+const toSend = fresh.length ? fresh.slice(0, 5) : quiet ? [] : rest.slice(0, postedCount === 0 ? 6 : 2);
 console.log(
   "telegram sync unposted:",
   unposted.length,
@@ -381,6 +413,12 @@ console.log(
   toSend.length,
   "posted cache:",
   postedCount,
+  "hourUTC:",
+  hourUTC,
+  "quiet:",
+  quiet,
+  "cap:",
+  cap,
 );
 
 let sent = 0;
@@ -402,5 +440,26 @@ for (const post of toSend) {
 }
 
 await writeFile(POSTED_FILE, JSON.stringify(posted));
+
+// Mirror the posted ledger to the Worker's KV so a lost GitHub Actions cache
+// cannot re-post every brief ever filed. Best effort: never fails the run.
+try {
+  const wk = String(process.env.DESK_WORKER_URL || "").trim();
+  const tok = String(process.env.GITHUB_DISPATCH_TOKEN || "").trim();
+  if (wk.startsWith("https://") && tok) {
+    const res = await fetch(wk.replace(/\/$/, "") + "/posted", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", authorization: "Bearer " + tok },
+      body: JSON.stringify(posted),
+      signal: AbortSignal.timeout(10000),
+    });
+    console.log("posted mirror:", res.ok ? "ok" : res.status);
+  } else {
+    console.log("posted mirror: skipped (no DESK_WORKER_URL)");
+  }
+} catch (err) {
+  console.log("posted mirror FAILED:", err?.message || err);
+}
+
 console.log("telegram done sent", sent, "failed", failed, "cache", Object.keys(posted).length);
 if (failed && !sent) process.exit(1);

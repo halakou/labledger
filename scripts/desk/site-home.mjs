@@ -11,6 +11,7 @@ import {
   TOPICS,
   esc,
 } from "./core.mjs";
+import { OPEN_PROJECTS } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
 import { CSS, jsonLdScript, rowHtml, shell } from "./render.mjs";
 
@@ -64,7 +65,7 @@ export async function writeStatic(fontNames) {
   return ogOk;
 }
 
-export async function writeLlms(briefs) {
+export async function writeLlms(briefs, openBriefs = []) {
   await write(
     "llms.txt",
     [
@@ -87,6 +88,7 @@ export async function writeLlms(briefs) {
       "- " + SITE + "/method/ — how the desk works",
       "- " + SITE + "/rss.xml — machine feed",
       "- " + SITE + "/sitemap.xml",
+      "- " + SITE + "/open/ — open-source releases board",
       ...LABS.map((l) => "- " + SITE + "/lab/" + l.id + "/ — " + l.label + " archive"),
       ...TOPICS.map((t) => "- " + SITE + "/topic/" + t.id + "/ — " + t.label),
       ...KINDS.map((k) => "- " + SITE + "/kind/" + k.id + "/ — " + k.label),
@@ -141,8 +143,9 @@ function chips(items, hrefBase) {
     .join("");
 }
 
-export async function writeHome({ allBriefs, briefs, today }) {
+export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
   const board = briefs.map(rowHtml).join("") || "<p class=\"empty\">Desk is waiting on the next official post.</p>";
+  const openBoard = openBriefs.map(rowHtml).join("");
   const labGrid = LABS.map((l) => {
     const how = l.listing && !l.feed ? "Official listing" : l.feed ? "Official RSS" : "No official source";
     return "<a href=\"/lab/" + l.id + "/\"><b>" + esc(l.label) + "</b><span>" + how + "</span></a>";
@@ -256,6 +259,15 @@ export async function writeHome({ allBriefs, briefs, today }) {
         "<div class=\"labs\">",
         labGrid,
         "</div></section>",
+        openBriefs.length
+          ? [
+              "<section class=\"board\" id=\"open\"><div class=\"board-head\"><span>Open releases</span><span>",
+              String(openBriefs.length),
+              " filed</span></div>",
+              openBriefs.map(rowHtml).join(""),
+              "</section>",
+            ].join("")
+          : "",
         "<article class=\"method\"><h2>What does the desk file?</h2>",
         "<p>Official announcements from named labs, research groups, and MIT Technology Review. One brief per move, about 100 words. The primary source stays on the page.</p>",
         "<h2>Which sources are on the board?</h2>",
@@ -270,6 +282,46 @@ export async function writeHome({ allBriefs, briefs, today }) {
         esc(CHANNEL),
         "\" rel=\"noreferrer noopener\">Telegram</a> after the page exists. There is no email list — use RSS or the weekly digest.</p>",
         "</article>",
+      ].join(""),
+    }),
+  );
+}
+
+
+export async function writeOpenBoard({ openBriefs, today }) {
+  if (!openBriefs.length) return;
+  await write(
+    "open/index.html",
+    shell({
+      title: "Open releases — Lab Ledger Desk",
+      description:
+        "Official release notes from open-source AI projects: vLLM, SGLang, Ollama, Transformers, ComfyUI, DeepSpeed, JAX, PyTorch. Dated, sourced, kept.",
+      path: "/open/",
+      extra: jsonLdScript({
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Open releases — Lab Ledger Desk",
+        url: SITE + "/open/",
+        dateModified: today,
+        publisher: { "@type": "NewsMediaOrganization", name: "Lab Ledger Desk", url: SITE + "/" },
+        mainEntity: {
+          "@type": "ItemList",
+          name: "Open-source AI releases",
+          numberOfItems: openBriefs.length,
+          itemListElement: openBriefs.slice(0, 40).map((b, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            url: SITE + b.path,
+            name: b.headline,
+          })),
+        },
+      }),
+      body: [
+        "<article class=\"method\"><p class=\"kicker\">Open rail</p><h1>Open releases</h1>",
+        "<p class=\"dek\">Official release notes from open-source AI infrastructure projects. Each entry links to the project's own release page. Nothing here is invented.</p></article>",
+        "<section class=\"board\">",
+        openBriefs.map(rowHtml).join(""),
+        "</section>",
       ].join(""),
     }),
   );
