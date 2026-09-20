@@ -84,6 +84,11 @@ article.brief h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-
 .method td a{color:var(--accent)}
 .empty{border:1px dashed var(--rule);padding:1.6rem;color:var(--muted)}
 .subscribe{border:1px solid var(--rule);background:var(--card);padding:1.2rem 1.25rem;margin:1.4rem 0}
+.support-way{border:1px solid var(--rule);background:var(--card);padding:1.1rem 1.15rem;margin:.8rem 0}
+.support-way h3{font-family:"Source Sans 3",sans-serif;font-size:1rem;margin:0 0 .35rem}
+.support-way p{margin:0 0 .6rem;color:var(--muted);font-size:.95rem}
+.support-cta{font-family:"Source Sans 3",sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent)}
+.support-cta:hover{opacity:.7}
 .subscribe h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 .45rem}
 .week-day{margin-top:1.6rem}
 .week-day h2{font-family:Fraunces,Georgia,serif;font-size:1.25rem;letter-spacing:-.02em;text-transform:none;color:var(--ink);margin:0 0 .7rem}

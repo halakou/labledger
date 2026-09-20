@@ -1,9 +1,10 @@
 import { mkdir, rm } from "node:fs/promises";
-import { CHANNEL, OUT, runLog } from "./core.mjs";
+import { CHANNEL, LABS, OUT, runLog } from "./core.mjs";
 import { writeArchives } from "./archives.mjs";
 import { writeOgCards } from "./ogcard.mjs";
 import { writeHome, writeLlms, writeOpenBoard, writeStatic } from "./site-home.mjs";
 import { writeOpenArchives, writeOpenRss } from "./open-archives.mjs";
+import { writeDonate } from "./donate.mjs";
 import { writeDigest } from "./site-digest.mjs";
 
 export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap }) {
@@ -18,6 +19,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeOpenBoard({ openBriefs, today });
   await writeOpenArchives({ allOpen, today });
   await writeOpenRss(openBriefs);
+  await writeDonate({ today, briefsCount: allBriefs.length, openCount: openBriefs.length, labsCount: LABS.length });
   const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
   await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });
   console.log(

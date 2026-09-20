@@ -256,6 +256,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/", today],
     ["/method/", today],
     ["/week/", today],
+    ["/donate/", today],
     ["/open/", today],
     ["/open/rss.xml", today],
     ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
