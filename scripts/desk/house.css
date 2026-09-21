@@ -89,6 +89,9 @@ article.brief h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-
 .support-way p{margin:0 0 .6rem;color:var(--muted);font-size:.95rem}
 .support-cta{font-family:"Source Sans 3",sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent)}
 .support-cta:hover{opacity:.7}
+.support-addr{display:block;word-break:break-all;font-size:.85rem;padding:.7rem .8rem;border:1px dashed var(--rule);background:var(--paper2);cursor:pointer;user-select:all;transition:background .15s ease,border-color .15s ease}
+.support-addr:hover{border-color:var(--accent)}
+.support-addr.copied{background:#e8f0e4;border-color:#3d6b3d;color:#2c5229}
 .subscribe h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 .45rem}
 .week-day{margin-top:1.6rem}
 .week-day h2{font-family:Fraunces,Georgia,serif;font-size:1.25rem;letter-spacing:-.02em;text-transform:none;color:var(--ink);margin:0 0 .7rem}

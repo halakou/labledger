@@ -36,6 +36,21 @@ const WAYS = [
   },
 ];
 
+// Crypto rails. Both are free to send, free to receive, and need no
+// card or sanctioned gateway — they work from anywhere.
+const RAILS = [
+  {
+    label: "TON / Gram",
+    address: "UQCdEZvZ3ykVIxNG4KB0UdZh0ch40jQLNhIVy_rFknSInFPY",
+    note: "Telegram's own chain. If you are in the channel already, this is the shortest path.",
+  },
+  {
+    label: "USDT (Tron / TRC20)",
+    address: "TUHSRVRWrPXWs3Wn7Pn8joKoPFoH7yFgZk",
+    note: "The stable one. A few cents of gas, no card, no gateway.",
+  },
+];
+
 export async function writeDonate({ today, briefsCount = 0, openCount = 0, labsCount = 0 }) {
   const totalBriefs = briefsCount;
   await write(
@@ -85,6 +100,23 @@ export async function writeDonate({ today, briefsCount = 0, openCount = 0, labsC
             " →</a></section>",
         ).join(""),
 
+        "<h2>If you'd rather fund the review hours</h2>",
+        "<p class=\"dek\">There is no paywall and there never will be one. But if the desk earned an hour of your time and you want to fund an hour of ours, these rails work from anywhere — no card, no gateway, no minimum:</p>",
+        RAILS.map(
+          (r) =>
+            "<section class=\"support-way\"><h3>" +
+            r.label +
+            "</h3><p>" +
+            r.note +
+            "</p>" +
+            "<code class=\"support-addr\" id=\"rail-" +
+            r.label.replace(/[^a-z]/gi, "").toLowerCase() +
+            "\" onclick=\"navigator.clipboard.writeText(this.textContent).then(function(){var s=this.getAttribute('data-ok');this.classList.add('copied');var t=this;setTimeout(function(){t.classList.remove('copied')},1400)}.bind(this))\">" +
+            r.address +
+            "</code></section>",
+        ).join(""),
+        "<p class=\"dek\"><i>Copy an address by tapping it.</i> Send only that exact asset on that exact chain — the desk holds no other rails, and there is no refund path if a network is mixed up.</p>",
+
         "<h2>The ledger so far</h2>",
         "<p class=\"dek\">As of " + today + ", the desk has filed and sourced:</p>",
         "<table><tbody>",
@@ -95,7 +127,7 @@ export async function writeDonate({ today, briefsCount = 0, openCount = 0, labsC
         "<tr><td>Paywalls</td><td>0</td></tr>",
         "</tbody></table>",
 
-        "<p class=\"dek\">If you want to fund the time — the review hours, not the servers — the channel has the details. But the three things above cost you nothing, and two of them improve the desk more than money would.</p>",
+        "<p class=\"dek\">If you want to fund the time — the review hours, not the servers — the addresses above work from anywhere. But the three things above cost you nothing, and two of them improve the desk more than money would.</p>",
         "</article>",
       ].join(""),
     }),
