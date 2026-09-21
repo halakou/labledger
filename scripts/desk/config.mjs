@@ -209,6 +209,19 @@ export const LABS = [
     hosts: ["microsoft.com"],
     icons: ["https://www.microsoft.com/favicon.ico"],
   },
+  {
+    id: "theverge",
+    label: "The Verge",
+    mark: "V",
+    color: "#5a2a3d",
+    feed: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+    listing: null,
+    hosts: ["theverge.com"],
+    // The Verge's favicon is served from Vox's CDN, so the redirect target
+    // has to be on the allow-list too.
+    iconHosts: ["theverge.com", "www.theverge.com", "cdn.vox-cdn.com"],
+    icons: ["https://www.theverge.com/favicon.ico"],
+  },
 ];
 
 const GH_ICONS = ["github.com", "avatars.githubusercontent.com", "githubusercontent.com"];

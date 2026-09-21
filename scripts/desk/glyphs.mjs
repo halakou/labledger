@@ -28,6 +28,8 @@ export const HOUSE_SVG = {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#8a2a22" d="M5 7h5.2v5.4H8.4V25H5zm7.2 0h3.4v18H12.2zm5.2 0H27v3.4h-6.2V14H26v3.4h-6.4V25h-3.4z"/></svg>',
   mittr:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#243044" d="M6 8h20v4.2h-8V24h-4.2V12.2H6z"/></svg>',
+  theverge:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#5200ff" d="M4 5h5.4l6.6 13.2L22.6 5H28l-9.6 18.6c-.7 1.4-1.8 2.1-3.3 2.1s-2.6-.7-3.3-2.1z"/></svg>',
 };
 
 export function houseSvg(id) {
