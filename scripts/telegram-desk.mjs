@@ -397,13 +397,14 @@ const fresh = unposted.filter((b) => {
   return Number.isFinite(t) && now - t <= FRESH_MS;
 });
 const rest = unposted.filter((b) => !fresh.includes(b));
-// Quiet hours: the channel is read during the day. Hold non-fresh backfill
-// between 22:00-07:00 UTC so overnight release notes land in the morning,
-// while fresh briefs still go out immediately.
+// Quiet hours were removed: the desk's contract is that a brief reaches the
+// channel at the same moment it reaches the site. Holding overnight releases
+// "for the morning" only works if the audience is in one timezone — it is
+// not, and it made the channel look stale next to the board.
 const hourUTC = new Date().getUTCHours();
-const quiet = hourUTC >= 22 || hourUTC < 7;
-const cap = quiet ? 0 : fresh.length ? 5 : rest.length ? (postedCount === 0 ? 6 : 3) : 2;
-const toSend = fresh.length ? fresh.slice(0, 5) : quiet ? [] : rest.slice(0, postedCount === 0 ? 6 : 2);
+const quiet = false;
+const cap = fresh.length ? 5 : rest.length ? (postedCount === 0 ? 6 : 3) : 2;
+const toSend = fresh.length ? fresh.slice(0, 5) : rest.slice(0, postedCount === 0 ? 6 : 2);
 console.log(
   "telegram sync unposted:",
   unposted.length,
