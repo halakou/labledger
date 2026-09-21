@@ -236,6 +236,8 @@ export const OPEN_PROJECTS = [
     repo: null,
     feed: "https://pytorch.org/blog/feed/",
     hosts: ["pytorch.org"],
+    // pytorch.org redirects its assets to docs.pytorch.org.
+    iconHosts: ["pytorch.org", "docs.pytorch.org"],
     pathPrefix: "/blog/",
     icons: [
       "https://pytorch.org/assets/images/logo-icon.svg",

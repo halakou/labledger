@@ -51,7 +51,10 @@ async function fetchIcon(url, hosts) {
 export function looksLikeMark(buf, type) {
   if (buf.length < 8 || buf.length > MARK_MAX) return false;
   const head = buf.slice(0, 240).toString("utf8").toLowerCase();
-  if (head.includes("<html") || head.includes("<!doctype")) return false;
+  // <!DOCTYPE svg> is the standard header of Illustrator/Inkscape SVGs, not
+  // an HTML page. Rejecting it made real vector logos (PyTorch's) fall back
+  // to the house star.
+  if (head.includes("<html") || (head.includes("<!doctype html"))) return false;
   if (buf[0] === 0x89 && buf[1] === 0x50) return buf.length >= 400;
   if (buf[0] === 0x00 && buf[1] === 0x00 && buf[2] === 0x01) return buf.length >= 400;
   if (buf[0] === 0xff && buf[1] === 0xd8) return buf.length >= 400;

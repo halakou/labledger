@@ -328,15 +328,45 @@ function rasterLuminance(rgba) {
   return n ? sum / n : null;
 }
 
-// Vector marks are inlined so they keep scaling at any size.
+// Vector marks are inlined so they keep scaling at any size. The source SVG
+// may live in any coordinate space (the Hugging Face logo is 95x88 with no
+// viewBox at all, PyTorch's is offset to y=1067), so the symbol's viewBox must
+// be derived from the source instead of assumed — otherwise the paths render
+// far outside the 32x32 tile and the mark arrives clipped and "exploded".
+function sourceViewBox(raw, inner) {
+  const vb = raw.match(/viewBox\s*=\s*"([^"]+)"/);
+  if (vb) {
+    const p = vb[1].trim().split(/[\s,]+/).map(Number);
+    if (p.length === 4 && p.every(Number.isFinite) && p[2] > 0 && p[3] > 0) return p;
+  }
+  const w = raw.match(/\bwidth\s*=\s*"([\d.]+)"/);
+  const h = raw.match(/\bheight\s*=\s*"([\d.]+)"/);
+  if (w && h) {
+    const ww = Number(w[1]);
+    const hh = Number(h[1]);
+    if (ww > 0 && hh > 0 && Number.isFinite(ww) && Number.isFinite(hh)) return [0, 0, ww, hh];
+  }
+  // Fall back to the coordinate range actually used by the paths.
+  const nums = [...inner.matchAll(/[-+]?\d*\.?\d+(?=[\s,)\]])/g)].map((m) => Number(m[0]));
+  if (nums.length) {
+    const x = Math.min(...nums);
+    const y = Math.min(...nums);
+    const w2 = Math.max(...nums) - x;
+    return [x, y, w2, w2];
+  }
+  return null;
+}
+
 function symbolForSvg(id, buf) {
   const raw = buf.toString("utf8");
   const inner = raw.includes(">")
     ? raw.slice(raw.indexOf(">") + 1, raw.lastIndexOf("</svg>"))
     : "";
   const tile = vectorTile(raw);
-  const bg = tile ? '<rect width="32" height="32" fill="' + tile + '"/>' : "";
-  return '<symbol id="m-' + id + '" viewBox="0 0 32 32">' + bg + inner + "</symbol>";
+  const vb = sourceViewBox(raw, inner);
+  if (!vb) return null; // nothing usable — caller falls back to a letter mark
+  const bg = tile ? '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="' + tile + '"/>' : "";
+  return '<symbol id="m-' + id + '" viewBox="' + vb.join(" ") + '">' + bg + inner + "</symbol>";
 }
 
 // The tile that sits behind every mark. Both colors are from the desk
@@ -404,20 +434,34 @@ function rasterToRgba(buf) {
 function symbolForRaster(id, ext, buf) {
   // Square everything to 96x96 PNG. ICO files carry embedded PNGs which we
   // extract first; anything we cannot re-encode is embedded raw so the
-  // sprite still costs one request.
+  // sprite still costs one request. The mime is read from the file's magic
+  // bytes, not its extension: the extension comes from the URL we fetched,
+  // and a host can hand a .png path containing JPEG bytes.
   const norm = ext === ".png" || ext === ".ico" ? normalizeRasterWithLum(buf) : null;
-  const mime = norm ? "image/png" : ext === ".webp" ? "image/webp" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
+  const isJpeg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8;
+  const mime = norm
+    ? "image/png"
+    : isJpeg
+      ? "image/jpeg"
+      : ext === ".webp"
+        ? "image/webp"
+        : ext === ".jpg" || ext === ".jpeg"
+          ? "image/jpeg"
+          : "image/png";
   const finalBuf = norm ? norm.png : buf;
   // Paint the tile into the symbol itself so the logo always sits on a color
   // it contrasts with, in both light and dark mode. The CSS .glyph color is
   // then just the fallback for marks we could not measure.
   let tile = norm ? tileForLuminance(norm.lum) : null;
   if (!tile && ext !== ".svg") tile = tileForLuminance(rawLuminance(buf));
+  const vb = "0 0 96 96";
   const bg = tile ? '<rect width="96" height="96" fill="' + tile + '"/>' : "";
   return (
     '<symbol id="m-' +
     id +
-    '" viewBox="0 0 96 96">' +
+    '" viewBox="' +
+    vb +
+    '">' +
     bg +
     '<image href="data:' +
     mime +
@@ -451,9 +495,15 @@ export async function writeMarkSprite(markIds) {
   const marks = await collectMarks(markIds);
   if (!marks.length) return null;
   const parts = ['<svg xmlns="http://www.w3.org/2000/svg" style="display:none">'];
+  const usable = [];
   for (const m of marks) {
-    parts.push(m.ext === ".svg" ? symbolForSvg(m.id, m.buf) : symbolForRaster(m.id, m.ext, m.buf));
+    // An SVG we cannot map to a coordinate space is dropped, not mangled: the
+    // caller's letter fallback then shows a clean mark instead of a clipped one.
+    const sym = m.ext === ".svg" ? symbolForSvg(m.id, m.buf) : symbolForRaster(m.id, m.ext, m.buf);
+    if (sym) usable.push(sym);
   }
+  if (!usable.length) return null;
+  parts.push(...usable);
   parts.push("</svg>");
   await mkdir(OUT, { recursive: true });
   const path = join(OUT, "sprite.svg");
@@ -463,9 +513,16 @@ export async function writeMarkSprite(markIds) {
 
 // Vector marks are single-color paths drawn by us, so the tile is read from the
 // SVG's own fill/stroke. Raster marks are measured after normalization.
+// A vector logo with ANY dark fill is designed to sit on a light ground (its
+// dark features would vanish on the dark tile), so only logos that are light
+// throughout get the dark tile. Averaging the fills instead made bichromatic
+// marks like Hugging Face's (dark face on a yellow head) pick the dark tile
+// and arrive with an invisible face.
 function vectorTile(raw) {
   const tones = raw.match(/(?:fill|stroke)="(#[0-9a-fA-F]{3,6})"/g) || [];
   if (!tones.length) return null;
+  let darkest = 255;
+  let lightest = 0;
   let sum = 0;
   for (const t of tones) {
     const hex = t.slice(t.indexOf("#") + 1);
@@ -473,7 +530,13 @@ function vectorTile(raw) {
     const r = parseInt(full.slice(0, 2), 16);
     const g = parseInt(full.slice(2, 4), 16);
     const b = parseInt(full.slice(4, 6), 16);
-    sum += 0.299 * r + 0.587 * g + 0.114 * b;
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    darkest = Math.min(darkest, lum);
+    lightest = Math.max(lightest, lum);
+    sum += lum;
   }
-  return tileForLuminance(sum / tones.length);
+  const mean = sum / tones.length;
+  // A logo carrying both dark and light tones is drawn on a light ground.
+  if (darkest < 90 && lightest > 170) return TILE.light;
+  return tileForLuminance(mean);
 }
