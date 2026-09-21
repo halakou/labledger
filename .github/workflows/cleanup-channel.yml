@@ -1,0 +1,26 @@
+name: cleanup-channel
+
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: "Comma-separated channel message ids to delete"
+        required: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Delete duplicate posts
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
+          DELETE_IDS: ${{ github.event.inputs.ids }}
+        run: node scripts/cleanup-channel-posts.mjs
