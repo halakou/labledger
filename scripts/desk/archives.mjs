@@ -13,6 +13,102 @@ import {
 import { write } from "./net.mjs";
 import { jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
 
+// Inline SVG activity chart for a lab page: one bar per week, built purely
+// from the briefs' own dates. No JS, no external assets, no data duplicated —
+// it renders the same for every visitor and costs nothing at runtime.
+function activityChart(rows, label) {
+  if (rows.length < 2) return "";
+  // Bucket briefs into ISO weeks (YYYY-Www). Using the ISO week keeps the
+  // axis honest across month boundaries.
+  const buckets = new Map();
+  for (const b of rows) {
+    const key = isoWeek(b.year, b.month, b.day);
+    buckets.set(key, (buckets.get(key) || 0) + 1);
+  }
+  // Show the last 12 weeks even when the lab was quiet — empty weeks are
+  // informative, and a single bar would not be a chart.
+  const allKeys = [...buckets.keys()].sort();
+  const window = 12;
+  const last = allKeys[allKeys.length - 1];
+  const keys = weekRange(last, window);
+  const max = Math.max(...keys.map((k) => buckets.get(k) || 0), 1);
+  const W = 320;
+  const H = 56;
+  const barW = Math.max(3, Math.floor((W - 8) / keys.length) - 2);
+  const gap = Math.max(1, Math.floor((W - 8 - barW * keys.length) / Math.max(1, keys.length - 1)));
+  const total = rows.length;
+  const span = keys.length;
+  // <title> inside each bar makes the chart screen-reader friendly.
+  const bars = keys
+    .map((k, i) => {
+      const v = buckets.get(k) || 0;
+      const h = v === 0 ? 2 : Math.max(3, Math.round((v / max) * (H - 10)));
+      const x = 4 + i * (barW + gap);
+      const y = H - 4 - h;
+      return (
+        '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h +
+        '" rx="1" fill="currentColor" opacity="' + (v === 0 ? 0.12 : (0.35 + (v / max) * 0.65).toFixed(2)) +
+        '"><title>' + esc(k) + ": " + v + " brief" + (v === 1 ? "" : "s") + "</title></rect>"
+      );
+    })
+    .join("");
+  const active = keys.filter((k) => (buckets.get(k) || 0) > 0).length;
+  return (
+    '<div class="activity"><svg viewBox="0 0 ' + W + " " + H +
+    '" width="100%" height="' + H + '" role="img" aria-label="' + esc(label) +
+    " activity: " + total + " brief" + (total === 1 ? "" : "s") + " over the last " + span +
+    ' weeks">' + bars + "</svg>" +
+    '<p class="activity-cap">' + total + " filed · " + active +
+    " active week" + (active === 1 ? "" : "s") + " in the last " + window + "</p></div>"
+  );
+}
+
+// The `window` ISO weeks ending at `last`, inclusive, oldest first.
+function weekRange(last, window) {
+  const out = [];
+  const [yStr, wStr] = last.split("-W");
+  let y = Number(yStr);
+  let w = Number(wStr);
+  for (let i = window - 1; i >= 0; i--) {
+    let yy = y;
+    let ww = w - i;
+    while (ww < 1) {
+      yy -= 1;
+      ww += weeksInYear(yy);
+    }
+    while (ww > weeksInYear(yy)) {
+      ww -= weeksInYear(yy);
+      yy += 1;
+    }
+    out.push(yy + "-W" + String(ww).padStart(2, "0"));
+  }
+  return out;
+}
+
+// Number of ISO weeks in a year (52 or 53).
+function weeksInYear(y) {
+  const d = new Date(Date.UTC(y, 11, 28));
+  const day = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - day + 3);
+  const first = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const fd = (first.getUTCDay() + 6) % 7;
+  first.setUTCDate(first.getUTCDate() - fd + 3);
+  return Math.round((d - first) / (7 * 24 * 60 * 60 * 1000)) + 1;
+}
+
+// ISO week number for a date given as numeric parts.
+function isoWeek(y, m, d) {
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const day = (date.getUTCDay() + 6) % 7; // Monday = 0
+  date.setUTCDate(date.getUTCDate() - day + 3); // Thursday of this week
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstDay = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDay + 3);
+  const week =
+    1 + Math.round((date - firstThursday) / (7 * 24 * 60 * 60 * 1000));
+  return date.getUTCFullYear() + "-W" + String(week).padStart(2, "0");
+}
+
 export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpen = [], today }) {
   for (const lab of LABS) {
     const rows = allBriefs.filter((b) => b.labId === lab.id).slice(0, 80);
@@ -29,7 +125,9 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "</h1>",
           "<p class=\"dek\">",
           how,
-          "</p></article>",
+          "</p>",
+          activityChart(rows, lab.label),
+          "</article>",
           "<section class=\"board\">",
           rows.map(rowHtml).join("") || "<p class=\"empty\">No filed brief for " + esc(lab.label) + " yet.</p>",
           "</section>",

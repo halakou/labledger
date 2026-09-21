@@ -76,6 +76,10 @@ a.kind:hover,a.tag:hover{color:var(--ink);border-color:var(--ink)}
 .row-id{font-size:.75rem;color:var(--muted);text-align:right}
 .labs{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem 1rem;margin:1.5rem 0 0;padding-top:1.4rem}
 @media(min-width:700px){.labs{grid-template-columns:repeat(3,1fr)}}
+/* Inline SVG activity chart on lab pages. */
+.activity{margin:1.2rem 0 .2rem;max-width:24rem;color:var(--accent)}
+.activity svg{display:block}
+.activity-cap{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:.45rem 0 0}
 @media(min-width:900px){.labs{grid-template-columns:repeat(4,1fr)}}
 .labs a{border-top:2px solid var(--ink);padding-top:.55rem;text-decoration:none}
 .labs b{display:block;font-family:Fraunces,Georgia,serif;font-size:1.15rem}
