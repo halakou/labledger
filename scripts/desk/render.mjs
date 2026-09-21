@@ -4,9 +4,20 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 
-export function markHtml(b, size) {
+export function markHtml(b, size, spriteRef = null) {
   const cls = "mark" + (size === "sm" ? " sm" : "") + (b.markFile ? "" : " letter");
   if (b.markFile) {
+    if (spriteRef) {
+      return (
+        '<div class="' +
+        cls +
+        '" style="background:' +
+        b.color +
+        '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="' +
+        spriteRef +
+        '"/></svg></span></div>'
+      );
+    }
     return (
       '<div class="' +
       cls +
@@ -14,10 +25,19 @@ export function markHtml(b, size) {
       b.color +
       '"><span class="glyph"><img src="' +
       esc(b.markFile) +
-      '" alt="" width="38" height="38"></span></div>'
+      '" alt="" width="38" height="38" loading="lazy" decoding="async"></span></div>'
     );
   }
   return '<div class="' + cls + '" style="background:' + b.color + '">' + esc(b.mark) + "</div>";
+}
+
+// Turn "/marks/openai.png" into an external sprite symbol reference.
+// <use href="/sprite.svg#m-openai"> pulls the symbol from the single shared
+// sprite file, so the whole board costs one request instead of one per logo.
+export function markToSprite(markFile) {
+  if (!markFile) return null;
+  const id = String(markFile).replace(/^\/marks\//, "").replace(/\.[^.]+$/, "");
+  return "/sprite.svg#m-" + id;
 }
 
 export const CSS = (await readFile(join(here, "house.css"), "utf8")).replace(/\n/g, "");
@@ -87,7 +107,7 @@ export function rowHtml(b) {
     "\" data-lab=\"",
     esc(b.labId),
     "\">",
-    markHtml(b, "md"),
+    markHtml(b, "md", markToSprite(b.markFile)),
     "<div>",
     "<div class=\"kicker\"><a href=\"/lab/",
     esc(b.labId),

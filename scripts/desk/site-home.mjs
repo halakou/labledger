@@ -1,11 +1,10 @@
 import { copyFile } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { join } from "node:path";
 import {
   CHANNEL,
   FONT_DIR,
   KINDS,
   LABS,
-  MARK_DIR,
   OUT,
   SITE,
   TOPICS,
@@ -21,18 +20,9 @@ export async function writeStatic(fontNames) {
     const src = join(FONT_DIR, name);
     if (await exists(src)) await copyFile(src, join(OUT, "fonts", name));
   }
-  for (const lab of LABS) {
-    if (!lab.markFile) continue;
-    const src = join(MARK_DIR, lab.id + extname(lab.markFile));
-    if (await exists(src)) await copyFile(src, join(OUT, "marks", lab.id + extname(lab.markFile)));
-  }
-  // Open releases rail: its marks are written to the same MARK_DIR but are
-  // not part of LABS, so copy them explicitly.
-  for (const proj of OPEN_PROJECTS) {
-    if (!proj.markFile) continue;
-    const src = join(MARK_DIR, proj.id + extname(proj.markFile));
-    if (await exists(src)) await copyFile(src, join(OUT, "marks", proj.id + extname(proj.markFile)));
-  }
+  // Marks live in one SVG sprite now — one request for the whole board
+  // instead of one request per logo. Individual mark files are no longer
+  // copied to OUT.
   await write(
     "favicon.svg",
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#1c1914"/><path fill="#f4efe4" d="M9 6h7v14h8v6H9z"/><rect x="9" y="27.5" width="14" height="1.5" fill="#6e2f22"/></svg>',

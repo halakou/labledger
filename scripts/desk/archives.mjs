@@ -11,7 +11,7 @@ import {
   topicLabel,
 } from "./core.mjs";
 import { write } from "./net.mjs";
-import { jsonLdScript, markHtml, rowHtml, shell } from "./render.mjs";
+import { jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
 
 export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpen = [], today }) {
   for (const lab of LABS) {
@@ -203,7 +203,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
       ].join(""),
       body: [
         "<article class=\"brief\">",
-        markHtml(b, "sm"),
+        markHtml(b, "sm", markToSprite(b.markFile)),
         "<p class=\"kicker\"><a href=\"/lab/",
         esc(b.labId),
         "/\">",

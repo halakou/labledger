@@ -46,6 +46,8 @@ a.headline:hover{color:var(--accent)}
 .mark .glyph{width:100%;height:100%;background:#fffaf2;display:grid;place-items:center}
 .mark .glyph img{width:38px;height:38px;object-fit:contain}
 .mark.sm .glyph img{width:28px;height:28px}
+.mark-sprite{width:38px;height:38px;object-fit:contain;display:block}
+.mark.sm .mark-sprite{width:28px;height:28px}
 .kicker{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .headline{font-family:Fraunces,Georgia,serif;font-size:1.45rem;font-weight:600;line-height:1.2;margin:.2rem 0;letter-spacing:-.02em}
 .dek{color:var(--muted)}
