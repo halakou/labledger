@@ -17,7 +17,10 @@ jobs:
     if: github.event_name == 'schedule' && github.event.schedule == '17 4 * * 1'
     runs-on: ubuntu-latest
     permissions:
+      # actions: write lets it re-enable the schedule; contents: write lets it
+      # push the touch-commit that resets GitHub's 60-day inactivity timer.
       actions: write
+      contents: write
     steps:
       - uses: liskin/gh-workflow-keepalive@v1
 

@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: write
+      contents: write
     steps:
       - uses: liskin/gh-workflow-keepalive@v1
 

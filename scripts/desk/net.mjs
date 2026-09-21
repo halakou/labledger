@@ -234,7 +234,6 @@ export async function ensureFonts() {
   await mkdir(FONT_DIR, { recursive: true });
   const files = {
     "fraunces-600.woff2": null,
-    "fraunces-700.woff2": null,
     "source-sans-3-400.woff2": null,
     "source-sans-3-600.woff2": null,
   };
@@ -242,7 +241,7 @@ export async function ensureFonts() {
   if (haveAll.every(Boolean)) return Object.keys(files);
   try {
     const cssRes = await fetch(
-      "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700" +
+      "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600" +
         AMP +
         "family=Source+Sans+3:wght@400;600" +
         AMP +
