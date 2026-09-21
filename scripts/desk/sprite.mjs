@@ -386,6 +386,49 @@ export function tileForLuminance(lum) {
   return lum >= 150 ? TILE.dark : TILE.light;
 }
 
+// Many official logos arrive with an opaque background baked in (favicon ICOs,
+// JPEG exports). Left alone, that square covers the site's own tile and shows
+// as a foreign cream box in dark mode. The corner color is read and keyed to
+// transparency instead, so the site's tile shows through behind the glyph and
+// the tile can flip with the theme. The key is only applied when the result
+// still leaves a recognizable mark: a key that would eat most of the logo is
+// skipped (the logo keeps its own ground, as it was designed).
+function keyBackground(rgba, w, h) {
+  const i = (x, y) => (y * w + x) * 4;
+  const key = [rgba[i(2, 2)], rgba[i(2, 2) + 1], rgba[i(2, 2) + 2]];
+  let kept = 0;
+  let removed = 0;
+  const out = new Uint8Array(rgba.length);
+  for (let p = 0; p < rgba.length; p += 4) {
+    const a = rgba[p + 3];
+    if (a < 200) continue;
+    const d =
+      Math.abs(rgba[p] - key[0]) +
+      Math.abs(rgba[p + 1] - key[1]) +
+      Math.abs(rgba[p + 2] - key[2]);
+    if (d < 36) {
+      removed++;
+    } else {
+      out[p] = rgba[p];
+      out[p + 1] = rgba[p + 1];
+      out[p + 2] = rgba[p + 2];
+      out[p + 3] = a;
+      kept++;
+    }
+  }
+  // Skip the key when it would erase the logo itself. Those logos are drawn
+  // on their own ground (BAIR on navy, WIRED on black), so the ground stays
+  // and the tile must match it — a contrasting tile behind a logo that keeps
+  // its own background would frame it in a foreign square.
+  if (kept < 150 || kept < removed * 0.35) {
+    const r = key[0].toString(16).padStart(2, "0");
+    const g = key[1].toString(16).padStart(2, "0");
+    const b = key[2].toString(16).padStart(2, "0");
+    return { skipped: "#" + r + g + b };
+  }
+  return out;
+}
+
 // Normalize a raster to a square 96x96 RGBA *and* report its luminance. The
 // tile behind the logo is chosen from that luminance so the logo stays legible
 // in both light and dark mode. Returns { png, lum } or null when we cannot
@@ -393,7 +436,15 @@ export function tileForLuminance(lum) {
 function normalizeRasterWithLum(buf) {
   const rgba = rasterToRgba(buf);
   if (!rgba) return null;
-  return { png: encodePng(96, 96, rgba), lum: rasterLuminance(rgba) };
+  const keyed = keyBackground(rgba, 96, 96);
+  if (keyed && keyed.skipped) {
+    // The logo keeps its own ground, so the tile matches it and becomes
+    // invisible; the luminance of the logo's opaque pixels is what decides
+    // whether the mark reads dark or light.
+    return { png: encodePng(96, 96, rgba), lum: rasterLuminance(rgba), ground: keyed.skipped };
+  }
+  const final = keyed ? Buffer.from(keyed) : rgba;
+  return { png: encodePng(96, 96, final), lum: rasterLuminance(final) };
 }
 
 // Luminance of raw bytes we could not decode (JPEG/WebP). We cannot decode
@@ -452,7 +503,7 @@ function symbolForRaster(id, ext, buf) {
   // Paint the tile into the symbol itself so the logo always sits on a color
   // it contrasts with, in both light and dark mode. The CSS .glyph color is
   // then just the fallback for marks we could not measure.
-  let tile = norm ? tileForLuminance(norm.lum) : null;
+  let tile = norm ? (norm.ground || tileForLuminance(norm.lum)) : null;
   if (!tile && ext !== ".svg") tile = tileForLuminance(rawLuminance(buf));
   const vb = "0 0 96 96";
   const bg = tile ? '<rect width="96" height="96" fill="' + tile + '"/>' : "";
