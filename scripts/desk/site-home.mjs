@@ -12,7 +12,7 @@ import {
 } from "./core.mjs";
 import { OPEN_PROJECTS } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
-import { CSS, jsonLdScript, rowHtml, shell } from "./render.mjs";
+import { CSS, jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
 
 export async function writeStatic(fontNames) {
   await write("styles.css", CSS);
@@ -134,11 +134,37 @@ function chips(items, hrefBase) {
         '<a class="chip" href="' +
         hrefBase +
         item.id +
-        '/">' +
+        '/" data-chip="' +
+        esc(item.id) +
+        '">' +
         esc(item.label) +
-        "</a>",
+        '<span class="chip-n"></span></a>',
     )
     .join("");
+}
+
+// Mini mark row for the hero: the board's labs as tiny live tiles, using the
+// same sprite so they cost no extra requests. Counts are filled in client-side
+// from the data-* attributes on the rows below.
+function markRow(labs) {
+  return (
+    '<div class="markrow" aria-hidden="true">' +
+    labs
+      .map(
+        (l) =>
+          '<a class="mbadge" href="/lab/' +
+          esc(l.id) +
+          '/" data-lab="' +
+          esc(l.id) +
+          '" title="' +
+          esc(l.label) +
+          '">' +
+          markHtml(l, "xs", markToSprite(l.markFile)) +
+          '<span class="mbadge-n"></span></a>',
+      )
+      .join("") +
+    "</div>"
+  );
 }
 
 export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
@@ -243,13 +269,14 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
         "</strong></span></div></div>",
         "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Look up a lab, a launch, or a topic</label>",
         "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Anthropic, hardware, Claude…\" autocomplete=\"off\">",
-        "<div class=\"chips\">",
+        "<div class=\"chips\" data-group=\"kind\">",
         chips(KINDS, "/kind/"),
-        chips(TOPICS, "/topic/"),
         "</div>",
-        "<div class=\"chips\">",
-        chips(LABS, "/lab/"),
-        "</div></form></section>",
+        "<div class=\"chips\" data-group=\"topic\">",
+        chips(TOPICS, "/topic/"),
+        "</div></form>",
+        markRow([...LABS, ...OPEN_PROJECTS]),
+        "</section>",
         "<section class=\"board\" id=\"today\"><div class=\"board-head\"><span>The board</span><span id=\"count\">",
         String(briefs.length),
         " logged</span></div>",

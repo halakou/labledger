@@ -28,8 +28,20 @@ nav a:hover{color:var(--ink)}
 .search label{display:block;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:.55rem}
 .search input{width:100%;border:0;border-bottom:1px solid var(--ink);background:transparent;font-family:Fraunces,Georgia,serif;font-size:1.35rem;font-weight:500;padding:.45rem 0;color:var(--ink);outline:none}
 .chips{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.9rem}
-.chip{border:1px solid var(--rule);padding:0 .85rem;min-height:44px;display:inline-flex;align-items:center;font-size:.78rem;font-weight:600;letter-spacing:.04em;text-decoration:none;background:transparent;cursor:pointer;font-family:inherit;color:inherit}
+.chip{border:1px solid var(--rule);padding:0 .85rem;min-height:44px;display:inline-flex;align-items:center;gap:.5rem;font-size:.78rem;font-weight:600;letter-spacing:.04em;text-decoration:none;background:transparent;cursor:pointer;font-family:inherit;color:inherit}
 .chip:hover,.chip[aria-current=page]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.chip-n{font-size:.68rem;font-weight:600;opacity:.55;font-variant-numeric:tabular-nums}
+.chip:hover .chip-n,.chip[aria-current=page] .chip-n{opacity:.8}
+.chip[data-active="1"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+/* Mini mark row: the board's labs as small live tiles. */
+.markrow{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:1.1rem;padding-top:1.1rem;border-top:1px solid var(--rule)}
+.mbadge{position:relative;width:40px;height:40px;text-decoration:none;display:block}
+.mbadge .mark{width:40px;height:40px;padding:4px;border-radius:2px}
+.mbadge .mark.xs.letter{font-size:1.05rem}
+.mbadge .mark.xs .mark-sprite{width:22px;height:22px}
+.mbadge-n{position:absolute;right:-5px;top:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fffaf2;font-size:.62rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.mbadge-n:empty{display:none}
+.mbadge:hover .mark{outline:2px solid var(--ink);outline-offset:1px}
 .board{padding:1.8rem 0 2.4rem;display:grid;gap:.75rem}
 .board-head{display:flex;justify-content:space-between;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:.2rem}
 .row{display:grid;grid-template-columns:1fr;gap:1rem;border:1px solid var(--rule);background:var(--card);padding:1.05rem 1.1rem;text-decoration:none;transition:border-color .15s ease}
