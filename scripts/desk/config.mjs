@@ -224,7 +224,11 @@ export const OPEN_PROJECTS = [
     feed: "https://pytorch.org/blog/feed/",
     hosts: ["pytorch.org"],
     pathPrefix: "/blog/",
-    icons: ["https://pytorch.org/favicon.ico"],
+    icons: [
+      "https://pytorch.org/assets/images/logo-icon.svg",
+      "https://pytorch.org/assets/images/logo.svg",
+      "https://pytorch.org/favicon.ico",
+    ],
   },
   {
     id: "vllm",

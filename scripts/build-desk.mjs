@@ -44,7 +44,6 @@ await Promise.all(
 // Open releases rail: fetch marks for open projects too, so cards can carry them.
 await Promise.all(
   OPEN_PROJECTS.map(async (proj) => {
-    if (proj.kind !== "github") return;
     const file = await fetchMark(proj);
     proj.markFile = file;
     markMap[proj.id] = file;

@@ -26,6 +26,13 @@ export async function writeStatic(fontNames) {
     const src = join(MARK_DIR, lab.id + extname(lab.markFile));
     if (await exists(src)) await copyFile(src, join(OUT, "marks", lab.id + extname(lab.markFile)));
   }
+  // Open releases rail: its marks are written to the same MARK_DIR but are
+  // not part of LABS, so copy them explicitly.
+  for (const proj of OPEN_PROJECTS) {
+    if (!proj.markFile) continue;
+    const src = join(MARK_DIR, proj.id + extname(proj.markFile));
+    if (await exists(src)) await copyFile(src, join(OUT, "marks", proj.id + extname(proj.markFile)));
+  }
   await write(
     "favicon.svg",
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#1c1914"/><path fill="#f4efe4" d="M9 6h7v14h8v6H9z"/><rect x="9" y="27.5" width="14" height="1.5" fill="#6e2f22"/></svg>',
@@ -199,7 +206,7 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
             name: "What does Lab Ledger Desk file?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "Official announcements from named AI labs, research groups, and MIT Technology Review. One brief per move, about 100 words, with the primary source on the page.",
+              text: "Official announcements from named AI labs and research groups, plus official release notes from open-source AI projects. One brief per move, about 100 words, with the primary source on the page.",
             },
           },
           {
@@ -207,7 +214,7 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
             name: "Which sources are on the board?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "OpenAI, Anthropic, Google, DeepMind, Mistral, Hugging Face, Microsoft Research, NVIDIA, AWS, Apple, Google Research, BAIR, MIT News, and MIT Technology Review. Anthropic is read from its official /news listing. Meta and xAI publish no official RSS the desk will use.",
+              text: "Allow-listed official feeds and release pages from named labs and open-source projects — read straight from the publisher. No wire service, no aggregator, no screenshot.",
             },
           },
           {
@@ -270,14 +277,19 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
             ].join("")
           : "",
         "<article class=\"method\"><h2>What does the desk file?</h2>",
-        "<p>Official announcements from named labs, research groups, and MIT Technology Review. One brief per move, about 100 words. The primary source stays on the page.</p>",
+        "<p>Official announcements from named labs and research groups — plus the open-source releases that move the stack underneath them. One brief per move, about 100 words. The primary source stays on the page.</p>",
         "<h2>Which sources are on the board?</h2>",
-        "<ul>",
+        "<p>Every source below is read straight from the publisher's own feed or release page. No wire service, no aggregator, no screenshot.</p>",
+        "<table><thead><tr><th>Source</th><th>Read from</th></tr></thead><tbody>",
         LABS.map((l) => {
           const how = l.listing && !l.feed ? "official /news listing" : l.feed ? "official RSS" : "no official source";
-          return "<li><a href=\"/lab/" + l.id + "/\">" + esc(l.label) + "</a> — " + how + "</li>";
+          return "<tr><td><a href=\"/lab/" + l.id + "/\">" + esc(l.label) + "</a></td><td>" + how + "</td></tr>";
         }).join(""),
-        "</ul>",
+        OPEN_PROJECTS.map((p) => {
+          const how = p.kind === "github" ? "official GitHub releases" : "official RSS";
+          return "<tr><td><a href=\"/lab/" + p.id + "/\">" + esc(p.label) + "</a></td><td>" + how + "</td></tr>";
+        }).join(""),
+        "</tbody></table>",
         "<h2>Does the desk invent launches?</h2>",
         "<p>No. It reads allow-listed official sources, fills a fixed template, and mirrors the same brief to <a href=\"",
         esc(CHANNEL),
