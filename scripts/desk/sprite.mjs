@@ -7,8 +7,9 @@
 // hand-rolled PNG decoder + encoder — the project has zero native deps,
 // deliberately, so no sharp/libpng.
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
+import { fileURLToPath } from "node:url";
 import { MARK_DIR, OUT } from "./core.mjs";
 
 async function exists(path) {
@@ -311,24 +312,20 @@ function squareToRgba(rgba, w, h) {
   return out;
 }
 
-// Normalize any raster we support to a square 96x96 RGBA PNG. Returns a
-// Buffer of PNG bytes, or null if we cannot handle the format (the caller
-// then embeds the original bytes so the sprite still costs one request).
-function normalizeRaster(buf) {
-  // ICO: extract the largest entry (PNG preferred, BMP decoded with its
-  // AND-mask transparency).
-  if (buf.length >= 6 && buf.readUInt16LE(0) === 0 && buf.readUInt16LE(2) === 1) {
-    const rgba = icoToRgba(buf);
-    return rgba ? encodePng(96, 96, rgba) : null;
+
+
+// Luminance of a normalized raster. Only opaque pixels count, so a logo that
+// is mostly transparent does not read as "dark" just because it sits on a
+// transparent square. Returns null when there is nothing opaque to measure.
+function rasterLuminance(rgba) {
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < rgba.length; i += 4) {
+    if (rgba[i + 3] < 128) continue;
+    sum += 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2];
+    n++;
   }
-  if (buf.length < 33 || buf[0] !== 0x89 || buf[1] !== 0x50) return null;
-  const w = buf.readUInt32BE(16);
-  const h = buf.readUInt32BE(20);
-  if (w === 0 || w > 4096 || h === 0 || h > 4096) return null; // not a real PNG
-  const colorType = buf[25];
-  const rgba = decodePng(buf, w, h, colorType);
-  if (!rgba) return null;
-  return encodePng(96, 96, squareToRgba(rgba, w, h));
+  return n ? sum / n : null;
 }
 
 // Vector marks are inlined so they keep scaling at any size.
@@ -337,20 +334,92 @@ function symbolForSvg(id, buf) {
   const inner = raw.includes(">")
     ? raw.slice(raw.indexOf(">") + 1, raw.lastIndexOf("</svg>"))
     : "";
-  return '<symbol id="m-' + id + '" viewBox="0 0 32 32">' + inner + "</symbol>";
+  const tile = vectorTile(raw);
+  const bg = tile ? '<rect width="32" height="32" fill="' + tile + '"/>' : "";
+  return '<symbol id="m-' + id + '" viewBox="0 0 32 32">' + bg + inner + "</symbol>";
+}
+
+// The tile that sits behind every mark. Both colors are from the desk
+// palette: cream in light mode, warm near-black in dark mode. The glyph tile
+// is what actually shows behind the logo, so its color is what the logo has to
+// contrast against — not the outer .mark color.
+const TILE = {
+  light: "#fffaf2",
+  dark: "#241f18",
+};
+
+// Pick the tile a logo can be seen on. A light logo gets the dark tile and a
+// dark logo gets the light one, so every mark is legible in BOTH light and
+// dark mode without any per-logo special-casing.
+export function tileForLuminance(lum) {
+  if (lum === null || lum === undefined) return null;
+  return lum >= 150 ? TILE.dark : TILE.light;
+}
+
+// Normalize a raster to a square 96x96 RGBA *and* report its luminance. The
+// tile behind the logo is chosen from that luminance so the logo stays legible
+// in both light and dark mode. Returns { png, lum } or null when we cannot
+// decode the format (the caller then embeds the original bytes raw).
+function normalizeRasterWithLum(buf) {
+  const rgba = rasterToRgba(buf);
+  if (!rgba) return null;
+  return { png: encodePng(96, 96, rgba), lum: rasterLuminance(rgba) };
+}
+
+// Luminance of raw bytes we could not decode (JPEG/WebP). We cannot decode
+// these to RGBA, but the byte histogram still tells us whether the image is
+// mostly light or mostly dark: count how many bytes sit in the low vs high
+// half of the range. This is a rough estimate, but it is enough to pick a
+// tile the logo can be seen on.
+function rawLuminance(buf) {
+  let dark = 0;
+  let light = 0;
+  // Sample at most 64k bytes to keep it cheap.
+  const step = Math.max(1, Math.floor(buf.length / 65536));
+  for (let i = 0; i < buf.length; i += step) {
+    const b = buf[i];
+    if (b < 90) dark++;
+    else if (b > 180) light++;
+  }
+  if (!dark && !light) return null;
+  // A JPEG of a dark logo has many more low bytes than high bytes.
+  return dark > light ? 60 : 200;
+}
+
+// Decode ICO/PNG/etc. to a normalized 96x96 RGBA buffer, or null.
+function rasterToRgba(buf) {
+  if (buf.length >= 6 && buf.readUInt16LE(0) === 0 && buf.readUInt16LE(2) === 1) {
+    return icoToRgba(buf);
+  }
+  if (buf.length < 33 || buf[0] !== 0x89 || buf[1] !== 0x50) return null;
+  const w = buf.readUInt32BE(16);
+  const h = buf.readUInt32BE(20);
+  if (w === 0 || w > 4096 || h === 0 || h > 4096) return null; // not a real PNG
+  const colorType = buf[25];
+  const rgba = decodePng(buf, w, h, colorType);
+  if (!rgba) return null;
+  return squareToRgba(rgba, w, h);
 }
 
 function symbolForRaster(id, ext, buf) {
   // Square everything to 96x96 PNG. ICO files carry embedded PNGs which we
   // extract first; anything we cannot re-encode is embedded raw so the
   // sprite still costs one request.
-  const norm = ext === ".png" || ext === ".ico" ? normalizeRaster(buf) : null;
+  const norm = ext === ".png" || ext === ".ico" ? normalizeRasterWithLum(buf) : null;
   const mime = norm ? "image/png" : ext === ".webp" ? "image/webp" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
-  const finalBuf = norm || buf;
+  const finalBuf = norm ? norm.png : buf;
+  // Paint the tile into the symbol itself so the logo always sits on a color
+  // it contrasts with, in both light and dark mode. The CSS .glyph color is
+  // then just the fallback for marks we could not measure.
+  let tile = norm ? tileForLuminance(norm.lum) : null;
+  if (!tile && ext !== ".svg") tile = tileForLuminance(rawLuminance(buf));
+  const bg = tile ? '<rect width="96" height="96" fill="' + tile + '"/>' : "";
   return (
     '<symbol id="m-' +
     id +
-    '" viewBox="0 0 96 96"><image href="data:' +
+    '" viewBox="0 0 96 96">' +
+    bg +
+    '<image href="data:' +
     mime +
     ";base64," +
     finalBuf.toString("base64") +
@@ -374,7 +443,10 @@ async function collectMarks(ids) {
 
 // Build /sprite.svg from every mark the board uses. Marks that are plain SVG
 // are inlined as vector paths; raster marks are normalized to square PNG and
-// embedded as data URIs. Returns the public path so markHtml can reference it.
+// embedded as data URIs. Every symbol also paints its own background tile, so
+// a light logo sits on the dark tile and a dark logo on the light one — each
+// mark stays legible in both light and dark mode. Returns the public path so
+// markHtml can reference it.
 export async function writeMarkSprite(markIds) {
   const marks = await collectMarks(markIds);
   if (!marks.length) return null;
@@ -387,4 +459,21 @@ export async function writeMarkSprite(markIds) {
   const path = join(OUT, "sprite.svg");
   await writeFile(path, parts.join(""));
   return "/sprite.svg";
+}
+
+// Vector marks are single-color paths drawn by us, so the tile is read from the
+// SVG's own fill/stroke. Raster marks are measured after normalization.
+function vectorTile(raw) {
+  const tones = raw.match(/(?:fill|stroke)="(#[0-9a-fA-F]{3,6})"/g) || [];
+  if (!tones.length) return null;
+  let sum = 0;
+  for (const t of tones) {
+    const hex = t.slice(t.indexOf("#") + 1);
+    const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    sum += 0.299 * r + 0.587 * g + 0.114 * b;
+  }
+  return tileForLuminance(sum / tones.length);
 }
