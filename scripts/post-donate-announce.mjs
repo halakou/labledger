@@ -85,6 +85,8 @@ if (!data.ok) {
   process.exit(1);
 }
 posted[guid] = new Date().toISOString();
-const { write } = await import("./desk/net.mjs");
-await write(postedFile, JSON.stringify(posted, null, 2));
+// NOTE: net.mjs write() targets OUT (dist-site) which is wiped every build —
+// the ledger must live in the repo root to persist between runs.
+import { writeFile as writeRaw } from "node:fs/promises";
+await writeRaw(postedFile, JSON.stringify(posted, null, 2));
 console.log("posted message", data.result?.message_id);
