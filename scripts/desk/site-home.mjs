@@ -86,6 +86,8 @@ export async function writeLlms(briefs, openBriefs = []) {
       "- " + SITE + "/rss.xml — machine feed",
       "- " + SITE + "/sitemap.xml",
       "- " + SITE + "/open/ — open-source releases board",
+      "- " + SITE + "/learn/ — field guide: original AI explainers",
+      "- " + SITE + "/learn/ai-vocabulary/ — the AI vocabulary, unpacked",
       "- " + SITE + "/donate/ — support and cost ledger",
       ...LABS.map((l) => "- " + SITE + "/lab/" + l.id + "/ — " + l.label + " archive"),
       ...TOPICS.map((t) => "- " + SITE + "/topic/" + t.id + "/ — " + t.label),

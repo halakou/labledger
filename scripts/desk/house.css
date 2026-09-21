@@ -120,3 +120,16 @@ article.brief h2{font-family:"Source Sans 3",sans-serif;font-size:.72rem;letter-
 .week-day h2{font-family:Fraunces,Georgia,serif;font-size:1.25rem;letter-spacing:-.02em;text-transform:none;color:var(--ink);margin:0 0 .7rem}
 a.row[hidden],article.row[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Field guide: longer-form explainers. Wider measure than the board, because
+   a paragraph that fits in a news column does not fit an explainer. */
+.guide{max-width:44rem;padding:2.4rem 0 3rem}
+.guide h1{font-size:clamp(2rem,4.5vw,2.9rem);margin:.4rem 0 0}
+.guide .dek{font-size:1.1rem;margin-top:.9rem}
+.guide section{margin-top:2.2rem}
+.guide h2{font-family:Fraunces,Georgia,serif;font-size:1.35rem;letter-spacing:-.02em;color:var(--ink);margin:0 0 .8rem}
+.guide p{margin:0 0 .9rem;font-size:1.02rem;line-height:1.7}
+.guide b{color:var(--ink);font-weight:600}
+.guide-row{border-bottom:1px solid var(--rule)}
+.guide-row .dek{margin:.35rem 0 0}
+.guide-row:last-child{border-bottom:0}

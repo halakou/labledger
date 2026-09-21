@@ -8,6 +8,7 @@ import { writeHome, writeLlms, writeOpenBoard, writeStatic } from "./site-home.m
 import { writeOpenArchives, writeOpenRss } from "./open-archives.mjs";
 import { writeDonate } from "./donate.mjs";
 import { writeDigest } from "./site-digest.mjs";
+import { writeLearn } from "./learn.mjs";
 
 export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap }) {
   await rm(OUT, { recursive: true, force: true });
@@ -25,6 +26,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeOpenArchives({ allOpen, today });
   await writeOpenRss(openBriefs);
   await writeDonate({ today, briefsCount: allBriefs.length, openCount: openBriefs.length, labsCount: LABS.length });
+  const guideCount = await writeLearn();
   const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
   await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });
   console.log(
@@ -36,6 +38,8 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
       openBriefs.length +
       ", week " +
       weekCount +
+      ", guides " +
+      guideCount +
       ", marks " +
       Object.values(markMap).filter(Boolean).length +
       ", fonts " +
