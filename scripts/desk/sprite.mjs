@@ -208,7 +208,8 @@ function normalizePngToRgba(buf) {
   const colorType = buf[25];
   const rgba = decodePng(buf, w, h, colorType);
   if (!rgba) return null;
-  return squareToRgba(rgba, w, h);
+  const c = autocrop(rgba, w, h);
+  return squareToRgba(c.rgba, c.w, c.h);
 }
 
 // ICO BMP entries: 40-byte BITMAPINFOHEADER, bottom-up pixel rows, then a
@@ -266,7 +267,39 @@ function decodeIcoBmp(data, w, h) {
       if (maskBit) rgba[di + 3] = 0;
     }
   }
-  return squareToRgba(rgba, w, imgH);
+  const c = autocrop(rgba, w, imgH);
+  return squareToRgba(c.rgba, c.w, c.h);
+}
+
+// Trim the transparent margins around a raster so the logo fills the tile
+// instead of shrinking into a corner. Many favicons and GitHub avatars ship
+// with dead canvas (MIT Technology Review's 256px icon carries a 96px logo in
+// its top-left corner; centering that canvas makes the mark a quarter-size
+// speck in the corner). Returns { rgba, w, h }; when nothing can be cropped
+// the input is returned unchanged with its original dimensions.
+function autocrop(rgba, w, h) {
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (rgba[(y * w + x) * 4 + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return { rgba, w, h }; // fully transparent — leave it alone
+  const cw = maxX - minX + 1;
+  const ch = maxY - minY + 1;
+  // Don't crop a logo that already fills its canvas — the copy would be a
+  // waste and, worse, would strip a deliberately full-bleed ground.
+  if (cw >= w - 1 && ch >= h - 1) return { rgba, w, h };
+  const out = Buffer.alloc(cw * ch * 4);
+  for (let y = 0; y < ch; y++) {
+    rgba.copy(out, y * cw * 4, ((y + minY) * w + minX) * 4, ((y + minY) * w + minX + cw) * 4);
+  }
+  return { rgba: out, w: cw, h: ch };
 }
 
 // Center a w×h RGBA buffer on a transparent square and box-filter it to 96.
@@ -313,6 +346,25 @@ function squareToRgba(rgba, w, h) {
 }
 
 
+
+// Share of an RGBA buffer's opaque pixels that are dark vs light. A logo with
+// meaningful amounts of both is bichromatic — a white wordmark on a navy
+// square, a gradient from dark to light — and no single-tone tile can carry
+// it. Returns null when there is nothing opaque to measure.
+function inkStats(rgba) {
+  let dark = 0;
+  let light = 0;
+  let n = 0;
+  for (let i = 0; i < rgba.length; i += 4) {
+    if (rgba[i + 3] < 220) continue;
+    const lum = 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2];
+    if (lum < 90) dark++;
+    else if (lum > 170) light++;
+    n++;
+  }
+  if (!n) return null;
+  return { dark: dark / n, light: light / n };
+}
 
 // Luminance of a normalized raster. Only opaque pixels count, so a logo that
 // is mostly transparent does not read as "dark" just because it sits on a
@@ -428,13 +480,29 @@ function symbolForSvg(id, buf) {
 const TILE = {
   light: "#fffaf2",
   dark: "#241f18",
+  // A neutral warm grey that carries both dark and light ink. Sits between
+  // the light paper (#f4efe4) and the dark paper (#16130e) so it never looks
+  // foreign in either theme.
+  mid: "#7d7463",
 };
 
 // Pick the tile a logo can be seen on. A light logo gets the dark tile and a
 // dark logo gets the light one, so every mark is legible in BOTH light and
 // dark mode without any per-logo special-casing.
-export function tileForLuminance(lum) {
+//
+// The tile is baked into the sprite <symbol> as an opaque <rect>, and the CSS
+// .glyph background is transparent so the sprite's own tile shows through.
+// That is what makes a logo legible in both themes: the tile is chosen for the
+// logo, not for the theme.
+//
+// A bichromatic logo (dark AND light ink, like BAIR's white wordmark on navy,
+// or DeepSpeed's gradient) is the hard case: a light tile hides the light ink
+// and a dark tile hides the dark ink. It gets a neutral mid-tone tile instead,
+// which carries both. The mid-tone is a warm grey from the desk palette so it
+// still reads as part of the site in either theme.
+export function tileForLuminance(lum, ink) {
   if (lum === null || lum === undefined) return null;
+  if (ink && ink.dark > 0.08 && ink.light > 0.08) return TILE.mid;
   return lum >= 150 ? TILE.dark : TILE.light;
 }
 
@@ -493,10 +561,10 @@ function normalizeRasterWithLum(buf) {
     // The logo keeps its own ground, so the tile matches it and becomes
     // invisible; the luminance of the logo's opaque pixels is what decides
     // whether the mark reads dark or light.
-    return { png: encodePng(96, 96, rgba), lum: rasterLuminance(rgba), ground: keyed.skipped };
+    return { png: encodePng(96, 96, rgba), lum: rasterLuminance(rgba), ink: inkStats(rgba), ground: keyed.skipped };
   }
   const final = keyed ? Buffer.from(keyed) : rgba;
-  return { png: encodePng(96, 96, final), lum: rasterLuminance(final) };
+  return { png: encodePng(96, 96, final), lum: rasterLuminance(final), ink: inkStats(final) };
 }
 
 // Luminance of raw bytes we could not decode (JPEG/WebP). We cannot decode
@@ -529,9 +597,10 @@ function rasterToRgba(buf) {
   const h = buf.readUInt32BE(20);
   if (w === 0 || w > 4096 || h === 0 || h > 4096) return null; // not a real PNG
   const colorType = buf[25];
-  const rgba = decodePng(buf, w, h, colorType);
+  let rgba = decodePng(buf, w, h, colorType);
   if (!rgba) return null;
-  return squareToRgba(rgba, w, h);
+  const c = autocrop(rgba, w, h);
+  return squareToRgba(c.rgba, c.w, c.h);
 }
 
 function symbolForRaster(id, ext, buf) {
@@ -555,7 +624,7 @@ function symbolForRaster(id, ext, buf) {
   // Paint the tile into the symbol itself so the logo always sits on a color
   // it contrasts with, in both light and dark mode. The CSS .glyph color is
   // then just the fallback for marks we could not measure.
-  let tile = norm ? (norm.ground || tileForLuminance(norm.lum)) : null;
+  let tile = norm ? (norm.ground || tileForLuminance(norm.lum, norm.ink)) : null;
   if (!tile && ext !== ".svg") tile = tileForLuminance(rawLuminance(buf));
   const vb = "0 0 96 96";
   const bg = tile ? '<rect width="96" height="96" fill="' + tile + '"/>' : "";
