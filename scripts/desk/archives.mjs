@@ -10,6 +10,7 @@ import {
   kindLabel,
   topicLabel,
 } from "./core.mjs";
+import { OPEN_PROJECTS } from "./config.mjs";
 import { write } from "./net.mjs";
 import { jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
 
@@ -362,6 +363,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/open/", today],
     ["/open/rss.xml", today],
     ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
+    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/", today]),
     ...TOPICS.map((t) => ["/topic/" + t.id + "/", today]),
     ...KINDS.map((k) => ["/kind/" + k.id + "/", today]),
     ...allBriefs.map((b) => [b.path, b.dateLabel]),

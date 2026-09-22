@@ -25,7 +25,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeOpenBoard({ openBriefs, today });
   await writeOpenArchives({ allOpen, today });
   await writeOpenRss(openBriefs);
-  await writeDonate({ today, briefsCount: allBriefs.length, openCount: openBriefs.length, labsCount: LABS.length });
+  await writeDonate({ today, briefsCount: allBriefs.length, openCount: openBriefs.length, labsCount: LABS.length + OPEN_PROJECTS.length });
   const guideCount = await writeLearn();
   const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
   await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });

@@ -90,6 +90,7 @@ export async function writeLlms(briefs, openBriefs = []) {
       "- " + SITE + "/learn/ai-vocabulary/ — the AI vocabulary, unpacked",
       "- " + SITE + "/donate/ — support and cost ledger",
       ...LABS.map((l) => "- " + SITE + "/lab/" + l.id + "/ — " + l.label + " archive"),
+      ...OPEN_PROJECTS.map((p) => "- " + SITE + "/lab/" + p.id + "/ — " + p.label + " archive"),
       ...TOPICS.map((t) => "- " + SITE + "/topic/" + t.id + "/ — " + t.label),
       ...KINDS.map((k) => "- " + SITE + "/kind/" + k.id + "/ — " + k.label),
       "",
