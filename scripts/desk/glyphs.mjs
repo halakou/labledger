@@ -30,8 +30,25 @@ export const HOUSE_SVG = {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#243044" d="M6 8h20v4.2h-8V24h-4.2V12.2H6z"/></svg>',
   theverge:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#5200ff" d="M4 5h5.4l6.6 13.2L22.6 5H28l-9.6 18.6c-.7 1.4-1.8 2.1-3.3 2.1s-2.6-.7-3.3-2.1z"/></svg>',
-};
+  // Press + open-project fallbacks: stroked house letters in each source's
+  // own color. Before these existed, every one fell through to the OpenAI star.
+  wired: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#1c1914" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M4 24 L8 8 L13 18 L18 8 L22 24"/></svg>',
+  techcrunch: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#2f4a3d" stroke-width="2.6" stroke-linecap="round" d="M6 8 L22 24 M22 8 L6 24"/></svg>',
+  msftai: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#2c3d4f" d="M16 3 L18.6 13.4 L29 16 L18.6 18.6 L16 29 L13.4 18.6 L3 16 L13.4 13.4 Z"/></svg>',
+  pytorch: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#4a3228" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M8 8 L16 16 L24 8 M16 16 L16 25"/></svg>',
+  vllm: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#3d4a2e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M6 8 L16 24 L26 8"/></svg>',
+  sglang: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#2c3d4f" stroke-width="2.6" stroke-linecap="round" d="M22 11 C22 8 18 7 15 7 C11 7 9 9 9 12 C9 15 11 16 15 17 C19 18 22 19 22 22 C22 25 19 26 15 26 C11 26 8 24 8 21"/></svg>',
+  ollama: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#243044" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M9 7 L9 25 L22 25"/></svg>',
+  transformers: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#1c1914" stroke-width="2.6" stroke-linecap="round" d="M10 7 L22 7 M10 7 L10 25 M10 16 L20 16"/></svg>',
+  comfyui: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#4a2e3d" stroke-width="2.6" stroke-linecap="round" d="M22 10 C19 7 13 7 10 11 C7 15 9 22 16 24 C19 25 22 23 23 21"/></svg>',
+  deepspeed: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#355046" stroke-width="2.6" stroke-linecap="round" d="M22 7 L10 7 L10 25 L22 25 M10 16 L20 16"/></svg>',
+  langchain: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#3d4a2e" stroke-width="2.6" stroke-linecap="round" d="M9 7 L9 25 M9 16 L20 7 M9 16 L20 25"/></svg>',
+  jax: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="none" stroke="#2f4a3d" stroke-width="2.6" stroke-linecap="round" d="M20 7 L20 20 C20 24 16 26 13 24 C10 22 10 18 12 16"/></svg>',
+  // Neutral last-resort mark for any id we have not drawn yet, so a new
+  // source can never accidentally wear OpenAI's brand.
+  _default: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="6" y="6" width="20" height="20" rx="2" fill="none" stroke="#1c1914" stroke-width="2.6"/><circle cx="16" cy="16" r="4" fill="#1c1914"/></svg>',
+};;
 
 export function houseSvg(id) {
-  return HOUSE_SVG[id] || HOUSE_SVG.openai;
+  return HOUSE_SVG[id] || HOUSE_SVG._default;
 }

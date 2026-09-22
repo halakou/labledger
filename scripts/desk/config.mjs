@@ -324,19 +324,6 @@ export const OPEN_PROJECTS = [
     icons: ["https://github.com/deepspeedai.png"],
   },
   {
-    id: "llamacpp",
-    label: "llama.cpp",
-    mark: "G",
-    color: "#2a2a28",
-    kind: "github",
-    repo: "ggerganov/llama.cpp",
-    feed: "https://github.com/ggerganov/llama.cpp/releases.atom",
-    hosts: ["github.com"],
-    iconHosts: ["github.com", "avatars.githubusercontent.com", "githubusercontent.com"],
-    pathPrefix: "/ggerganov/llama.cpp/releases",
-    icons: ["https://github.com/ggerganov.png"],
-  },
-  {
     id: "langchain",
     label: "LangChain",
     mark: "C",
@@ -369,7 +356,6 @@ export const OPEN_BLOCK = [
   // noisy auto-release patterns: skip daily CI build numbers and pre-release tags
   /^b\d{4,}$/,            // llama.cpp daily builds like b11065
   /-rc\d+$/,             // release candidates
-  /==/,                   // python distribution version artifacts
 ];
 
 export const OPEN_BY_ID = Object.fromEntries(OPEN_PROJECTS.map((p) => [p.id, p]));

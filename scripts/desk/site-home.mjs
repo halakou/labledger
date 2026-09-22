@@ -13,6 +13,7 @@ import {
 import { OPEN_PROJECTS } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
 import { CSS, jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
+import { GUIDE_ENTRIES } from "./learn.mjs";
 
 export async function writeStatic(fontNames) {
   await write("styles.css", CSS);
@@ -87,7 +88,7 @@ export async function writeLlms(briefs, openBriefs = []) {
       "- " + SITE + "/sitemap.xml",
       "- " + SITE + "/open/ — open-source releases board",
       "- " + SITE + "/learn/ — field guide: original AI explainers",
-      "- " + SITE + "/learn/ai-vocabulary/ — the AI vocabulary, unpacked",
+      ...GUIDE_ENTRIES.map((g) => "- " + SITE + "/learn/" + g.slug + "/ — " + g.title),
       "- " + SITE + "/donate/ — support and cost ledger",
       ...LABS.map((l) => "- " + SITE + "/lab/" + l.id + "/ — " + l.label + " archive"),
       ...OPEN_PROJECTS.map((p) => "- " + SITE + "/lab/" + p.id + "/ — " + p.label + " archive"),
@@ -261,12 +262,12 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
     shell({
       title: "Lab Ledger Desk — Primary moves from the labs",
       description:
-        "A public ledger of official AI announcements from named labs, research groups, and MIT Technology Review. Dated, sourced, kept.",
+        "Official AI announcements from named labs, research groups, and the press that covers them — plus open-source release notes. Dated, sourced, kept.",
       path: "/",
       extra: jsonLdScript(homeSchema),
       body: [
         "<section class=\"hero\"><div><h1>What the labs moved. Sourced, dated, kept.</h1>",
-        "<p>A public ledger of official AI announcements. Named sources only. One brief per move, about 100 words, with the primary source on the page.</p>",
+        "<p>Every brief starts at the source — an official feed or release page from a named lab, read directly and dated. Nothing is rewritten from a rumor, nothing is invented, and the primary link sits on every page.</p>",
         "<div class=\"meta\"><span>Desk date <strong><time datetime=\"",
         esc(today),
         "\">",

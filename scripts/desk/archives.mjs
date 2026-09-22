@@ -13,6 +13,7 @@ import {
 import { OPEN_PROJECTS } from "./config.mjs";
 import { write } from "./net.mjs";
 import { jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
+import { GUIDE_ENTRIES } from "./learn.mjs";
 
 // Inline SVG activity chart for a lab page: one bar per week, built purely
 // from the briefs' own dates. No JS, no external assets, no data duplicated —
@@ -358,7 +359,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/method/", today],
     ["/week/", today],
     ["/learn/", today],
-    ["/learn/ai-vocabulary/", "2026-09-21"],
+    ...GUIDE_ENTRIES.map((g) => ["/learn/" + g.slug + "/", g.date]),
     ["/donate/", today],
     ["/open/", today],
     ["/open/rss.xml", today],

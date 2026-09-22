@@ -11,8 +11,6 @@ export function markHtml(b, size, spriteRef = null) {
       return (
         '<div class="' +
         cls +
-        '" style="background:' +
-        b.color +
         '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="' +
         spriteRef +
         '"/></svg></span></div>'
@@ -91,8 +89,8 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     "<nav><a href=\"/\">Today</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/method/\">Method</a><a href=\"/donate/\">Support</a>",
     "<a href=\"", esc(CHANNEL), "\" rel=\"noreferrer noopener\">Channel</a></nav>",
     "</header>",
-    body,
-    "<footer><p>Lab Ledger Desk records official lab posts. It does not invent launches.</p>",
+    Array.isArray(body) ? body.join("") : String(body || ""),
+    "<footer><p>Every brief here starts at an official source. Nothing is rewritten from a rumor.</p>",
     "<p><a href=\"/method/\">How the desk works</a> · <a href=\"/week/\">Weekly digest</a> · <a href=\"/learn/\">Field guide</a> · <a href=\"/donate/\">Support</a> · <a href=\"",
     esc(CHANNEL),
     "\" rel=\"noreferrer noopener\">Telegram</a> · <a href=\"/rss.xml\">RSS</a></p>",

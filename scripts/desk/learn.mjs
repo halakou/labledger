@@ -3,25 +3,22 @@
 // explainer that lives at /learn/<slug>/ and is linked from the nav once it
 // exists. Unlike the board, these do not expire: they are reference material.
 //
-// Design: a guide is long, so it is built like a reference page rather than a
-// news article. A sticky table of contents sits beside the body, the sections
-// are anchored, and the term list renders as definition rows rather than
-// paragraphs, so a reader can scan for one word instead of reading top to
-// bottom. Prose-only sections keep the paragraph form.
-import { SITE, esc, clip } from "./core.mjs";
+// Adding a tutorial of our own = adding one object to ENTRIES. The index, the
+// sitemap (archives.mjs) and llms.txt (site-home.mjs) all read this list, so a
+// new entry is reachable everywhere without a second touch.
+import { CHANNEL, SITE, esc, clip } from "./core.mjs";
 import { jsonLdScript, shell } from "./render.mjs";
 import { write } from "./net.mjs";
 
 // A section is either prose (h + p) or a term list (h + terms). Term lists are
 // the guide's reason to exist: one row per word, scannable.
-//
-// kind: "terms" renders a definition list; "prose" renders paragraphs.
 const ENTRIES = [
   {
     slug: "ai-vocabulary",
     title: "The AI vocabulary, unpacked",
     dek: "Every acronym the labs use in their announcements, explained in plain language. No prior knowledge assumed, none required.",
     kind: "Explainer",
+    level: "Beginner",
     date: "2026-09-21",
     reading: 9,
     body: [
@@ -102,6 +99,8 @@ const ENTRIES = [
   },
 ];
 
+export const GUIDE_ENTRIES = ENTRIES;
+
 // Slugify a heading the way archives.mjs does, so the TOC and the anchor agree.
 function anchorFor(h) {
   return h.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "section";
@@ -111,10 +110,7 @@ function sectionHtml(s) {
   const a = anchorFor(s.h);
   if (s.kind === "terms" && s.terms) {
     const rows = s.terms
-      .map(
-        (t) =>
-          "<dt>" + esc(t[0]) + "</dt><dd>" + esc(t[1]) + "</dd>",
-      )
+      .map((t) => "<dt>" + esc(t[0]) + "</dt><dd>" + esc(t[1]) + "</dd>")
       .join("");
     return (
       '<section id="' + a + '" aria-labelledby="' + a + '-h">' +
@@ -146,6 +142,12 @@ function tocHtml(entry) {
   );
 }
 
+function escDate(iso) {
+  const d = new Date(iso + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
 export async function writeLearn() {
   for (const e of ENTRIES) {
     const url = "/learn/" + e.slug + "/";
@@ -161,53 +163,33 @@ export async function writeLearn() {
         ogType: "article",
         body: [
           '<article class="guide">',
-          '<p class="kicker">' + esc(e.kind) + " · " + esc(e.date) + " · " + e.reading + " min read</p>",
+          '<header class="guide-head">',
+          '<p class="kicker"><span class="guide-kind-chip">' + esc(e.kind) + '</span> · ' + esc(e.level) + " · " + e.reading + " min read</p>",
           "<h1>" + esc(e.title) + "</h1>",
           '<p class="dek">' + esc(e.dek) + "</p>",
+          "</header>",
           '<div class="guide-layout">',
           tocHtml(e),
           '<div class="guide-body">' + sections + "</div>",
           "</div>",
-          '<p class="kicker">Filed by the desk</p>',
-          '<p class="guide-foot">Original explainer for Lab Ledger Desk, ' + nTerms + " terms and " + e.body.length + " sections. Not syndicated. The board this guide explains is at <a href=\"/\">today's board</a>, and the method behind it is on <a href=\"/method/\">the method page</a>.</p>",
+          '<p class="kicker">Written by the desk</p>',
+          '<p class="guide-foot">This is original work written for Lab Ledger Desk — ' + nTerms + " terms across " + e.body.length + " sections, not copied from anywhere. The board it explains is at <a href=\"/\">today's board</a>, and the method behind it is on <a href=\"/method/\">the method page</a>. If a word is missing, tell us on <a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">the channel</a>.</p>",
           "</article>",
         ],
-        extra: jsonLdScript({
-          "@context": "https://schema.org",
-          "@type": "Article",
-          headline: e.title,
-          description: clip(e.dek, 300),
-          datePublished: e.date,
-          dateModified: e.date,
-          author: { "@type": "Organization", name: "Lab Ledger Desk" },
-          publisher: {
-            "@type": "NewsMediaOrganization",
-            name: "Lab Ledger Desk",
-            url: SITE + "/",
-            logo: SITE + "/og.jpg",
-          },
-          mainEntityOfPage: SITE + url,
-        }),
       }),
     );
   }
 
   // The index lists every guide. It is the page the nav points at.
-  const list = ENTRIES.map(
+  const cards = ENTRIES.map(
     (e) =>
-      '<article class="row guide-row"><div><div class="kicker">' +
-      esc(e.kind) +
-      " · " +
-      esc(e.date) +
-      " · " +
-      e.reading +
-      ' min</div><a class="headline" href="/learn/' +
-      e.slug +
-      '/">' +
-      esc(e.title) +
-      '</a><div class="dek">' +
-      esc(e.dek) +
-      "</div></div></article>",
+      '<a class="guide-card" href="/learn/' + e.slug + '/">' +
+      '<div class="guide-card-top"><span class="guide-kind-chip">' + esc(e.kind) + '</span><span class="guide-card-read">' + e.reading + " min read</span></div>" +
+      "<h2>" + esc(e.title) + "</h2>" +
+      "<p>" + esc(e.dek) + "</p>" +
+      '<span class="guide-card-go">Read the guide <span aria-hidden="true">→</span></span>' +
+      '<div class="guide-card-meta"><span>' + esc(e.level) + "</span><span>·</span><time datetime=\"" + esc(e.date) + "\">" + escDate(e.date) + "</time></div>" +
+      "</a>",
   ).join("");
 
   await write(
@@ -217,20 +199,6 @@ export async function writeLearn() {
       description:
         "Original AI explainers from the desk. Every term the labs use, in plain language. Written for this site, not copied.",
       path: "/learn/",
-      body: [
-        '<article class="method">',
-        '<p class="kicker">Field guide</p>',
-        "<h1>The desk's field guide</h1>",
-        '<p class="dek">The board files what the labs moved. This guide explains the words they used to move it. Every entry below is written for this site, nothing copied, nothing syndicated, and each one is kept current rather than left to rot.</p>',
-        "<h2>Why it is written this way</h2>",
-        "<p>The desk reads official announcements all day, and the same gap appears every time: the announcement assumes vocabulary the reader has not been given. Rather than link out to a definition that itself assumes too much, the guide explains the term from nothing. Short sentences, one idea per paragraph, and no word left undefined.</p>",
-        "</article>",
-        '<section class="board"><div class="board-head"><span>Guides</span><span>' +
-          ENTRIES.length +
-          " published</span></div>" +
-          list +
-          "</section>",
-      ],
       extra: jsonLdScript({
         "@context": "https://schema.org",
         "@type": "CollectionPage",
@@ -239,6 +207,20 @@ export async function writeLearn() {
         description: "Original AI explainers, written for this site.",
         publisher: { "@type": "NewsMediaOrganization", name: "Lab Ledger Desk", url: SITE + "/" },
       }),
+      body: [
+        '<header class="guide-head guide-head-hero">',
+        '<p class="kicker">The field guide</p>',
+        "<h1>Plain words for what the labs keep announcing</h1>",
+        '<p class="dek">The board files what the labs moved. This guide explains the words they used to move it. Every entry is written here, for this site — nothing copied, nothing syndicated — and kept current instead of left to rot.</p>',
+        '<div class="guide-hero-meta"><span><strong>' + ENTRIES.length + "</strong> guide" + (ENTRIES.length === 1 ? "" : "s") + '</span><span>·</span><span>Written by the desk</span><span>·</span><span>Free, always</span></div>',
+        "</header>",
+        '<section class="guide-grid" aria-label="Guides">' + cards + "</section>",
+        '<section class="guide-cta">',
+        "<h2>Want a word explained that is not here?</h2>",
+        "<p>The guide grows from what readers actually bump into. Send the word on the channel and the next entry covers it.</p>",
+        '<a class="guide-cta-btn" href="/method/">How the desk works <span aria-hidden="true">→</span></a>',
+        "</section>",
+      ],
     }),
   );
 

@@ -8,6 +8,7 @@
    identity instead of turning neutral grey. */
 @media (prefers-color-scheme: dark){
   :root{--paper:#16130e;--paper2:#1e1a13;--ink:#f0e9da;--muted:#a89f8d;--rule:#3a332a;--card:#211c15;--accent:#d97757;--glyph:#241f18}
+  .mark.letter{box-shadow:inset 0 0 0 1px var(--rule)}
 }
 *{box-sizing:border-box}
 html{font-size:17px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -42,9 +43,9 @@ nav a:hover{color:var(--ink)}
 /* Mini mark row: the board's labs as small live tiles. */
 .markrow{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:1.1rem;padding-top:1.1rem;border-top:1px solid var(--rule)}
 .mbadge{position:relative;width:40px;height:40px;text-decoration:none;display:block}
-.mbadge .mark{width:40px;height:40px;padding:4px;border-radius:2px}
+.mbadge .mark{width:40px;height:40px;border-radius:2px}
 .mbadge .mark.xs.letter{font-size:1.05rem}
-.mbadge .mark.xs .mark-sprite{width:22px;height:22px}
+.mbadge .mark.xs .mark-sprite{width:100%;height:100%}
 .mbadge-n{position:absolute;right:-5px;top:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fffaf2;font-size:.62rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .mbadge-n:empty{display:none}
 .mbadge:hover .mark{outline:2px solid var(--ink);outline-offset:1px}
@@ -57,15 +58,13 @@ a.headline{display:block;text-decoration:none}
 a.headline:hover{color:var(--accent)}
 .kicker a{text-decoration:none;color:var(--muted)}
 .kicker a:hover{color:var(--ink)}
-.mark{width:80px;height:80px;padding:7px;display:grid;place-items:center;color:#fffaf2}
-.mark.letter{padding:0;font-family:Fraunces,Georgia,serif;font-size:1.9rem;font-weight:600}
-.mark.sm{width:56px;height:56px;padding:5px}
+.mark{width:80px;height:80px;padding:0;display:grid;place-items:center;color:#fffaf2}
+.mark.letter{font-family:Fraunces,Georgia,serif;font-size:1.9rem;font-weight:600}
+.mark.sm{width:56px;height:56px}
 .mark.sm.letter{font-size:1.4rem}
-.mark .glyph{width:100%;height:100%;display:grid;place-items:center;border-radius:2px}
-.mark .glyph img{width:38px;height:38px;object-fit:contain}
-.mark.sm .glyph img{width:28px;height:28px}
-.mark-sprite{width:38px;height:38px;object-fit:contain;display:block}
-.mark.sm .mark-sprite{width:28px;height:28px}
+.mark .glyph{width:100%;height:100%;display:grid;place-items:center}
+.mark .glyph img{width:100%;height:100%;object-fit:contain;padding:9px}
+.mark-sprite{width:100%;height:100%;display:block}
 .kicker{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .headline{font-family:Fraunces,Georgia,serif;font-size:1.45rem;font-weight:600;line-height:1.2;margin:.2rem 0;letter-spacing:-.02em}
 .dek{color:var(--muted)}
@@ -122,10 +121,19 @@ a.row[hidden],article.row[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* Field guide: longer-form explainers. Wider measure than the board, because
-   a paragraph that fits in a news column does not fit an explainer. */
+   a paragraph that fits in a news column does not fit an explainer. The index
+   is a card grid — the guide is a product here, not an appendix. */
 .guide{max-width:60rem;padding:2.4rem 0 3rem}
 .guide h1{font-size:clamp(2rem,4.5vw,2.9rem);margin:.4rem 0 0}
 .guide .dek{font-size:1.1rem;margin-top:.9rem}
+.guide-head{max-width:44rem}
+.guide-head h1{margin-top:.6rem}
+.guide-head-hero{padding:2.6rem 0 2.2rem;border-bottom:1px solid var(--rule);max-width:52rem}
+.guide-head-hero h1{font-size:clamp(2.2rem,5.5vw,3.4rem)}
+.guide-head-hero .dek{font-size:1.15rem;margin-top:1rem}
+.guide-hero-meta{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;color:var(--muted);font-size:.85rem;margin-top:1.4rem}
+.guide-hero-meta strong{color:var(--ink);font-weight:600}
+.guide-kind-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 .5rem;border:1px solid var(--accent);color:var(--accent);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
 .guide-layout{display:grid;gap:2.2rem;margin-top:2.2rem}
 @media(min-width:860px){.guide-layout{grid-template-columns:14rem 1fr;align-items:start}}
 .guide-toc{position:sticky;top:1rem;font-size:.9rem}
@@ -143,10 +151,25 @@ a.row[hidden],article.row[hidden]{display:none}
 /* Term lists are the guide's payload: one row per word, the term in the
    margin and the definition next to it. Scannable, not read top to bottom. */
 .guide dl{margin:0;display:grid;grid-template-columns:1fr;gap:.9rem}
-.guide dt{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.02rem;color:var(--ink);padding-left:0;border-left:2px solid var(--accent);padding-left:.6rem}
+.guide dt{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.02rem;color:var(--ink);border-left:2px solid var(--accent);padding-left:.6rem}
 .guide dd{margin:.3rem 0 0 .6rem;font-size:.96rem;line-height:1.65;color:var(--muted)}
 @media(min-width:700px){.guide dl{grid-template-columns:11rem 1fr;gap:.9rem 1.4rem}.guide dd{margin:.15rem 0 0}}
 .guide-foot{font-size:.9rem;color:var(--muted);margin-top:2.4rem;padding-top:1.2rem;border-top:1px solid var(--rule)}
-.guide-row{border-bottom:1px solid var(--rule)}
-.guide-row .dek{margin:.35rem 0 0}
-.guide-row:last-child{border-bottom:0}
+/* Card grid on the guide index. */
+.guide-grid{display:grid;gap:1rem;padding:1.8rem 0 1rem;grid-template-columns:1fr}
+@media(min-width:640px){.guide-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1000px){.guide-grid{grid-template-columns:repeat(3,1fr)}}
+.guide-card{display:flex;flex-direction:column;gap:.6rem;border:1px solid var(--rule);background:var(--card);padding:1.3rem 1.25rem 1.1rem;text-decoration:none;transition:border-color .15s ease,transform .15s ease}
+.guide-card:hover{border-color:var(--ink);transform:translateY(-2px)}
+.guide-card h2{font-size:1.2rem;margin:0;line-height:1.25}
+.guide-card p{margin:0;color:var(--muted);font-size:.94rem;line-height:1.55}
+.guide-card-top{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+.guide-card-read{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums}
+.guide-card-go{margin-top:auto;color:var(--accent);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.guide-card:hover .guide-card-go{color:var(--ink)}
+.guide-card-meta{display:flex;gap:.45rem;align-items:center;color:var(--muted);font-size:.76rem;padding-top:.55rem;border-top:1px solid var(--rule)}
+.guide-cta{margin:1.6rem 0 0;border:1px solid var(--ink);background:var(--card);padding:1.6rem 1.5rem;display:grid;gap:.6rem}
+.guide-cta h2{font-family:Fraunces,Georgia,serif;font-size:1.3rem;margin:0}
+.guide-cta p{margin:0;color:var(--muted);font-size:.95rem;max-width:44rem}
+.guide-cta-btn{justify-self:start;display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--ink);padding:0 1rem;text-decoration:none;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-top:.3rem}
+.guide-cta-btn:hover{background:var(--ink);color:var(--paper)}
