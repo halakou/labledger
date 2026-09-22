@@ -123,13 +123,30 @@ a.row[hidden],article.row[hidden]{display:none}
 
 /* Field guide: longer-form explainers. Wider measure than the board, because
    a paragraph that fits in a news column does not fit an explainer. */
-.guide{max-width:44rem;padding:2.4rem 0 3rem}
+.guide{max-width:60rem;padding:2.4rem 0 3rem}
 .guide h1{font-size:clamp(2rem,4.5vw,2.9rem);margin:.4rem 0 0}
 .guide .dek{font-size:1.1rem;margin-top:.9rem}
+.guide-layout{display:grid;gap:2.2rem;margin-top:2.2rem}
+@media(min-width:860px){.guide-layout{grid-template-columns:14rem 1fr;align-items:start}}
+.guide-toc{position:sticky;top:1rem;font-size:.9rem}
+.guide-toc-label{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem}
+.guide-toc ul{list-style:none;margin:0;padding:0;display:grid;gap:.1rem;border-left:1px solid var(--rule)}
+.guide-toc li{margin:0}
+.guide-toc a{display:block;padding:.4rem .7rem;text-decoration:none;color:var(--muted);border-radius:2px;line-height:1.3}
+.guide-toc a:hover{color:var(--ink);background:var(--card)}
+.guide-body{max-width:44rem}
 .guide section{margin-top:2.2rem}
+.guide section:first-child{margin-top:0}
 .guide h2{font-family:Fraunces,Georgia,serif;font-size:1.35rem;letter-spacing:-.02em;color:var(--ink);margin:0 0 .8rem}
 .guide p{margin:0 0 .9rem;font-size:1.02rem;line-height:1.7}
 .guide b{color:var(--ink);font-weight:600}
+/* Term lists are the guide's payload: one row per word, the term in the
+   margin and the definition next to it. Scannable, not read top to bottom. */
+.guide dl{margin:0;display:grid;grid-template-columns:1fr;gap:.9rem}
+.guide dt{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.02rem;color:var(--ink);padding-left:0;border-left:2px solid var(--accent);padding-left:.6rem}
+.guide dd{margin:.3rem 0 0 .6rem;font-size:.96rem;line-height:1.65;color:var(--muted)}
+@media(min-width:700px){.guide dl{grid-template-columns:11rem 1fr;gap:.9rem 1.4rem}.guide dd{margin:.15rem 0 0}}
+.guide-foot{font-size:.9rem;color:var(--muted);margin-top:2.4rem;padding-top:1.2rem;border-top:1px solid var(--rule)}
 .guide-row{border-bottom:1px solid var(--rule)}
 .guide-row .dek{margin:.35rem 0 0}
 .guide-row:last-child{border-bottom:0}
