@@ -357,14 +357,66 @@ function sourceViewBox(raw, inner) {
   return null;
 }
 
+// Extract the drawable content of a standalone SVG: the elements inside its
+// root <svg> tag, with the declaration and the root itself discarded. The
+// tricky part is that a downloaded SVG can carry a <!DOCTYPE svg ...> in its
+// head, and its root tag can contain a nested <svg> inside a comment. We slice
+// from the *first <svg element after any declarations* to the last </svg>, then
+// additionally drop any nested <svg> elements left in the body.
+function extractSvgInner(raw) {
+  // Strip the XML prolog and DOCTYPE (a stray <!DOCTYPE inside an XML body is
+  // an illegal character and makes the browser reject the whole sprite).
+  let body = raw.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!DOCTYPE[\s\S]*?>/gi, "").replace(/<!--[\s\S]*?-->/g, "");
+  // The root element starts at the first "<svg" followed by ">" or whitespace.
+  const startTag = body.search(/<svg[\s>]/i);
+  if (startTag < 0) return { inner: "", viewBox: null };
+  const tagEnd = body.indexOf(">", startTag);
+  if (tagEnd < 0) return { inner: "", viewBox: null };
+  const attrs = body.slice(startTag + 4, tagEnd);
+  const end = body.lastIndexOf("</svg>");
+  if (end < 0) return { inner: "", viewBox: null };
+  let inner = body.slice(tagEnd + 1, end);
+  // A nested <svg> is not allowed inside a <symbol> root — remove the wrapper
+  // but keep its children so the paths still draw.
+  inner = inner.replace(/<svg[\s\S]*?>/gi, "").replace(/<\/svg>/gi, "");
+  const vbm = attrs.match(/viewBox="([^"]+)"/i);
+  return { inner, viewBox: vbm ? vbm[1].trim() : null };
+}
+
+// viewBox from an explicit declaration ("0.6 1067.9 90.3 109.1"), or null.
+function viewBoxFromList(p) {
+  if (p.length === 4 && p.every(Number.isFinite) && p[2] > 0 && p[3] > 0) return p;
+  return null;
+}
+
+// viewBox from the width/height attrs of the root, else from the coordinate
+// range actually used by the paths inside the body.
+function pathViewBox(inner, raw) {
+  if (raw) {
+    const w = raw.match(/\bwidth\s*=\s*"([\d.]+)"/);
+    const h = raw.match(/\bheight\s*=\s*"([\d.]+)"/);
+    if (w && h) {
+      const ww = Number(w[1]);
+      const hh = Number(h[1]);
+      if (ww > 0 && hh > 0 && Number.isFinite(ww) && Number.isFinite(hh)) return [0, 0, ww, hh];
+    }
+  }
+  const nums = [...inner.matchAll(/[-+]?\d*\.?\d+(?=[\s,)\]])/g)].map((m) => Number(m[0]));
+  if (nums.length) {
+    const x = Math.min(...nums);
+    const y = Math.min(...nums);
+    const w2 = Math.max(...nums) - x;
+    return [x, y, w2, w2];
+  }
+  return null;
+}
+
 function symbolForSvg(id, buf) {
   const raw = buf.toString("utf8");
-  const inner = raw.includes(">")
-    ? raw.slice(raw.indexOf(">") + 1, raw.lastIndexOf("</svg>"))
-    : "";
-  const tile = vectorTile(raw);
-  const vb = sourceViewBox(raw, inner);
+  const { inner, viewBox: declared } = extractSvgInner(raw);
+  const vb = declared ? viewBoxFromList(declared.split(/[\s,]+/).map(Number)) : pathViewBox(inner, raw);
   if (!vb) return null; // nothing usable — caller falls back to a letter mark
+  const tile = vectorTile(raw);
   const bg = tile ? '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="' + tile + '"/>' : "";
   return '<symbol id="m-' + id + '" viewBox="' + vb.join(" ") + '">' + bg + inner + "</symbol>";
 }
@@ -570,18 +622,18 @@ export async function writeMarkSprite(markIds) {
 // marks like Hugging Face's (dark face on a yellow head) pick the dark tile
 // and arrive with an invisible face.
 function vectorTile(raw) {
-  const tones = raw.match(/(?:fill|stroke)="(#[0-9a-fA-F]{3,6})"/g) || [];
+  const tones = raw.match(/(?:fill|stroke)="#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})"/g) || [];
   if (!tones.length) return null;
   let darkest = 255;
   let lightest = 0;
   let sum = 0;
   for (const t of tones) {
-    const hex = t.slice(t.indexOf("#") + 1);
+    const hex = t.slice(t.indexOf("#") + 1, -1);
     const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
     const r = parseInt(full.slice(0, 2), 16);
     const g = parseInt(full.slice(2, 4), 16);
     const b = parseInt(full.slice(4, 6), 16);
-    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    const lum = 0. * 0 + 0.299 * r + 0.587 * g + 0.114 * b;
     darkest = Math.min(darkest, lum);
     lightest = Math.max(lightest, lum);
     sum += lum;
