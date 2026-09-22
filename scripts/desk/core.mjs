@@ -238,34 +238,26 @@ export function topicLabel(id) {
 }
 
 export function composeWhat(summary, lab, headline, dateLabel) {
+  // The "what" answers the reader's only question on a brief page: what did
+  // the source actually say? The source's own first sentences are always
+  // better than anything generated to replace them, so the job here is to
+  // carry those sentences intact, not to pad them. When the source gave us
+  // nothing, say so plainly in one short line — a sentence about the desk
+  // is not a substitute for a sentence about the news.
   let body = String(summary || "").replace(/\s+/g, " ").trim();
-  if (!body) body = lab + " published \u201c" + headline + "\u201d on " + dateLabel + ".";
-  if (wordCount(body) >= 70) return clipWords(body, 80);
-  const extras = [
-    lab + " issued this as an official post on " + dateLabel + ".",
-    "The desk files the title and summary from the allow-listed official source, not a rewrite of claims the source did not make.",
-    "No second outlet is added, and no launch is invented.",
-    "The primary source stays on this page so the original wording remains the claim of record.",
-  ];
-  for (const extra of extras) {
-    if (wordCount(body) >= 70) break;
-    body = (body + " " + extra).trim();
-  }
-  return clipWords(body, 80);
+  if (!body) return lab + " published “" + headline + "” on " + dateLabel + ".";
+  return clipSentence(body, 320);
 }
 
 export function composeWhy(lab, dateLabel, kind, topics, summary) {
+  // The "why" is the one piece of desk-voice text on a brief: it says what
+  // kind of thing this is, in one short line, so the reader can tell a launch
+  // from a research note from a footnote. It must not restate the summary —
+  // that is what `what` is for, and restating it is what makes a page read
+  // machine-generated.
+  const label = kind === "launch" ? "a launch filing" : kind === "research" ? "a research filing" : "a public note";
   const topicBit = topics.length ? " Tagged " + topics.map(topicLabel).join(" / ") + "." : "";
-  const raw = String(summary || "").replace(/\s+/g, " ").trim();
-  const claim = sentences(raw)[0] || clip(raw, 180);
-  const spine = claim ? clip(claim, 180) : lab + " posted this on " + dateLabel + ".";
-  const closer =
-    kind === "launch"
-      ? " That is a public launch file from " + lab + ", dated " + dateLabel + "."
-      : kind === "research"
-        ? " That is a public research file from " + lab + ", dated " + dateLabel + "."
-        : " That is a public note from " + lab + ", dated " + dateLabel + ".";
-  return clipWords(spine + closer + topicBit, 58);
+  return "Filed as " + label + " from " + lab + ", " + dateLabel + "." + topicBit;
 }
 
 export function sentences(text) {
