@@ -142,6 +142,32 @@ export function clip(text, max) {
   return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;\u2013-]+$/, "") + "\u2026";
 }
 
+// Trim a summary to a display length the way an editor would: never cut a
+// sentence in half. Whole sentences are kept while they still fit; a partial
+// final sentence is dropped instead of clipped mid-word. An ellipsis is only
+// added when the source genuinely continues past the last kept sentence.
+export function clipSentence(text, max) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const parts = t.split(/(?<=[.!?])\s+/);
+  let out = "";
+  for (const s of parts) {
+    const candidate = out ? out + " " + s : s;
+    if (candidate.length > max) break;
+    out = candidate;
+  }
+  // Nothing fit as a whole sentence: take one sentence and trim it at a word
+  // boundary rather than slicing a word in half.
+  if (!out) {
+    const s = parts[0] || t;
+    if (s.length <= max) return s;
+    const cut = s.slice(0, max - 1);
+    const sp = cut.lastIndexOf(" ");
+    return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;\u2013-]+$/, "") + "\u2026";
+  }
+  return out.length < t.length ? out + " …" : out;
+}
+
 export function wordCount(text) {
   return String(text).trim().split(/\s+/).filter(Boolean).length;
 }

@@ -14,6 +14,7 @@ import {
   classifyKind,
   classifyTopics,
   clip,
+  clipSentence,
   composeWhat,
   composeWhy,
   hostAllowed,
@@ -305,7 +306,7 @@ export function makeBrief(pack, item, ledgerId) {
   const dateLabel = year + "-" + month + "-" + day;
   const kind = classifyKind(headline, summary);
   const topics = classifyTopics(headline, summary);
-  const dek = clip(summary || pack.lab.label + " published \u201c" + headline + ".\u201d", 158);
+  const dek = clipSentence(summary, 168) || clip(pack.lab.label + " published \u201c" + headline + ".\u201d", 158);
   const what = composeWhat(summary, pack.lab.label, headline, dateLabel);
   const why = composeWhy(pack.lab.label, dateLabel, kind, topics, summary);
   return {
