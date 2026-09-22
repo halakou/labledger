@@ -113,6 +113,14 @@ export async function writeLlms(briefs, openBriefs = []) {
       "  Cache-Control: public, max-age=86400",
       "/fonts/*",
       "  Cache-Control: public, max-age=31536000, immutable",
+      // The sprite and the compiled CSS are content-addressed in practice:
+      // a rebuild changes them, but a returning visitor should never refetch
+      // a byte-identical copy. A long age with revalidation keeps the hit
+      // rate high without ever serving a stale logo after a deploy.
+      "/sprite.svg",
+      "  Cache-Control: public, max-age=86400, must-revalidate",
+      "/styles.css",
+      "  Cache-Control: public, max-age=86400, must-revalidate",
       "/marks/*",
       "  Cache-Control: public, max-age=86400",
       "/googlece6d31c0feb18c8c.html",

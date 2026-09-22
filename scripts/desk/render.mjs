@@ -63,6 +63,13 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     "<link rel=\"canonical\" href=\"", esc(url), "\">",
     "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\">",
     "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Lab Ledger Desk\" href=\"", SITE, "/rss.xml\">",
+    // The sprite and the fonts are the only resources above the fold on every
+    // page. Preloading them removes the last render-blocking round trips and
+    // is the single highest-value Core Web Vitals change available here.
+    "<link rel=\"preload\" href=\"/sprite.svg\" as=\"image\" type=\"image/svg+xml\" crossorigin>",
+    "<link rel=\"preload\" href=\"/fonts/fraunces-600.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
+    "<link rel=\"preload\" href=\"/fonts/source-sans-3-400.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
+    "<link rel=\"preload\" href=\"/fonts/source-sans-3-600.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
     "<link rel=\"stylesheet\" href=\"/styles.css\">",
     "<meta property=\"og:site_name\" content=\"Lab Ledger Desk\">",
     "<meta property=\"og:type\" content=\"", esc(ogType), "\">",
