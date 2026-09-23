@@ -22,7 +22,8 @@ const ENTRIES = [
   {
     slug: "ai-vocabulary",
     title: "The AI vocabulary, unpacked",
-    dek: "Every acronym the labs use in their announcements, explained in plain language. No prior knowledge assumed, none required.",
+    dek: "The acronyms in lab announcements, in plain language. No background assumed.",
+    shelf: "words",
     kind: "Explainer",
     level: "Beginner",
     date: "2026-09-21",
@@ -32,9 +33,9 @@ const ENTRIES = [
         h: "Why this exists",
         kind: "prose",
         p: [
-          "The labs publish fast. OpenAI ships, Anthropic replies, Google previews, and within an hour the same three acronyms are everywhere. The announcements assume you already know what they mean. Most people do not, and the definitions you find online are usually written for someone who already works in the field.",
-          "This guide is the opposite. It assumes nothing. Each term below gets one short explanation in everyday language, plus where you will actually see it — because a term you can define but never notice is a term you will forget by Friday.",
-          "If you read the desk's board, these are the words in the headlines. Learn them once and the board reads differently.",
+          "Labs publish fast, and the posts assume you already know the acronyms. Most readers do not. Definitions elsewhere are usually written for people who already work in the field.",
+          "Each term below is one short explanation, and where you will actually meet it. A definition you never notice is forgotten by Friday.",
+          "These are the words on the board. Learn one, and the next headline is easier to read.",
         ],
       },
       {
@@ -105,8 +106,8 @@ const ENTRIES = [
         h: "How to use this guide",
         kind: "prose",
         p: [
-          "Pick one section that matches what you see on the board today. If a lab announces a new model, the first three sections explain what is actually new. If the story is about a product or an enterprise deal, the fifth section is the one that applies.",
-          "The terms above do not change quickly. The marketing around them does. When a new acronym appears in a headline and is not here, it is almost always a new name for one of the ideas above, and the desk will file it as such.",
+          "If the headline is a new model, read The model itself, How a model is taught to behave, and The acronyms in architecture. If it is a product or an enterprise deal, read What a model actually ships as.",
+          "The terms do not change quickly. The marketing around them does. A new acronym that is not here is usually a new name for one of the ideas above.",
         ],
       },
     ],
@@ -114,7 +115,8 @@ const ENTRIES = [
   {
     slug: "how-to-read-a-model-announcement",
     title: "How to read a model announcement",
-    dek: "A reviewer's pass over a launch post, in six steps. What to trust, what to skip, and where the real claim is hiding.",
+    dek: "Six steps for a launch post. What you can check, what the lab measured, and what is decoration.",
+    shelf: "reading",
     kind: "Tutorial",
     level: "Intermediate",
     date: "2026-09-22",
@@ -124,8 +126,8 @@ const ENTRIES = [
         h: "What the announcement is actually selling",
         kind: "prose",
         p: [
-          "A model announcement is written by the people who made the model. That is not a flaw — it is the reason the desk reads them at all — but it means the post is a sales document with a benchmark table inside it. The facts are in there. They are just arranged to make the model look good.",
-          "The skill is not skepticism for its own sake. It is knowing which parts of the post are claims you can check, which are claims about how the lab measured itself, and which are decoration. The six steps below are the pass a careful editor runs before anything gets filed.",
+          "A model announcement is written by the people who made the model. That is why the desk reads it, and it is also why the post is a sales document with a benchmark table inside. The facts are there. They are arranged to make the model look good.",
+          "The useful skill is sorting the post into three piles: claims you can check, claims about how the lab measured itself, and decoration. The six steps below are that sort.",
         ],
       },
       {
@@ -143,22 +145,22 @@ const ENTRIES = [
       {
         kind: "callout",
         tone: "warn",
-        label: "The one that misleads everyone",
+        label: "About the number",
         p: [
-          "A benchmark number is not a fact about the model. It is a fact about one run of one eval by the people who are trying to win it. It can still be useful. It is never the whole answer, and a lead over a rival of a few points is usually inside the noise of a different run.",
+          "A benchmark score is a fact about one run of one evaluation, written by the people trying to win it. A lead of a few points is often inside the noise of a second run. Useful. Not the whole answer.",
         ],
       },
       {
         kind: "quote",
         quote: "The claim is always in the primary source. Everything else is a summary of a summary.",
-        cite: "the desk, on why every brief keeps its source link",
+        cite: "Why every brief keeps its source link",
       },
       {
         h: "What to do with the rest",
         kind: "prose",
         p: [
-          "Most of the post — the quotes from executives, the partner logos, the vision paragraphs — is not for you. It is for investors and journalists on deadline. Let it go. The two sentences that survive your pass are the ones worth anything, and they are the two the desk will file.",
-          "Run this pass on three announcements and it stops feeling like work. You start reading the benchmark table for what it is and the prose for what it is doing, and the announcements get a lot shorter.",
+          "Most of the post is not for you: executive quotes, partner logos, vision paragraphs. Those are for investors and for writers on a deadline. The sentences that survive the six steps are the ones worth keeping.",
+          "Run the pass on three announcements and it stops feeling like work. The table is data. The prose is arrangement. The post gets shorter.",
         ],
       },
     ],
@@ -166,7 +168,8 @@ const ENTRIES = [
   {
     slug: "what-open-means",
     title: "What 'open' means when a lab says open weights",
-    dek: "Open weights, open source, open research — three different things that all sound like the same thing. How to tell them apart in one read.",
+    dek: "Open weights, open source, and a license are three different things. How to tell them apart in one read.",
+    shelf: "licenses",
     kind: "Explainer",
     level: "Intermediate",
     date: "2026-09-22",
@@ -176,8 +179,8 @@ const ENTRIES = [
         h: "Why the words blur together",
         kind: "prose",
         p: [
-          "A lab publishes a model. The post says open. Within a day, half the coverage calls it open source and the other half calls it a leak of weights, and both sides are sure they are right. They are usually describing different parts of the same release.",
-          "The distinction is not pedantry. It decides whether you can audit the model, whether you can use it commercially, and whether you can be cut off from it later. The rows below are the ones that matter.",
+          "A lab publishes a model and the post says open. Coverage then splits: some call it open source, some call it a weight release. They are usually describing different parts of the same thing.",
+          "The distinction decides whether you can inspect the model, use it commercially, or be cut off from it later. The rows below are the ones that matter.",
         ],
       },
       {
@@ -189,8 +192,8 @@ const ENTRIES = [
           ["Permissive license", "A license like MIT or Apache 2.0: do what you want, including commercial use, just keep the notice. Model licenses modeled on these are the friendliest to build on, and the ones whose fine print is worth reading once."],
           ["Copyleft", "A license like GPL: you may use and modify it, but anything you ship that includes it must share its own source too. Rare in model weights, common in the tooling around them."],
           ["Base vs instruct", "A base model is the raw trained predictor — powerful, and quite happy to finish your prompt with something nobody asked for. An instruct or chat version has been fine-tuned to answer as asked. Downloading the base when you wanted the assistant is the most common first mistake."],
-          ["Quantization", "Shrinking the model's numbers from 16-bit to 8- or 4-bit so it fits on smaller hardware. It costs a little quality and a lot of RAM, which is usually the trade you actually want."],
-          ["GGUF and friends", "File formats for running quantized models locally. When a release ships in several of these, it is aimed at people running it on their own machines, which is a real signal of intent."],
+          ["Quantization", "Storing the model's numbers in fewer bits, usually 8 or 4 instead of 16, so it fits on smaller hardware. It saves memory and costs a little accuracy. On a laptop, that is usually the trade you want."],
+          ["GGUF", "A file format for running a quantized model on your own machine. A release that ships several sizes of it is aimed at local use, not only at an API."],
           ["Model card", "The document that ships with the weights: what was trained on, what it is for, and what it is not for. The honesty of a release lives here, and the good ones are genuinely short."],
         ],
       },
@@ -398,6 +401,30 @@ function leadHtml(e) {
   );
 }
 
+
+function rowHtml(e) {
+  return (
+    '<a class="g-row" href="/learn/' + e.slug + '/">' +
+    '<div class="g-row-k">' +
+    '<span class="g-kind">' + esc(e.kind) + "</span>" +
+    '<span class="g-level">' + esc(e.level) + "</span></div>" +
+    "<div><h3>" + esc(e.title) + "</h3><p>" + esc(e.dek) + "</p></div>" +
+    '<div class="g-row-meta"><span>' + e.reading + ' min</span>' +
+    '<time datetime="' + esc(e.date) + '">' + escDate(e.date) + "</time></div></a>"
+  );
+}
+
+function shelfHtml(shelf) {
+  const rows = ENTRIES.filter((e) => e.shelf === shelf.id);
+  if (!rows.length) return "";
+  return (
+    '<section class="g-shelf" id="' + shelf.id + '" aria-labelledby="' + shelf.id + '-h">' +
+    '<header class="g-shelf-h"><div><p class="kicker">Shelf</p><h2 id="' + shelf.id + '-h">' +
+    esc(shelf.label) + "</h2></div><p>" + esc(shelf.line) + "</p></header>" +
+    '<div class="g-rows">' + rows.map(rowHtml).join("") + "</div></section>"
+  );
+}
+
 function articleLd(e, url) {
   return jsonLdScript({
     "@context": "https://schema.org",
@@ -455,10 +482,9 @@ export async function writeLearn() {
           '<footer class="g-foot">',
           '<div class="g-byline-box">' + MARK +
           "<div><p class=\"g-byline-name\">Written by the desk</p>" +
-          '<p class="g-byline-note">Original work for Lab Ledger Desk' +
-          (nTerms ? " &#183; " + nTerms + " terms across " : " &#183; ") +
-          e.body.length + " section" + (e.body.length === 1 ? "" : "s") +
-          ". Not copied from anywhere, not syndicated.</p></div></div>",
+          '<p class="g-byline-note">Original, for this site' +
+          (nTerms ? " &#183; " + nTerms + " terms" : "") +
+          ".</p></div></div>",
           relatedHtml(others),
           '<a class="g-back" href="/learn/"><span aria-hidden="true">&#8592;</span> All guides</a>',
           "</footer>",
@@ -468,45 +494,49 @@ export async function writeLearn() {
     );
   }
 
-  // The index lists every guide. It is the page the nav points at.
-  const lead = ENTRIES[0];
-  const rest = ENTRIES.slice(1);
+  const shelves = [
+    { id: "words", label: "Words", line: "Terms that show up in the headlines." },
+    { id: "reading", label: "Reading", line: "How to separate a claim from the decoration around it." },
+    { id: "licenses", label: "Licenses", line: "What a lab means when it says open." },
+  ];
 
   await write(
     "learn/index.html",
     shell({
       title: "Field guide — Lab Ledger Desk",
       description:
-        "Original AI explainers and tutorials from the desk. Every term the labs use, in plain language. Written for this site, not copied.",
+        "Original explainers for the words on the board. Written for this site. Nothing copied.",
       path: "/learn/",
       extra: jsonLdScript({
         "@context": "https://schema.org",
         "@type": "CollectionPage",
         name: "Lab Ledger Desk field guide",
         url: SITE + "/learn/",
-        description: "Original AI explainers and tutorials, written for this site.",
+        description: "Original explainers for the words on the board.",
         publisher: { "@type": "NewsMediaOrganization", name: "Lab Ledger Desk", url: SITE + "/" },
       }),
       body: [
         '<header class="g-hero">',
-        '<p class="kicker">The field guide</p>',
-        "<h1>Plain words for what the labs keep announcing</h1>",
-        '<p class="dek">The board files what the labs moved. This guide explains the words they used to move it, and teaches the skills to read them yourself. Every entry is written here, for this site &#8212; nothing copied, nothing syndicated &#8212; and kept current instead of left to rot.</p>',
-        '<div class="g-hero-meta"><span><strong>' + ENTRIES.length + "</strong> guide" +
-        (ENTRIES.length === 1 ? "" : "s") + '</span><span aria-hidden="true">&#183;</span>' +
-        "<span>Written by the desk</span><span aria-hidden=\"true\">&#183;</span>" +
-        "<span>Free, always</span></div>",
+        '<p class="kicker">Field guide</p>',
+        "<h1>Plain words for the words on the board</h1>",
+        '<p class="dek">The board records what the labs moved. These pages explain the words in those records. Written here. Nothing copied.</p>',
+        '<nav class="g-shelves" aria-label="Guide shelves">',
+        shelves
+          .map((s) => {
+            const n = ENTRIES.filter((e) => e.shelf === s.id).length;
+            return (
+              '<a href="#' + s.id + '">' + esc(s.label) +
+              '<span class="g-shelf-n">' + n + "</span></a>"
+            );
+          })
+          .join(""),
+        "</nav>",
         "</header>",
-        leadHtml(lead),
-        rest.length
-          ? '<section class="g-grid" aria-label="All guides">' +
-            rest.map((e, i) => cardHtml(e, i + 1)).join("") +
-            "</section>"
-          : "",
+        shelves.map(shelfHtml).join(""),
         '<section class="g-cta">',
-        "<h2>Want a word explained that is not here?</h2>",
-        "<p>The guide grows from what readers actually bump into. Send the word on the channel and the next entry covers it.</p>",
-        '<a class="g-cta-btn" href="/method/">How the desk works <span aria-hidden="true">&#8594;</span></a>',
+        "<h2>Missing a word?</h2>",
+        "<p>Send it on the channel. The next entry covers that word.</p>",
+        '<a class="g-cta-btn" href="' + esc(CHANNEL) + '">Open the channel <span aria-hidden="true">&#8594;</span></a>',
         "</section>",
       ].join(""),
     }),
