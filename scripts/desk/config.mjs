@@ -357,10 +357,7 @@ export const OPEN_PROJECTS = [
       "githubusercontent.com",
     ],
     pathPrefix: "/langchain-ai/langchain/releases",
-    icons: [
-      "https://cdn.simpleicons.org/langchain",
-      "https://github.com/langchain-ai.png",
-    ],
+    icons: ["https://cdn.simpleicons.org/langchain"],
   },
   {
     id: "jax",

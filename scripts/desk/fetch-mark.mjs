@@ -118,9 +118,10 @@ export async function fetchMark(lab) {
       /* next official icon */
     }
   }
-  // Every configured source failed. A stale cached mark still beats the house
-  // glyph, so fall back to what we already had on disk.
-  if (stale) return "/marks/" + lab.id + stale;
+  // Every configured source failed. The curated seed beats a stale cached
+  // mark — the cache only holds a mark from an icon list we have since replaced,
+  // while the seed is the official mark captured into the repo, so the site never
+  // depends on any single host being reachable.
   const seed = SEED_MARKS[lab.id];
   if (seed?.b64) {
     const buf = Buffer.from(String(seed.b64).replace(/\s+/g, ""), "base64");
@@ -129,6 +130,8 @@ export async function fetchMark(lab) {
       return "/marks/" + lab.id + seed.ext;
     }
   }
+  // No seed either. A stale cached mark still beats the house glyph.
+  if (stale) return "/marks/" + lab.id + stale;
   const svg = houseSvg(lab.id);
   await writeFile(join(MARK_DIR, lab.id + ".svg"), svg);
   return "/marks/" + lab.id + ".svg";
