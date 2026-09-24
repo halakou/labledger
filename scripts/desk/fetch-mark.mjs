@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { FONT_UA, MARK_DIR, MARK_MAX, hostAllowed, hostOf } from "./core.mjs";
 import { houseSvg } from "./glyphs.mjs";
@@ -84,6 +84,18 @@ async function readSrc(lab) {
   }
 }
 
+// A lab's mark is one file. When a newer source lands under a different
+// extension (a vector .svg superseding an old .ico, or a seed .png replacing a
+// house-glyph .svg), the leftovers are deleted so collectMarks' extension
+// preference can never serve the superseded file.
+async function pruneOtherExts(lab, keepExt) {
+  for (const ext of [".svg", ".png", ".ico", ".webp", ".jpg"]) {
+    if (ext === keepExt) continue;
+    const p = join(MARK_DIR, lab.id + ext);
+    try { await unlink(p); } catch { /* not there */ }
+  }
+}
+
 export async function fetchMark(lab) {
   await mkdir(MARK_DIR, { recursive: true });
   const want = (lab.icons || [])[0] || "";
@@ -112,6 +124,7 @@ export async function fetchMark(lab) {
       if (!looksLikeMark(buf, type)) continue;
       const ext = extFrom(url, type);
       await writeFile(join(MARK_DIR, lab.id + ext), buf);
+      await pruneOtherExts(lab, ext);
       await writeFile(srcPath(lab), url);
       return "/marks/" + lab.id + ext;
     } catch {
@@ -127,6 +140,7 @@ export async function fetchMark(lab) {
     const buf = Buffer.from(String(seed.b64).replace(/\s+/g, ""), "base64");
     if (looksLikeMark(buf, "image/" + seed.ext.slice(1))) {
       await writeFile(join(MARK_DIR, lab.id + seed.ext), buf);
+      await pruneOtherExts(lab, seed.ext);
       return "/marks/" + lab.id + seed.ext;
     }
   }
