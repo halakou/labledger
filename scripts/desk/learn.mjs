@@ -406,7 +406,146 @@ const ENTRIES = [
         ],
       },
     ],
-  }
+  },
+  {
+    slug: "prompt-mistakes",
+    title: "Six prompt mistakes everyone makes, and the small fix for each",
+    dek: "Most bad AI answers come from the prompt, not the model. Six mistakes everyone makes, why each fails, and the one-line fix that changes the answer.",
+    kind: "Tutorial",
+    level: "Beginner",
+    date: "2026-09-25",
+    reading: 7,
+    body: [
+      {
+        h: "Why the prompt is usually the problem",
+        kind: "prose",
+        p: [
+          "A model gives you the most likely answer to the question you actually asked. When the answer comes back useless, the model usually answered correctly and the prompt was the problem. That is good news, because the prompt is the one part you fully control.",
+          "The six mistakes below are not theory. They are the patterns behind nearly every session that goes sideways, and each one has a fix that costs one or two extra sentences. None of them need a different model, a paid plan, or any technical background.",
+          "Read them as a checklist against something you are working on right now, not as a list to memorize. If one of them describes your prompt, that is the one to fix first.",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "note",
+        label: "The 30-second test",
+        p: [
+          "Take a prompt that gave you a bad answer and ask it again, word for word, in a fresh chat. You will get a similarly bad answer. That is the proof the prompt is the variable and not the model, and it is the fastest way to stop blaming the tool.",
+        ],
+      },
+      {
+        h: "The words that come up",
+        kind: "terms",
+        terms: [
+          ["System prompt", "The standing instructions that apply to the whole conversation, set before your first message. This is where the role, the tone, and the rules belong. Putting them here instead of repeating them in every message keeps behavior stable across a long chat."],
+          ["Few-shot", "Giving the model examples of the output you want inside the prompt. Two or three examples teach a format far more reliably than a description of it, which is why this is the standard fix for shape problems."],
+          ["Zero-shot", "Asking with no examples at all. Perfectly fine for simple tasks, and the reason simple tasks sometimes come back in a shape you did not want."],
+          ["Temperature", "The setting that controls how predictable the output is. Low is steady and repetitive, high is varied and less reliable. Keep it low for facts and formatting, raise it for ideas and drafts. Most people never touch it and do not need to."],
+          ["Persona", "Telling the model who to be. Useful as a shortcut to a tone and a viewpoint, misleading when it makes the output sound more authoritative than the underlying answer actually is."],
+          ["Chain of thought", "Asking the model to show its working before it gives the answer. It measurably helps on multi-step problems, because the model gets to use its own intermediate lines as context for the final one."],
+        ],
+      },
+      {
+        h: "Vague requests get vague answers",
+        kind: "prose",
+        p: [
+          "The mistake is asking for something general. Write a summary. Make this better. Help me with my report. None of these tell the model what a good answer looks like, so it gives you the most average possible thing, and its fluency makes that average look intentional.",
+          "The fix is to name the output, the reader, and the shape. Write a summary becomes: write a 200-word summary of this for a team that has not read it, with a one-line takeaway at the top. Constraints are what make a prompt specific, and specific prompts are what get specific answers.",
+        ],
+      },
+      {
+        h: "Asking for everything in one go",
+        kind: "prose",
+        p: [
+          "The mistake is stacking five tasks into a single prompt so the model has to hold them all at once. The result is usually one task done acceptably and four done badly, and you cannot tell which is which because it all arrives as one wall of text.",
+          "The fix is to split the job into steps and run them separately. Ask for the outline first, then expand one section, then check the result. Each step gets the full attention of the model, and you get to redirect before the wrong work multiplies.",
+        ],
+      },
+      {
+        h: "No examples and no format",
+        kind: "prose",
+        p: [
+          "The mistake is describing what you want in words when one example would settle it. Format, tone, and structure are all far easier to show than to tell, and a model told to sound professional still has to guess what professional means to you.",
+          "The fix is to paste one example of the output you want, even a rough one, and say match this. If you want a table, write the header row. If you want a tone, quote two sentences of it. A single example removes more ambiguity than three paragraphs of description.",
+        ],
+      },
+      {
+        h: "Accepting the first answer",
+        kind: "prose",
+        p: [
+          "The mistake is treating the first reply as the answer. A first pass is a draft produced without any feedback, and it is usually the least informed version of what the model can do for you. Most people stop here and then conclude the tool is limited.",
+          "The fix is to answer the answer. Say what is wrong, what is missing, and what to keep. Second and third passes are where the model earns its keep, because now it is iterating against your actual judgment instead of guessing at it.",
+        ],
+      },
+      {
+        h: "Feeding your assumptions in",
+        kind: "prose",
+        p: [
+          "The mistake is baking your conclusion into the prompt, sometimes so quietly that you do not notice. Asking for reasons this plan will work is asking the model to agree with you. A model asked to confirm will confirm, confidently, whether or not the plan is sound.",
+          "The fix is to ask for the evaluation, not the confirmation. Say: review this and tell me the strongest reason it fails, then the strongest reason it works. You get far more useful criticism from a prompt that invites opposition than from one that requests support.",
+        ],
+      },
+      {
+        h: "No context about who or why",
+        kind: "prose",
+        p: [
+          "The mistake is writing the task without writing the situation. The model does not know you are writing to a client who already rejected this idea, or that the reader is twelve, or that you have ten minutes and need a decision. It answers the same question the same way for everybody.",
+          "The fix is two sentences of context at the top: who reads this, what they already know, and what happens after they read it. Those two sentences change the answer more than any amount of rewording the question itself.",
+        ],
+      },
+      {
+        h: "The six fixes as a checklist",
+        kind: "steps",
+        items: [
+          { t: "Name the output, the reader, and the shape", d: "Turn a general request into a constrained one. Say what the thing is, who it is for, and what shape it arrives in." },
+          { t: "Split stacked tasks into steps", d: "One job per message. Ask for the structure, then the sections, then the check. Redirect between steps instead of after everything." },
+          { t: "Paste one example instead of describing", d: "Show the format with a sample. A header row, two sentences of tone, or a rough draft teaches shape faster than any description." },
+          { t: "Reply to the first answer", d: "Treat the first pass as a draft. Tell it what is wrong and what to keep before you give up on the task." },
+          { t: "Ask for the evaluation, not the confirmation", d: "Invite opposition. Ask for the strongest reason the idea fails, and you get criticism you can actually use." },
+          { t: "Give two sentences of context", d: "Who reads it, what they know, what happens next. Context changes the answer more than phrasing does." },
+        ],
+      },
+      {
+        h: "A template that avoids all six",
+        kind: "code",
+        lang: "txt",
+        lines: [
+          "Here is what I need, and here is the situation.",
+          "",
+          "ROLE: (who is writing this, and to whom)",
+          "READER: (what the reader already knows about the topic)",
+          "TASK: (the single thing to produce, in one sentence)",
+          "SHAPE: (the format, the length, and the structure of the output)",
+          "EXAMPLE: (one sample of the tone or layout, or write NONE)",
+          "",
+          "Rules:",
+          "- If the task is unclear, ask me one question before you answer.",
+          "- Give the answer, then name the one part you are least confident about.",
+          "",
+          "CONTEXT:",
+          "<<<",
+          "(paste the material here)",
+          ">>>",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "tip",
+        label: "If you only change one thing",
+        p: [
+          "Add context before you add anything else. Two sentences about who reads the output and why fixes more bad answers than the other five fixes combined, and it is the only one that works on every model and every task.",
+        ],
+      },
+      {
+        h: "How to know it worked",
+        kind: "prose",
+        p: [
+          "Run the same task with the old prompt and the new one, an hour apart, and read both back to back. The difference is usually obvious enough that you will not need a scoring system. If it is not, the prompt was not the variable, and the problem lives somewhere else.",
+          "None of this is prompt engineering in the technical sense. It is the habit of writing down what you actually want before you ask for it, which is the same skill that makes instructions work on humans.",
+        ],
+      },
+    ],
+  },
 ];
 
 export const GUIDE_ENTRIES = ENTRIES;
