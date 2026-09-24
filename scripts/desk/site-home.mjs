@@ -12,11 +12,11 @@ import {
 } from "./core.mjs";
 import { OPEN_PROJECTS } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
-import { CSS, jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
+import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
 import { GUIDE_ENTRIES } from "./learn.mjs";
 
 export async function writeStatic(fontNames) {
-  await write("styles.css", CSS);
+  await write(CSS_NAME, CSS);
   for (const name of fontNames) {
     const src = join(FONT_DIR, name);
     if (await exists(src)) await copyFile(src, join(OUT, "fonts", name));
@@ -63,6 +63,8 @@ export async function writeStatic(fontNames) {
   return ogOk;
 }
 
+const hashed = (p) => /-[0-9a-f]{12}\.[a-z]+$/i.test(p);
+
 export async function writeLlms(briefs, openBriefs = []) {
   await write(
     "llms.txt",
@@ -100,6 +102,7 @@ export async function writeLlms(briefs, openBriefs = []) {
       "",
     ].join("\n"),
   );
+  const a = getAssets();
   await write(
     "_headers",
     [
@@ -116,14 +119,15 @@ export async function writeLlms(briefs, openBriefs = []) {
       "  Cache-Control: public, max-age=86400",
       "/fonts/*",
       "  Cache-Control: public, max-age=31536000, immutable",
-      // The sprite and the compiled CSS are content-addressed in practice:
-      // a rebuild changes them, but a returning visitor should never refetch
-      // a byte-identical copy. A long age with revalidation keeps the hit
-      // rate high without ever serving a stale logo after a deploy.
-      "/sprite.svg",
-      "  Cache-Control: public, max-age=86400, must-revalidate",
-      "/styles.css",
-      "  Cache-Control: public, max-age=86400, must-revalidate",
+      // The sprite and the compiled CSS ship under content-addressed names
+      // (sprite-<hash>.svg, styles-<hash>.css) and the HTML pointing at them
+      // revalidates on every visit, so these are immutable: the name changes
+      // the instant the bytes do. An unhashed fallback keeps the old safe
+      // short-lived rule instead of ever freezing a stale logo.
+      a.sprite,
+      "  Cache-Control: public, max-age=" + (hashed(a.sprite) ? "31536000, immutable" : "86400, must-revalidate"),
+      a.css,
+      "  Cache-Control: public, max-age=" + (hashed(a.css) ? "31536000, immutable" : "86400, must-revalidate"),
       "/marks/*",
       "  Cache-Control: public, max-age=86400",
       "/googlece6d31c0feb18c8c.html",

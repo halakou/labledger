@@ -1,4 +1,5 @@
 import { CHANNEL, SITE, clip, esc, kindLabel, topicLabel } from "./core.mjs";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,10 +36,30 @@ export function markHtml(b, size, spriteRef = null) {
 export function markToSprite(markFile) {
   if (!markFile) return null;
   const id = String(markFile).replace(/^\/marks\//, "").replace(/\.[^.]+$/, "");
-  return "/sprite.svg#m-" + id;
+  return spritePath + "#m-" + id;
 }
 
 export const CSS = (await readFile(join(here, "house.css"), "utf8")).replace(/\n/g, "");
+
+// Content-addressed assets. The compiled CSS and the mark sprite ship as
+// styles-<hash>.css and sprite-<hash>.svg. A returning browser can hold them
+// forever and still receives the new bytes the instant a deploy changes them,
+// because the HTML that points at them revalidates on every visit. The
+// defaults keep the site correct if a caller ever skips setAssets().
+export const CSS_NAME =
+  "styles-" + createHash("sha256").update(CSS).digest("hex").slice(0, 12) + ".css";
+
+let spritePath = "/sprite.svg";
+let cssPath = "/" + CSS_NAME;
+
+export function setAssets({ sprite, css }) {
+  if (typeof sprite === "string" && sprite.startsWith("/")) spritePath = sprite;
+  if (typeof css === "string" && css.startsWith("/")) cssPath = css;
+}
+
+export function getAssets() {
+  return { sprite: spritePath, css: cssPath, cssName: CSS_NAME };
+}
 
 export function jsonLdScript(obj) {
   return "<script type=\"application/ld+json\">" + JSON.stringify(obj).replace(/</g, "\\u003c") + "</script>";
@@ -63,11 +84,11 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     // The sprite and the fonts are the only resources above the fold on every
     // page. Preloading them removes the last render-blocking round trips and
     // is the single highest-value Core Web Vitals change available here.
-    "<link rel=\"preload\" href=\"/sprite.svg\" as=\"image\" type=\"image/svg+xml\" crossorigin>",
+    "<link rel=\"preload\" href=\"" + spritePath + "\" as=\"image\" type=\"image/svg+xml\" crossorigin>",
     "<link rel=\"preload\" href=\"/fonts/fraunces-600.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
     "<link rel=\"preload\" href=\"/fonts/source-sans-3-400.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
     "<link rel=\"preload\" href=\"/fonts/source-sans-3-600.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
-    "<link rel=\"stylesheet\" href=\"/styles.css\">",
+    "<link rel=\"stylesheet\" href=\"" + cssPath + "\">",
     "<meta property=\"og:site_name\" content=\"Lab Ledger Desk\">",
     "<meta property=\"og:type\" content=\"", esc(ogType), "\">",
     "<meta property=\"og:title\" content=\"", esc(title), "\">",

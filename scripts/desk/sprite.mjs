@@ -10,8 +10,10 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { MARK_DIR, OUT } from "./core.mjs";
 import { isHouseGlyph } from "./fetch-mark.mjs";
+import { setAssets } from "./render.mjs";
 
 async function exists(path) {
   try {
@@ -726,10 +728,17 @@ export async function writeMarkSprite(markIds) {
   if (!usable.length) return null;
   parts.push(...usable);
   parts.push("</svg>");
+  const body = parts.join("");
   await mkdir(OUT, { recursive: true });
-  const path = join(OUT, "sprite.svg");
-  await writeFile(path, parts.join(""));
-  return "/sprite.svg";
+  // Content-addressed name: the hash IS the cache key. The HTML that
+  // references it revalidates on every visit, so a deploy that changes any
+  // logo is visible immediately, while a returning browser that already has
+  // these exact bytes never refetches them.
+  const name = "sprite-" + createHash("sha256").update(body).digest("hex").slice(0, 12) + ".svg";
+  await writeFile(join(OUT, name), body);
+  const publicPath = "/" + name;
+  setAssets({ sprite: publicPath });
+  return publicPath;
 }
 
 // Vector marks are single-color paths drawn by us, so the tile is read from the
