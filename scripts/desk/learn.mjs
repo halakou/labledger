@@ -212,6 +212,201 @@ const ENTRIES = [
       },
     ],
   },
+  {
+    slug: "why-ai-hallucinates",
+    title: "Why AI hallucinates, and how to catch it before it costs you",
+    dek: "AI hallucinations are not a bug. They are how the model works. Why they happen, how to spot a confident wrong answer, and what actually prevents them.",
+    kind: "Explainer",
+    level: "Intermediate",
+    date: "2026-09-25",
+    reading: 13,
+    body: [
+      {
+        h: "The short answer first",
+        kind: "prose",
+        p: [
+          "A hallucination is a confident wrong answer. It happens because a language model does not look things up. It predicts the next likely word, one piece at a time, from patterns it absorbed during training. Most of the time those patterns line up with the truth. Sometimes they do not, and nothing inside the model flags the difference.",
+          "These failures are what the field calls hallucinations, and what everyone means when they say AI hallucinates. You cannot switch the behavior off. There is no fact-check module to enable and no instruction that removes it. Every lab documents hallucination as a limitation in its own model card, and every model ships with it intact.",
+          "What you can do is understand the mechanism, learn to spot the failures, and put a small set of habits between the model and anything that matters. That is what this guide is. It starts at zero, ends at a system you can actually run, and skips the hype in between.",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "note",
+        label: "The sentence to keep",
+        p: [
+          "A language model does not know things. It assigns probabilities to words. The confidence you read in an answer is a property of the text style, not a report from a memory.",
+        ],
+      },
+      {
+        h: "What a hallucination is not",
+        kind: "prose",
+        p: [
+          "The word gets used for everything a model gets wrong, which makes it useless. Four of the rows below are not hallucinations at all, and each needs a different fix. The last row is the thing itself.",
+        ],
+        ul: [
+          "A refusal is not a hallucination. When the model says it will not answer, that is a guardrail doing its job. You can disagree with the guardrail, but it is not a fiction.",
+          "An out-of-date answer is not a hallucination. It is a training-cutoff problem, fixed by giving the model newer text, not by changing how it writes.",
+          "A misinterpretation of a vague prompt is not a hallucination. If you ask an unclear question and get an answer to the question you actually asked, the model did what it was told.",
+          "A limitation is not a hallucination. A model that cannot do reliable arithmetic is showing you a boundary, not inventing a fact.",
+          "A hallucination is specifically this: the model states something specific, uses the same assured style it uses for everything else, and the statement is false. The confidence is the tell, because the confidence is always on.",
+        ],
+      },
+      {
+        h: "The words you need",
+        kind: "terms",
+        terms: [
+          ["Hallucination", "A confident, specific, false statement produced by a model. Not a lie, because there is no intent to deceive, and not an error the model can detect in itself."],
+          ["Confabulation", "The same behavior, named by analogy to a condition where a person fills memory gaps with plausible false detail and believes the result. Some papers prefer this word because it is closer to the mechanism. You will see both, and they mean the same thing here."],
+          ["Grounding", "Tying an answer to a specific source that existed before the question was asked. An answer is grounded when you can point at the paragraph it came from, not when it merely sounds researched."],
+          ["Next-token prediction", "The actual task a language model performs: given the text so far, guess the next piece. Every fluent sentence, every correct fact, and every hallucination comes out of this same loop."],
+          ["Calibration", "How well the stated confidence of a model matches its real accuracy. A well-calibrated model that says it is 70 percent sure is right about 70 percent of the time. Most models are overconfident, which is why a hallucination never arrives with a warning attached."],
+          ["Citation", "A pointer to a source. A real citation names a document that exists and contains the claim. A hallucinated citation often names a real journal, a real author, a plausible title, and a volume that does not exist. Checking it is the highest-value habit on this list."],
+          ["RAG", "Retrieval-augmented generation. The system searches your documents first, then hands the relevant parts to the model to answer from. It cuts hallucination sharply when retrieval works, and it fails silently when retrieval returns the wrong document, which is the advanced failure to watch for."],
+          ["Eval", "A fixed set of questions with known answers, used to measure how often a pipeline gets it wrong. Without one you are relying on how the output feels, and confident wrong output feels fine."],
+        ],
+      },
+      {
+        h: "Why the wrong answer sounds exactly like the right one",
+        kind: "prose",
+        p: [
+          "The model was trained on enormous amounts of human writing, and human writing is full of assured, fluent statements. The model learned to produce that register, and it applies it uniformly. There is no internal step where it pauses to ask whether a sentence is true, because truth-checking is not part of next-token prediction.",
+          "From inside the loop there is no difference between a correct sentence and an invented one. Both are just the highest-probability continuation. That is why reading a response for confidence tells you nothing. The confidence is constant.",
+          "This also explains where the errors cluster. Proper nouns, numbers, dates, citations, and web addresses are low-probability guesses dressed up as high-confidence prose. Anything that requires several steps of reasoning before the answer is where drift accumulates. Facts the model saw constantly during training are usually right. Facts it saw once, or never, are where it starts writing plausible fiction.",
+        ],
+      },
+      {
+        kind: "quote",
+        quote: "The model does not know it is wrong, because there is nothing that checks. There is only the next word.",
+        cite: "the desk, on why confidence is never evidence",
+      },
+      {
+        h: "The five hallucinations you will actually meet",
+        kind: "prose",
+        p: [
+          "Most wrong output falls into five shapes. Learning to name them as you read is faster than learning to spot them by feel, and the shape tells you which fix to reach for.",
+        ],
+        ul: [
+          "The invented citation. A paper, author, title, and page that look exactly right and do not exist. Dangerous, because the reference reads as more credible than the claim it supports.",
+          "The real name, wrong detail. A genuine researcher attached to a plausible finding they never published. Harder to catch than a pure invention, because the name checks out and only the work is false.",
+          "The plausible statistic. A number that feels sourced, often round, often in the right range. It is rarely exactly right, and it never comes with an origin you can open.",
+          "The broken artifact. Code that is structurally close to correct and fails on one line, or a formula that is right except for the constant it invented. Reads as competent, runs as broken.",
+          "The agreeable fiction. You state a wrong premise and the model builds on it instead of correcting it. This is the one you cause yourself, and it is the easiest of the five to prevent.",
+        ],
+      },
+      {
+        h: "How to spot one in the wild",
+        kind: "steps",
+        items: [
+          { t: "Read the load-bearing sentences only", d: "Most of a response is connective prose. Mark the two or three sentences the answer actually depends on. Those are the only ones worth checking, and they are usually the ones carrying the numbers and names." },
+          { t: "Check what one search can check", d: "Names, dates, titles, links, and any number the argument rests on. If the model wrote a citation, open it. A link that returns an error page, or a paper that does not exist, is a hallucination confirmed in a few seconds." },
+          { t: "Ask for the source passage verbatim", d: "Reply with a single request: quote the exact text this comes from. A grounded answer produces the passage. A hallucination produces another confident paragraph that still has no origin, or quietly retreats to a vaguer claim." },
+          { t: "Watch for the agreeable fiction", d: "If you handed the model a premise, ask whether it accepted it. Then ask it to argue the opposite as well. A model that only extends what you gave it is continuing your text, not verifying it." },
+          { t: "Ask where it is least sure", d: "Ask which parts it would change its mind on, and what evidence would flip the answer. The shape of the reply is more useful than the confidence in it, because a hallucinating model lists the same kind of detail either way." },
+          { t: "Run the same question twice", d: "Ask again in a fresh session with different phrasing. A fact is stable across runs. A hallucination drifts, because it is rebuilt from probability each time and the wording changes what gets drawn." },
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "warn",
+        label: "The one that costs the most",
+        p: [
+          "Invented citations are the most expensive hallucination, because they survive human review. A reader skimming a well-formed reference treats it as evidence. The journal is real, the author publishes in that field, the format is correct. Only the specific paper is false. The habit that pays for itself is checking the citation, not reading the prose around it.",
+        ],
+      },
+      {
+        h: "What does not fix hallucinations",
+        kind: "prose",
+        p: [
+          "A lot of the standard advice does not work, and knowing which part is which is half the savings. Four remedies get recommended constantly and deliver much less than their reputation suggests.",
+        ],
+        ul: [
+          "A bigger model does not fix it. Capability reduces some classes of error, and hallucination falls by roughly the same proportion as everything else. It never reaches zero, and the errors that remain are harder to spot because the surrounding output is better.",
+          "Setting the temperature to zero does not fix it. It makes output more consistent, which means you get the same hallucination every time instead of a different one each time. That is more predictable, not more true.",
+          "Telling the model to be accurate does not fix it. It will agree to be accurate, in the same confident style, and then produce output with a similar error rate. Instruction changes behavior, not the mechanism underneath.",
+          "Adding retrieval does not automatically fix it. It moves the failure from no source to wrong source, which is a better problem to have and still a problem. Retrieval that returns the wrong chunk produces a confident answer about the wrong document, and nothing in the output tells you it happened.",
+        ],
+      },
+      {
+        h: "The four habits that actually prevent them",
+        kind: "steps",
+        items: [
+          { t: "Make the model quote before it claims", d: "Require the source passage first, in quotation marks, then the claim drawn from it. A model that must produce the excerpt before the sentence either finds the excerpt or runs out of excerpt. This one habit removes most invented citations on its own." },
+          { t: "Verify only what carries weight", d: "You cannot check every sentence and you do not need to. Check the names, the numbers, the links, and the claims the decision rests on. Verification effort should follow consequence, not word count." },
+          { t: "Split the writer from the checker", d: "Generate, then in a separate pass with a separate instruction, have the model or a second model try to break the answer. Give the checker the sources and tell it to find the unsupported sentence. A critic told to criticize finds what a summarizer told to summarize smooths over." },
+          { t: "Keep the decision where a person can see it", d: "Any output that leads to money, a published claim, a medical or legal decision, or anything sent under your name should pass a checkpoint that knows which sentences to doubt. The model can draft. It should not be the last reader." },
+        ],
+      },
+      {
+        h: "A grounding prompt you can reuse",
+        kind: "code",
+        lang: "txt",
+        lines: [
+          "You are answering only from the SOURCE TEXT below. Follow the rules in order.",
+          "",
+          "1. Before any claim, quote the exact sentence from the source that supports it.",
+          "   Start the quoted line with the greater-than character. Quote more than one if needed.",
+          "2. If the source does not contain the answer, write: NOT IN SOURCE.",
+          "   Do not fill the gap from memory. Say the gap is there.",
+          "3. Never name a paper, link, author, date, or number that is not in the source.",
+          "4. If a number in the source conflicts with what you recall, trust the source.",
+          "5. At the end, list the claims you are least sure about, one per line.",
+          "",
+          "SOURCE TEXT:",
+          "<<<",
+          "(paste the document here)",
+          ">>>",
+        ],
+      },
+      {
+        h: "If you build on an API",
+        kind: "prose",
+        p: [
+          "When the model is one component inside a product, the failure moves. Most hallucination in production is not a model inventing freely. It is the retrieval layer handing the model the wrong document, and the model answering confidently from that. The output looks grounded, because it is grounded in something. It is just grounded in the wrong thing.",
+          "Three checks catch most of it. Confirm the retrieved chunk actually contains the answer the model gave, not merely text on the same topic. Confirm chunking does not split a claim away from its qualification, which is how a model ends up answering with half a sentence. And run a fixed eval of real user questions with known answers, so you are measuring error instead of gathering impressions.",
+          "None of this is exotic work. It is the boring middle of the project, and it is the part that decides whether the thing ships once or ships every month.",
+        ],
+      },
+      {
+        h: "How to measure it instead of feeling it",
+        kind: "prose",
+        p: [
+          "You cannot improve what you do not measure, and hallucination is specifically invisible to review based on impressions. Build a small set of questions where you already know the right answer, preferably taken from real usage, and run the pipeline against them on every change. Track how often it produces a confident wrong answer, and track the two failure types separately: no source found, and wrong source used.",
+          "Sample human review on a fixed cadence, and sample it at random. Reviewing only the outputs that look suspicious measures your ability to spot errors, not the error rate of the pipeline. A random one-in-twenty sample tells you the real number, and the real number is usually higher than the impression.",
+        ],
+        ul: [
+          "Log the question, the retrieved context, and the answer together. When something fails, the three side by side show which layer caused it.",
+          "Keep adversarial cases in the set: questions with false premises, questions whose answer is genuinely absent, and questions that ask for a citation. These are the ones a model fails by default, and watching them move is the earliest signal that a change actually helped.",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "tip",
+        label: "The cheapest fix that works today",
+        p: [
+          "If you do one thing after this guide, do this: paste the document into the chat, tell the model to answer only from that text, and tell it to write NOT IN SOURCE when the answer is not there. The instruction costs nothing, takes ten seconds, and removes the invented-reference class of failure immediately. Everything else in this guide is reinforcement for that one line.",
+        ],
+      },
+      {
+        h: "How the desk handles this",
+        kind: "prose",
+        p: [
+          "The desk has this problem by design. It summarizes what labs publish, which means its output is a set of claims about sources. A confident summary that says something the source does not say would be exactly the failure described above.",
+          "The practice is the same one this guide recommends to you. Every brief carries its primary source link, placed where a reader can open it in one click. The summary keeps the first sentences of the source rather than rewriting them, so the desk is not asserting a paraphrase it invented. Where a source is silent, the desk says so instead of filling the gap from memory, because memory is exactly where the model is wrong and confident at the same time.",
+          "It is not a perfect defense. It is a specific one, and you can check it against any brief on the board right now.",
+        ],
+      },
+      {
+        h: "The honest limit",
+        kind: "prose",
+        p: [
+          "There is no version of this where the number reaches zero. Hallucination is not a defect sitting on top of the model waiting to be patched out. It is the same mechanism that produces the fluent, useful output, and you do not get one without the other.",
+          "What you get instead is a floor, and the knowledge of where it sits. The model drafts, the process verifies, the person decides. The distance between a high hallucination rate and a low one is not a setting. It is the set of habits above, run every time, on the sentences that carry weight.",
+          "Keep the citation, not the confidence.",
+        ],
+      },
+    ],
+  }
 ];
 
 export const GUIDE_ENTRIES = ENTRIES;
