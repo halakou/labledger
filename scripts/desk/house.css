@@ -42,7 +42,7 @@ nav a:hover{color:var(--ink)}
 .mbadge{position:relative;width:40px;height:40px;text-decoration:none;display:block}
 .mbadge .mark{width:40px;height:40px;border-radius:2px}
 .mbadge .mark.xs.letter{font-size:1.05rem}
-.mbadge .mark.xs .mark-sprite{width:100%;height:100%}
+.mbadge .mark.xs .mark-sprite{width:40px;height:40px}
 .mbadge-n{position:absolute;right:-5px;top:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fffaf2;font-size:.62rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .mbadge-n:empty{display:none}
 .mbadge:hover .mark{outline:2px solid var(--ink);outline-offset:1px}
@@ -61,7 +61,13 @@ a.headline:hover{color:var(--accent)}
 .mark.sm.letter{font-size:1.4rem}
 .mark .glyph{width:100%;height:100%;display:grid;place-items:center}
 .mark .glyph img{width:100%;height:100%;object-fit:contain;padding:9px}
-.mark-sprite{width:100%;height:100%;display:block}
+.mark-sprite{display:block}
+/* A sprite <svg> is a replaced element: height:100% does not resolve
+   against a centered grid item, so it silently falls back to the 150px SVG
+   default and every logo lands ~55px below its tile. Pin each context to
+   the pixel size of the mark tile it sits in. */
+.mark .mark-sprite{width:80px;height:80px}
+.mark.sm .mark-sprite{width:56px;height:56px}
 .kicker{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .headline{font-family:Fraunces,Georgia,serif;font-size:1.45rem;font-weight:600;line-height:1.2;margin:.2rem 0;letter-spacing:-.02em}
 .dek{color:var(--muted)}
