@@ -432,7 +432,12 @@ function extractSvgInner(raw) {
   // but keep its children so the paths still draw.
   inner = inner.replace(/<svg[\s\S]*?>/gi, "").replace(/<\/svg>/gi, "");
   const vbm = attrs.match(/viewBox="([^"]+)"/i);
-  return { inner, viewBox: vbm ? vbm[1].trim() : null };
+  // Icon packs (Simple Icons, Tabler) put the ink color on the root element.
+  // The root is discarded below, so the color is handed to the caller, which
+  // re-attaches it as a group on the way into the symbol.
+  const rootFill = (attrs.match(/\bfill="([^"]+)"/i) || [])[1] || null;
+  const rootStroke = (attrs.match(/\bstroke="([^"]+)"/i) || [])[1] || null;
+  return { inner, viewBox: vbm ? vbm[1].trim() : null, rootFill, rootStroke };
 }
 
 // viewBox from an explicit declaration ("0.6 1067.9 90.3 109.1"), or null.
@@ -463,14 +468,50 @@ function pathViewBox(inner, raw) {
   return null;
 }
 
+// Illustrator/Inkscape SVGs declare fills in a <style> block (eg `.st0{fill:#76B900}`)
+// instead of per-element attributes. Two things break when such an SVG is nested
+// inside a <symbol> and referenced with <use>: the class rules are not reliably
+// applied by every engine, and vectorTile() cannot see them, so the mark ends
+// up with no contrasting tile and invisible ink in dark mode. Move each class
+// fill onto its element as a fill attribute and drop the <style> block.
+function inlineStyleFills(inner) {
+  const block = inner.match(/<style\b[^>]*>([\s\S]*?)<\/style>/i);
+  if (!block) return inner;
+  const rules = new Map();
+  for (const r of block[1].matchAll(/\.([A-Za-z0-9_-]+)\s*\{([^}]*)\}/g)) {
+    const fill = r[2].match(/fill\s*:\s*(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\s*(?:;|$|\s)/);
+    if (fill) rules.set(r[1], fill[1]);
+  }
+  const out = inner.replace(/<style\b[^>]*>[\s\S]*?<\/style>/i, "");
+  if (!rules.size) return out;
+  // Walk element tags so a fill is only added where the element does not already
+  // carry one — a duplicate fill attribute would make the document invalid XML.
+  return out.replace(/<([A-Za-z][\w:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g, (tag, name, attrs) => {
+    const cls = attrs.match(/class="([^"]*)"/);
+    if (!cls) return tag;
+    let fill = null;
+    for (const c of cls[1].trim().split(/\s+/)) {
+      if (rules.has(c)) { fill = rules.get(c); break; }
+    }
+    if (!fill || /\bfill\s*=/.test(attrs)) return tag;
+    const at = attrs.indexOf("class=");
+    return "<" + name + attrs.slice(0, at + cls[0].length) + ' fill="' + fill + '"' + attrs.slice(at + cls[0].length) + ">";
+  });
+}
+
 function symbolForSvg(id, buf) {
   const raw = buf.toString("utf8");
-  const { inner, viewBox: declared } = extractSvgInner(raw);
+  const { inner, viewBox: declared, rootFill, rootStroke } = extractSvgInner(raw);
   const vb = declared ? viewBoxFromList(declared.split(/[\s,]+/).map(Number)) : pathViewBox(inner, raw);
   if (!vb) return null; // nothing usable — caller falls back to a letter mark
-  const tile = vectorTile(raw);
+  let drawn = inlineStyleFills(inner);
+  const groupAttrs = [];
+  if (rootFill && rootFill !== "none") groupAttrs.push('fill="' + rootFill + '"');
+  if (rootStroke && rootStroke !== "none") groupAttrs.push('stroke="' + rootStroke + '"');
+  if (groupAttrs.length) drawn = "<g " + groupAttrs.join(" ") + ">" + drawn + "</g>";
+  const tile = vectorTile(drawn);
   const bg = tile ? '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="' + tile + '"/>' : "";
-  return '<symbol id="m-' + id + '" viewBox="' + vb.join(" ") + '">' + bg + inner + "</symbol>";
+  return '<symbol id="m-' + id + '" viewBox="' + vb.join(" ") + '">' + bg + drawn + "</symbol>";
 }
 
 // The tile that sits behind every mark. Both colors are from the desk

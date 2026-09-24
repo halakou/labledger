@@ -70,7 +70,9 @@ function isHouseSvg(buf) {
 
 export async function fetchMark(lab) {
   await mkdir(MARK_DIR, { recursive: true });
-  for (const ext of [".png", ".ico", ".webp", ".jpg", ".svg"]) {
+  // Vector first, to match collectMarks(): a cached .svg is the best mark we
+  // have, and a stale raster from an older icon list must never shadow it.
+  for (const ext of [".svg", ".png", ".ico", ".webp", ".jpg"]) {
     const cached = join(MARK_DIR, lab.id + ext);
     if (!(await exists(cached))) continue;
     const buf = await readFile(cached);

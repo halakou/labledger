@@ -112,7 +112,12 @@ export const LABS = [
     listing: null,
     hosts: ["blogs.nvidia.com"],
     iconHosts: ["blogs.nvidia.com", "nvidia.com"],
-    icons: ["https://blogs.nvidia.com/favicon.ico", "https://www.nvidia.com/favicon.ico"],
+    icons: [
+      "https://www.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/images/NVIDIA-Logo.svg",
+      "https://www.nvidia.com/content/dam/en-zz/Solutions/about-nvidia/nvidia-brochure/images/nvidia-logo-black.svg",
+      "https://blogs.nvidia.com/favicon.ico",
+      "https://www.nvidia.com/favicon.ico",
+    ],
   },
   {
     id: "aws",
@@ -164,7 +169,11 @@ export const LABS = [
     listing: null,
     hosts: ["news.mit.edu"],
     iconHosts: ["news.mit.edu", "mit.edu"],
-    icons: ["https://www.mit.edu/favicon.ico", "https://news.mit.edu/favicon.ico"],
+    icons: [
+      "https://news.mit.edu/themes/mit/assets/img/favicon/favicon.svg",
+      "https://www.mit.edu/favicon.ico",
+      "https://news.mit.edu/favicon.ico",
+    ],
   },
   {
     id: "mittr",
@@ -197,7 +206,10 @@ export const LABS = [
     listing: null,
     hosts: ["techcrunch.com"],
     iconHosts: ["techcrunch.com", "www.techcrunch.com"],
-    icons: ["https://techcrunch.com/favicon.ico"],
+    icons: [
+      "https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=192",
+      "https://techcrunch.com/favicon.ico",
+    ],
   },
   {
     id: "msftai",
@@ -220,7 +232,10 @@ export const LABS = [
     // The Verge's favicon is served from Vox's CDN, so the redirect target
     // has to be on the allow-list too.
     iconHosts: ["theverge.com", "www.theverge.com", "cdn.vox-cdn.com"],
-    icons: ["https://www.theverge.com/favicon.ico"],
+    icons: [
+      "https://www.theverge.com/static-assets/icons/android-chrome-512x512.png",
+      "https://www.theverge.com/favicon.ico",
+    ],
   },
 ];
 
@@ -293,9 +308,12 @@ export const OPEN_PROJECTS = [
     repo: "huggingface/transformers",
     feed: "https://github.com/huggingface/transformers/releases.atom",
     hosts: ["github.com"],
-    iconHosts: GH_ICONS,
+    iconHosts: [...GH_ICONS, "huggingface.co"],
     pathPrefix: "/huggingface/transformers/releases",
-    icons: ["https://github.com/huggingface.png"],
+    icons: [
+      "https://huggingface.co/front/thumbnails/transformers.png",
+      "https://github.com/huggingface.png",
+    ],
   },
   {
     id: "comfyui",
@@ -332,9 +350,17 @@ export const OPEN_PROJECTS = [
     repo: "langchain-ai/langchain",
     feed: "https://github.com/langchain-ai/langchain/releases.atom",
     hosts: ["github.com"],
-    iconHosts: ["github.com", "avatars.githubusercontent.com", "githubusercontent.com"],
+    iconHosts: [
+      "cdn.simpleicons.org",
+      "github.com",
+      "avatars.githubusercontent.com",
+      "githubusercontent.com",
+    ],
     pathPrefix: "/langchain-ai/langchain/releases",
-    icons: ["https://github.com/langchain-ai.png"],
+    icons: [
+      "https://cdn.simpleicons.org/langchain",
+      "https://github.com/langchain-ai.png",
+    ],
   },
   {
     id: "jax",
