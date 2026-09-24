@@ -49,6 +49,11 @@ export const HOUSE_SVG = {
   _default: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="6" y="6" width="20" height="20" rx="2" fill="none" stroke="#1c1914" stroke-width="2.6"/><circle cx="16" cy="16" r="4" fill="#1c1914"/></svg>',
 };;
 
+// The sentinel lets collectMarks() tell our own fallback apart from a real
+// downloaded vector mark. extractSvgInner strips comments, so it never reaches
+// the sprite.
+const HOUSE_HEAD = "<!-- desk-house-glyph -->\n";
+
 export function houseSvg(id) {
-  return HOUSE_SVG[id] || HOUSE_SVG._default;
+  return HOUSE_HEAD + (HOUSE_SVG[id] || HOUSE_SVG._default);
 }

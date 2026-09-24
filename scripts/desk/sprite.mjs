@@ -11,6 +11,7 @@ import { dirname, join } from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { MARK_DIR, OUT } from "./core.mjs";
+import { isHouseGlyph } from "./fetch-mark.mjs";
 
 async function exists(path) {
   try {
@@ -687,13 +688,20 @@ function symbolForRaster(id, ext, buf) {
 async function collectMarks(ids) {
   const out = [];
   for (const id of ids) {
+    // Prefer the real mark in the same order fetchMark prefers it. Our own house
+    // glyph is only used when nothing else is on disk, so a stale fallback can
+    // never shadow a downloaded or seeded icon.
+    let fallback = null;
     for (const ext of [".svg", ".png", ".ico", ".webp", ".jpg"]) {
       const p = join(MARK_DIR, id + ext);
-      if (await exists(p)) {
-        out.push({ id, ext, buf: await readFile(p) });
-        break;
-      }
+      if (!(await exists(p))) continue;
+      const buf = await readFile(p);
+      if (isHouseGlyph(buf)) { if (!fallback) fallback = { id, ext, buf }; continue; }
+      out.push({ id, ext, buf });
+      fallback = null;
+      break;
     }
+    if (fallback) out.push(fallback);
   }
   return out;
 }

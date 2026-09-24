@@ -64,9 +64,12 @@ export function looksLikeMark(buf, type) {
   return false;
 }
 
+// The sentinel is the authoritative marker — a size heuristic would also
+// catch small real vector marks (LangChain's official icon is 542 bytes).
 function isHouseSvg(buf) {
-  return buf.slice(0, 400).toString("utf8").includes("<svg") && buf.length < 800;
+  return buf.slice(0, 400).toString("utf8").includes("desk-house-glyph");
 }
+export { isHouseSvg as isHouseGlyph };
 
 // The URL that produced a cached mark, so a cached file can be checked
 // against the lab's current icon list. Without it, a mark cached from an old
@@ -109,7 +112,10 @@ export async function fetchMark(lab) {
     if (isHouseSvg(buf)) continue;
     if (!looksLikeMark(buf, ext === ".svg" ? "image/svg+xml" : "image/" + ext.slice(1))) continue;
     // A mark from the currently configured source is as good as it gets.
-    if ((await readSrc(lab)) === want) return "/marks/" + lab.id + ext;
+    if ((await readSrc(lab)) === want) {
+      await pruneOtherExts(lab, ext);
+      return "/marks/" + lab.id + ext;
+    }
     // Otherwise remember it as the last-resort fallback and go re-fetch.
     if (!stale) stale = ext;
     break;
