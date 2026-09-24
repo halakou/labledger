@@ -68,18 +68,39 @@ function isHouseSvg(buf) {
   return buf.slice(0, 400).toString("utf8").includes("<svg") && buf.length < 800;
 }
 
+// The URL that produced a cached mark, so a cached file can be checked
+// against the lab's current icon list. Without it, a mark cached from an old
+// config (a 48px ICO that a new vector URL supersedes) would shadow the new
+// source forever and the config change would never reach the live sprite.
+function srcPath(lab) {
+  return join(MARK_DIR, lab.id + ".src");
+}
+
+async function readSrc(lab) {
+  try {
+    return (await readFile(srcPath(lab), "utf8")).trim();
+  } catch {
+    return "";
+  }
+}
+
 export async function fetchMark(lab) {
   await mkdir(MARK_DIR, { recursive: true });
+  const want = (lab.icons || [])[0] || "";
   // Vector first, to match collectMarks(): a cached .svg is the best mark we
   // have, and a stale raster from an older icon list must never shadow it.
+  let stale = null;
   for (const ext of [".svg", ".png", ".ico", ".webp", ".jpg"]) {
     const cached = join(MARK_DIR, lab.id + ext);
     if (!(await exists(cached))) continue;
     const buf = await readFile(cached);
     if (isHouseSvg(buf)) continue;
-    if (looksLikeMark(buf, ext === ".svg" ? "image/svg+xml" : "image/" + ext.slice(1))) {
-      return "/marks/" + lab.id + ext;
-    }
+    if (!looksLikeMark(buf, ext === ".svg" ? "image/svg+xml" : "image/" + ext.slice(1))) continue;
+    // A mark from the currently configured source is as good as it gets.
+    if ((await readSrc(lab)) === want) return "/marks/" + lab.id + ext;
+    // Otherwise remember it as the last-resort fallback and go re-fetch.
+    if (!stale) stale = ext;
+    break;
   }
   const hosts = [...new Set([...(lab.hosts || []), ...(lab.iconHosts || [])])];
   for (const url of lab.icons || []) {
@@ -91,11 +112,15 @@ export async function fetchMark(lab) {
       if (!looksLikeMark(buf, type)) continue;
       const ext = extFrom(url, type);
       await writeFile(join(MARK_DIR, lab.id + ext), buf);
+      await writeFile(srcPath(lab), url);
       return "/marks/" + lab.id + ext;
     } catch {
       /* next official icon */
     }
   }
+  // Every configured source failed. A stale cached mark still beats the house
+  // glyph, so fall back to what we already had on disk.
+  if (stale) return "/marks/" + lab.id + stale;
   const seed = SEED_MARKS[lab.id];
   if (seed?.b64) {
     const buf = Buffer.from(String(seed.b64).replace(/\s+/g, ""), "base64");
