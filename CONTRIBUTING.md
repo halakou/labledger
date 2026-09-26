@@ -20,7 +20,7 @@ Read [AGENTS.md](AGENTS.md) — it is the whole project in one file. Then:
 ```bash
 git clone https://github.com/halakou/labledger.git
 cd labledger
-node --test test/                 # 35 unit tests, zero dependencies
+node --test test/*.test.mjs       # unit tests, zero dependencies
 node scripts/check-repo.mjs       # layout + credential guard
 node scripts/build-desk.mjs       # full local build → dist-site/
 ```
@@ -53,7 +53,7 @@ delete-from-history.
 ## Pull requests
 
 - One concern per PR.
-- `node --test test/` and `node scripts/check-repo.mjs` must pass — CI runs
+- `node --test test/*.test.mjs` and `node scripts/check-repo.mjs` must pass — CI runs
   both, plus a full build smoke on PRs.
 - Reference the brief or source you are correcting.
 

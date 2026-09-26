@@ -6,6 +6,7 @@ import {
   escHtml,
   hookSecret,
   loadJson,
+  postedLedgerFromResponse,
   redactChat,
 } from "./desk/tg.mjs";
 
@@ -319,9 +320,10 @@ if (!Object.keys(posted).length) {
       });
       if (res.ok) {
         const kv = await res.json().catch(() => null);
-        const n = kv && typeof kv === "object" ? Object.keys(kv).length : 0;
+        const recovered = postedLedgerFromResponse(kv);
+        const n = Object.keys(recovered).length;
         if (n) {
-          for (const k of Object.keys(kv)) posted[k] = kv[k];
+          Object.assign(posted, recovered);
           console.log("posted recovered from KV:", n);
         }
       }

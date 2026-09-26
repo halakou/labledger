@@ -19,16 +19,28 @@ function channelUrl(env) {
   return raw.startsWith("https://") ? raw : CHANNEL;
 }
 
-// A t.me/<handle> url (or @handle) becomes the chat id a bot can post to.
-function chatHandle(raw) {
-  const v = String(raw || "").trim().replace(/^https?:\/\/(www\.)?(t\.me|telegram\.me)\//i, "").replace(/^@/, "").split(/[/?#]/)[0];
-  return /^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(v) ? v : "labledgerdesk";
-}
-
 async function hookSecret(token) {
   const data = new TextEncoder().encode("labledger-desk:" + token);
   const buf = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+
+function timingSafeEqual(a, b) {
+  const enc = new TextEncoder();
+  const aa = enc.encode(String(a));
+  const bb = enc.encode(String(b));
+  const len = Math.max(aa.length, bb.length, 1);
+  let diff = aa.length ^ bb.length;
+  for (let i = 0; i < len; i++) diff |= (aa[i] || 0) ^ (bb[i] || 0);
+  return diff === 0;
+}
+
+function alertChat(env) {
+  const raw = String(env.TELEGRAM_ALERT_CHAT_ID || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("@") || /^-?\d+$/.test(raw)) return raw;
+  const handle = raw.replace(/^@/, "");
+  return /^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(handle) ? "@" + handle : "";
 }
 
 function textOf(msg) {
@@ -40,18 +52,18 @@ function textOf(msg) {
 // not be able to break the watchdog that does the alerting.
 async function maybeAlert(env, reason, detail) {
   const token = String(env.TELEGRAM_BOT_TOKEN || "").trim();
-  if (!token || !env.DESK) return;
+  const chatId = alertChat(env);
+  if (!token || !env.DESK || !chatId) return;
   try {
     const raw = await env.DESK.get("alerted");
     const last = Number(raw) || 0;
     if (Date.now() - last < ALERT_COOLDOWN_MS) return;
     await env.DESK.put("alerted", String(Date.now()));
-    const handle = chatHandle(channelUrl(env));
     await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: "@" + handle,
+        chat_id: chatId,
         text: "\u26A0\uFE0F <b>Desk pipeline needs attention</b>\n\n" + reason + "\n\nThe watchdog keeps trying. " + detail,
         parse_mode: "HTML",
         link_preview_options: { is_disabled: true },
@@ -117,7 +129,7 @@ async function handleTelegram(request, env) {
   if (!token) return new Response("no bot", { status: 503 });
   const expected = await hookSecret(token);
   const got = request.headers.get("x-telegram-bot-api-secret-token") || "";
-  if (got !== expected) return new Response("denied", { status: 401 });
+  if (!timingSafeEqual(got, expected)) return new Response("denied", { status: 401 });
   const update = await request.json().catch(() => null);
   const msg = update?.message;
   if (!msg?.chat?.id) return new Response("ok");
@@ -235,7 +247,7 @@ export default {
       const token = String(env.DISPATCH_TOKEN || "").trim();
       if (!token) return new Response("no token", { status: 503 });
       const got = request.headers.get("authorization") || "";
-      if (got !== "Bearer " + token) return new Response("denied", { status: 401 });
+      if (!timingSafeEqual(got, "Bearer " + token)) return new Response("denied", { status: 401 });
       if (request.method === "GET") {
         const raw = env.DESK ? await env.DESK.get("posted") : null;
         let body = null;

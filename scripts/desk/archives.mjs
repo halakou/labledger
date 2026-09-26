@@ -270,9 +270,13 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
         {
           "@type": "FAQPage",
           mainEntity: [
-            { "@type": "Question", name: "What moved?", acceptedAnswer: { "@type": "Answer", text: b.what } },
-            { "@type": "Question", name: "Why it matters?", acceptedAnswer: { "@type": "Answer", text: b.why } },
-            { "@type": "Question", name: "Where is the primary source?", acceptedAnswer: { "@type": "Answer", text: b.source } },
+            { "@type": "Question", name: "What moved", acceptedAnswer: { "@type": "Answer", text: b.what } },
+            { "@type": "Question", name: "Why it matters", acceptedAnswer: { "@type": "Answer", text: b.why } },
+            {
+              "@type": "Question",
+              name: "On the record",
+              acceptedAnswer: { "@type": "Answer", text: factList.join(" ") },
+            },
           ],
         },
         {

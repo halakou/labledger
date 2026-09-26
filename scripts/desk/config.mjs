@@ -189,7 +189,7 @@ export const LABS = [
   {
     id: "wired",
     label: "WIRED",
-    mark: "W",
+    mark: "Z",
     color: "#1c1914",
     feed: "https://www.wired.com/feed/tag/ai/latest/rss",
     listing: null,
@@ -263,7 +263,7 @@ export const OPEN_PROJECTS = [
   {
     id: "vllm",
     label: "vLLM",
-    mark: "V",
+    mark: "U",
     color: "#3d4a2e",
     kind: "github",
     repo: "vllm-project/vllm",
@@ -344,7 +344,7 @@ export const OPEN_PROJECTS = [
   {
     id: "langchain",
     label: "LangChain",
-    mark: "C",
+    mark: "Lk",
     color: "#3d4a2e",
     kind: "github",
     repo: "langchain-ai/langchain",

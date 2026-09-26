@@ -3,7 +3,8 @@ name: ci
 # Quality gate for every push to main and every pull request: the test suite,
 # a syntax pass over every source file, and the repository guard that refuses
 # files outside the allow-list or anything that looks like a credential.
-# Runs in parallel with pages.yml and never blocks the desk pipeline.
+# pages.yml runs the same guard and tests again and refuses to deploy if
+# they fail. This workflow does not block the desk by itself.
 on:
   push:
     branches: [main]

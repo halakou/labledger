@@ -2,7 +2,7 @@
 
 Read this before touching anything. It is the whole project in one file, so no
 agent has to re-derive it by exploring. Verify anything against the live site
-rather than trusting this blindly — the site moves every ten minutes, this file
+rather than trusting this blindly — the site moves about every fifteen minutes, this file
 does not.
 
 ## What it is
@@ -59,7 +59,10 @@ scripts/desk/ogcard.mjs    per-brief 1200x630 OG image, hand-drawn
 scripts/desk/learn.mjs     /learn/ field guide — original explainers
 scripts/desk/donate.mjs    /donate/ — cost ledger + TON/USDT rails
 scripts/desk/site-digest.mjs  /method/ + weekly /week/ digest
-scripts/desk/house.css     all styling, dark mode via prefers-color-scheme
+scripts/desk/house.css     all styling. The public site is intentionally light-only
+                           (color-scheme: light). Contrast tiles still bake a
+                           dark-legible tile so a logo cannot vanish if a dark
+                           palette is added later. There is no prefers-color-scheme switch.
 scripts/desk/glyphs.mjs    fallback glyph per source (when no real logo)
 scripts/desk/raster.mjs    PNG/ICO decode for mark normalization
 scripts/desk/fetch-mark.mjs  fetch + normalize one source logo
@@ -95,8 +98,9 @@ cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands
 5. **Free tier, forever.** GitHub Actions free, Cloudflare Pages/Workers/KV
    free tiers. If a feature needs a paid plan, it does not ship.
 6. **Old URLs stay.** The archive never deletes, only slices to 500.
-7. **One inline script only.** The search filter inside `render.mjs shell()`.
-   The site is static; keep it that way.
+7. **One inline script only.** The search filter and the donate copy handler
+   both live inside `render.mjs` `SEARCH_SCRIPT`. CSP allows that one hash.
+   Do not add a second script or an `onclick`.
 8. **The posted-ledger KV mirror.** Both directions, every run.
 9. **Contrast tiles are baked into the sprite `<symbol>`.** A logo's luminance
    picks its tile color at build time, so it stays legible in dark mode without
@@ -125,7 +129,9 @@ and RSS all derive from it.
 
 ## Testing protocol (mandatory)
 
-Nothing touches `main` untested. Clone to `/tmp/<name>test`, run
+Nothing is published untested. `pages.yml` runs the guard and the unit tests
+before deploy and aborts if they fail. A direct push can still land on `main`
+until branch protection is turned on in GitHub settings. Clone to `/tmp/<name>test`, run
 `node scripts/build-desk.mjs` there (it writes to its own `dist-site` and
 `.desk-*` files — it cannot touch the live site; only CI deploys). Then:
 `node --check` every file you touched, validate any XML with
@@ -162,6 +168,9 @@ If `ageMs` is large and `dispatch` is not `dispatched`, the pipeline is stuck.
 
 `CLOUDFLARE_API_TOKEN`, `DISPATCH_TOKEN`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`, `TELEGRAM_CHANNEL_URL`, `TELEGRAM_WEBHOOK_URL`.
+Optional: `TELEGRAM_ALERT_CHAT_ID` — a private chat (numeric id or @handle)
+the watchdog pages when it cannot rebuild. Until that secret exists, outage
+alerts are not sent. Do not point it at the public channel.
 Worker secrets are pushed by `deploy-worker.yml` on any `cloudflare/**` change.
 
 ## Known small debts
@@ -173,8 +182,11 @@ feed the desk will fetch.
 
 ## Testing
 
-`node --test test/` runs the unit suite (35 tests, zero dependencies) and
-`node scripts/check-repo.mjs` enforces the repo layout and scans for
-credentials. CI (`.github/workflows/ci.yml`) runs both on every push, and
-the gitleaks workflow scans the full commit history. The manual protocol
-below still applies to markup and content changes.
+`node --test test/*.test.mjs` runs the unit suite (zero dependencies).
+`node --test test/` fails on Node 22 because it tries to load the directory
+as a module. `node scripts/check-repo.mjs` enforces the repo layout and scans
+for credentials. CI (`.github/workflows/ci.yml`) runs both on every push.
+`pages.yml` runs them again and refuses to deploy if they fail, then checks
+that the built site has a CSP hash and a noindex 404. The manual protocol
+below still applies to markup and content changes. Branch protection on
+`main` is a GitHub setting, not something this repo can turn on by itself.

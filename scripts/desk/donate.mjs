@@ -83,7 +83,7 @@ export async function writeDonate({ today, briefsCount = 0, openCount = 0, labsC
             "<tr><td>" + c.label + "</td><td>" + c.note + "</td><td>" + c.amount + "</td></tr>",
         ).join(""),
         "</tbody></table>",
-        "<p class=\"dek\">The infrastructure is zero — the desk runs itself every ten minutes and costs nothing to keep alive. What is not zero is the judgement behind it: which sources deserve a seat, which headline is a launch and which is a footnote, and which brief needs fixing at 2am because a lab edited its own announcement.</p>",
+        "<p class=\"dek\">The infrastructure is zero — the desk rebuilds itself about every fifteen minutes and costs nothing to keep alive. What is not zero is the judgement behind it: which sources deserve a seat, which headline is a launch and which is a footnote, and which brief needs fixing at 2am because a lab edited its own announcement.</p>",
 
         "<h2>How to help</h2>",
         "<p class=\"dek\">Three ways, ranked by how much they actually keep the desk alive:</p>",
@@ -112,11 +112,11 @@ export async function writeDonate({ today, briefsCount = 0, openCount = 0, labsC
             "</p>" +
             "<code class=\"support-addr\" id=\"rail-" +
             r.label.replace(/[^a-z]/gi, "").toLowerCase() +
-            "\" onclick=\"navigator.clipboard.writeText(this.textContent).then(function(){this.classList.add('copied');var t=this;setTimeout(function(){t.classList.remove('copied')},1400)}.bind(this))\">" +
+            "\">" +
             r.address +
             "</code></section>",
         ).join(""),
-        "<p class=\"dek\"><i>Copy an address by tapping it.</i> Send only that exact asset on that exact chain — the desk holds no other rails, and there is no refund path if a network is mixed up.</p>",
+        "<p class=\"dek\"><i>Tap an address to copy it.</i> If the tap does nothing, select the text — it is the whole address. Send only that exact asset on that exact chain — the desk holds no other rails, and there is no refund path if a network is mixed up.</p>",
 
         "<h2>The ledger so far</h2>",
         "<p class=\"dek\">As of " + today + ", the desk has filed and sourced:</p>",

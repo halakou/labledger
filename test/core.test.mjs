@@ -15,6 +15,7 @@ import {
   hostOf,
   composeWhat,
   composeWhy,
+  factsFor,
 } from "../scripts/desk/core.mjs";
 import { mondayOf } from "../scripts/desk/net.mjs";
 
@@ -157,4 +158,16 @@ test("composeWhy states the filing kind without restating the summary", () => {
   assert.ok(why.includes("launch"));
   assert.ok(why.includes("OpenAI"));
   assert.ok(!why.includes("summary text"));
+});
+
+test("factsFor does not write a doubled article before names that already start with The", () => {
+  const facts = factsFor({
+    lab: "The Verge",
+    via: "feed",
+    source: "https://www.theverge.com/story",
+    dateLabel: "26 Sep 2026",
+    what: "A short claim that is long enough to count as a sentence for the facts list.",
+  });
+  assert.match(facts[0], /^Filed from The Verge /);
+  assert.doesNotMatch(facts[0], /the The/);
 });

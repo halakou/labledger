@@ -53,7 +53,7 @@ export async function writeDigest({ allBriefs, briefs, today }) {
         "<article class=\"method\"><p class=\"kicker\">Method</p><h1>How the desk works</h1>",
         "<h2>What this is</h2><p>Lab Ledger Desk is a public register of official AI announcements from named labs, research groups, and the press that covers them. Each page is a brief of about 100 words: what moved, why it matters, and the primary source. Labels such as Launch, Research, and Note are keyword tags, not a human editor’s verdict.</p>",
         "<h2>What this is not</h2><p>It is not a newspaper with invented reporters. It does not copy lab posts in full. It does not invent launches. It does not use unofficial RSS proxies. It does not run an email list. Meta and xAI are absent because they publish no official feed the desk will fetch.</p>",
-        "<h2>How a brief is made</h2><p>Every ten minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article’s own og:title and og:description. If that description is Anthropic’s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary — DeepMind often does — the desk fills the summary from that same host’s meta description. Duplicates are dropped by guid. A fixed template is filled to about 100 words. Telegram carries the same brief only after the page exists.</p>",
+        "<h2>How a brief is made</h2><p>About every fifteen minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article’s own og:title and og:description. If that description is Anthropic’s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary — DeepMind often does — the desk fills the summary from that same host’s meta description. Duplicates are dropped by guid. A fixed template is filled to about 100 words. Telegram carries the same brief only after the page exists.</p>",
         "<h2>Sources on this desk date</h2>",
         "<table><thead><tr><th>Lab</th><th>Method</th><th>Host</th></tr></thead><tbody>",
         LABS.map((l) => {
@@ -154,6 +154,7 @@ export async function writeDigest({ allBriefs, briefs, today }) {
       title: "Not found — Lab Ledger Desk",
       description: "This brief is not on the ledger.",
       path: "/404.html",
+      robots: "noindex, follow",
       body: "<article class=\"method\"><p class=\"kicker\">404</p><h1>This brief is not on the ledger.</h1><p class=\"dek\">The desk only files official lab posts it has already read.</p><p><a class=\"back\" href=\"/\">← Back to the board</a></p></article>",
     }),
   );

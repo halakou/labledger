@@ -88,3 +88,34 @@ export async function loadJson(path, fallback) {
     return fallback;
   }
 }
+
+// Worker GET /posted returns { ok: true, posted: map }. A lost Actions cache
+// must recover that map, not the wrapper keys "ok" and "posted". One extra
+// unwrap covers a mirror that stored the wrapper itself. Values that are not
+// message URLs are dropped so a bad payload cannot poison the ledger.
+export function postedLedgerFromResponse(kv) {
+  if (!kv || typeof kv !== "object" || Array.isArray(kv)) return {};
+  let src = kv;
+  if (isWrapper(src)) src = src.posted;
+  if (isWrapper(src)) src = src.posted;
+  if (!src || typeof src !== "object" || Array.isArray(src)) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(src)) {
+    if (!k || k === "ok" || k === "posted") continue;
+    if (typeof v !== "string" || !v.startsWith("https://")) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+function isWrapper(obj) {
+  return Boolean(
+    obj &&
+      typeof obj === "object" &&
+      !Array.isArray(obj) &&
+      obj.ok === true &&
+      obj.posted &&
+      typeof obj.posted === "object" &&
+      !Array.isArray(obj.posted),
+  );
+}

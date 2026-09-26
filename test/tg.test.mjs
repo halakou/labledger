@@ -8,6 +8,7 @@ import {
   hookSecret,
   escHtml,
   clipDek,
+  postedLedgerFromResponse,
 } from "../scripts/desk/tg.mjs";
 
 test("handleFrom accepts every public channel form and refuses numerics", () => {
@@ -56,4 +57,38 @@ test("clipDek cuts at a word boundary", () => {
   const out = clipDek("the quick brown fox jumps over the lazy dog", 15);
   assert.ok(out.endsWith("…"));
   assert.ok(out.length <= 15);
+});
+
+test("posted ledger recovery reads the worker wrapper, not its keys", () => {
+  const map = postedLedgerFromResponse({
+    ok: true,
+    posted: {
+      "guid-1": "https://t.me/labledgerdesk/10",
+      "guid-2": "https://t.me/labledgerdesk/11",
+    },
+  });
+  assert.deepEqual(Object.keys(map).sort(), ["guid-1", "guid-2"]);
+  assert.equal(map["guid-1"], "https://t.me/labledgerdesk/10");
+  assert.equal(map.ok, undefined);
+  assert.equal(map.posted, undefined);
+});
+
+test("posted ledger recovery unwraps a wrapper that was stored as the map", () => {
+  const map = postedLedgerFromResponse({
+    ok: true,
+    posted: {
+      ok: true,
+      posted: { "guid-9": "https://t.me/labledgerdesk/9" },
+    },
+  });
+  assert.deepEqual(map, { "guid-9": "https://t.me/labledgerdesk/9" });
+});
+
+test("posted ledger recovery drops non-urls and empty payloads", () => {
+  assert.deepEqual(postedLedgerFromResponse(null), {});
+  assert.deepEqual(postedLedgerFromResponse({ ok: true, posted: null }), {});
+  assert.deepEqual(
+    postedLedgerFromResponse({ ok: true, posted: { bad: "not-a-url", good: "https://t.me/labledgerdesk/1" } }),
+    { good: "https://t.me/labledgerdesk/1" },
+  );
 });
