@@ -1,0 +1,22 @@
+name: Add a source
+description: Propose an official lab feed or release page for the ledger.
+labels: ["source"]
+body:
+  - type: input
+    id: lab
+    attributes:
+      label: Lab name
+    validations:
+      required: true
+  - type: input
+    id: feed
+    attributes:
+      label: Official feed or release URL
+      description: Must be an official RSS/Atom feed or an official HTML listing. No aggregators.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything the desk should know — CDN redirects for favicons, paywalls, inconsistent dates.

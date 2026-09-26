@@ -8,21 +8,24 @@ does not.
 ## What it is
 
 A fully automated AI news desk. Zero cost, zero dependencies, zero human
-runtime. It reads official announcements from 28 allow-listed sources, builds a
+runtime. It reads official announcements from 27 allow-listed sources, builds a
 static site, posts the same briefs to Telegram, and keeps going if every laptop
 on earth disappears. Nothing is invented. Every brief points at a primary source.
 
 - Site: https://labledgerdesk.pages.dev
 - Channel: https://t.me/labledgerdesk
-- Repo: github.com/halakou/labledger (branch `main`, 77+ commits)
+- Repo: github.com/halakou/labledger (branch `main`)
 - Worker watchdog: https://labledger-desk.halakou.workers.dev/health
 
 ## The pipeline
 
 ```
 clock.yml (GitHub cron, every 10 min at :04:14:24:34:44:54)
+  NOTE: GitHub throttles free schedules to roughly hourly in practice — the
+  desk's real cadence is ~15 min, carried by the Worker watchdog below. Do
+  not rely on the clock cron for freshness; rely on the watchdog.
   └─ completes ─> pages.yml (workflow_run trigger)
-       ├─ node scripts/build-desk.mjs     ← fetch 28 sources, build dist-site
+       ├─ node scripts/build-desk.mjs     ← fetch 27 sources, build dist-site
        ├─ wrangler deploy labledgerdesk.toml   ← site as Worker static assets
        ├─ wrangler pages deploy dist-site      ← site on Cloudflare Pages
        ├─ node scripts/telegram-desk.mjs       ← posts ONLY after pages exist
@@ -44,14 +47,14 @@ the independence guarantee.
 
 ```
 scripts/build-desk.mjs     ingest: fetch -> dedupe by guid -> briefs -> queue -> publish
-scripts/desk/config.mjs    SOURCE REGISTRY (28), KINDS, TOPICS, caps, OUT paths
+scripts/desk/config.mjs    SOURCE REGISTRY (27), KINDS, TOPICS, caps, OUT paths
 scripts/desk/core.mjs      brief shape, parseFeed, classify, esc, slugify, date
 scripts/desk/net.mjs       fetch layer — allow-list enforcement lives here
 scripts/desk/render.mjs    shell() page chrome, rowHtml, markHtml, JSON-LD
 scripts/desk/site-home.mjs home, /open/ board, llms.txt, _headers, desk-status.json
 scripts/desk/archives.mjs  /lab/ /topic/ /kind/ /b/YYYY/M/D/slug/ sitemap, rss.xml
 scripts/desk/open-archives.mjs  /open/ pages + /open/rss.xml
-scripts/desk/sprite.mjs    ONE sprite.svg for all 28 marks + contrast tiles
+scripts/desk/sprite.mjs    ONE sprite.svg for all 27 marks + contrast tiles
 scripts/desk/ogcard.mjs    per-brief 1200x630 OG image, hand-drawn
 scripts/desk/learn.mjs     /learn/ field guide — original explainers
 scripts/desk/donate.mjs    /donate/ — cost ledger + TON/USDT rails
@@ -163,7 +166,15 @@ Worker secrets are pushed by `deploy-worker.yml` on any `cloudflare/**` change.
 
 ## Known small debts
 
-- `donate.mjs` COSTS says "News intake (17 labs)" — the real count is 18 LABS
-  + 10 OPEN_PROJECTS = 28 sources. Fix the label when you are in that file.
-- `pages.pack.b64` is unreferenced dead weight; safe to delete.
-- Meta and xAI are absent by design: no official feed the desk will fetch.
+None open. The two that used to live here — the "17 labs" label in
+`donate.mjs` (now built from `labsCount`) and the dead `pages.pack.b64`
+(now deleted) — are fixed. Meta and xAI are absent by design: no official
+feed the desk will fetch.
+
+## Testing
+
+`node --test test/` runs the unit suite (35 tests, zero dependencies) and
+`node scripts/check-repo.mjs` enforces the repo layout and scans for
+credentials. CI (`.github/workflows/ci.yml`) runs both on every push, and
+the gitleaks workflow scans the full commit history. The manual protocol
+below still applies to markup and content changes.

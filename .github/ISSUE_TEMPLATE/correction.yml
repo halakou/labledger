@@ -1,0 +1,25 @@
+name: Correction to a brief
+description: Tell us what a brief got wrong — a date, a lab, a link, a claim.
+labels: ["correction"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong
+      description: The brief URL and the specific error. Quote the part that is wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: The official source
+      description: A link to the primary source that shows the correct fact.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: What it should say
+      description: What the desk should have filed, in one or two sentences.
+    validations:
+      required: true
