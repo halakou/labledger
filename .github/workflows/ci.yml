@@ -21,7 +21,7 @@ jobs:
       - name: Repository guard (layout + secret scan)
         run: node scripts/check-repo.mjs
       - name: Unit tests
-        run: node --test test/
+        run: node --test test/*.test.mjs
       - name: Build smoke (pull requests only; main is built by pages.yml)
         if: github.event_name == 'pull_request'
         run: node scripts/build-desk.mjs
