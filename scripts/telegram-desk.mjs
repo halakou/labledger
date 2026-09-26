@@ -1,5 +1,13 @@
-import { createHash } from "node:crypto";
 import { access, readFile, writeFile } from "node:fs/promises";
+import {
+  chatIdFromEnv,
+  channelUrlFromEnv,
+  clipDek,
+  escHtml,
+  hookSecret,
+  loadJson,
+  redactChat,
+} from "./desk/tg.mjs";
 
 const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
 const POSTED_FILE = ".desk-posted.json";
@@ -25,68 +33,10 @@ const KIND = {
   note: { label: "Note", mark: "·" },
 };
 
-function handleFrom(raw) {
-  if (!raw) return "";
-  let v = String(raw).trim();
-  v = v.replace(/^https?:\/\/(www\.)?(t\.me|telegram\.me)\//i, "");
-  v = v.replace(/^@/, "");
-  v = v.split(/[/?#]/)[0];
-  if (/^-?\d+$/.test(v)) return "";
-  if (/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(v)) return v;
-  return "";
-}
-
-function telegramChatId() {
-  const chat = (process.env.TELEGRAM_CHAT_ID || "").trim();
-  const h = handleFrom(chat);
-  if (h) return "@" + h;
-  if (/^-?\d+$/.test(chat)) return chat;
-  const fromUrl = handleFrom(process.env.TELEGRAM_CHANNEL_URL || "");
-  if (fromUrl) return "@" + fromUrl;
-  return "@labledgerdesk";
-}
-
-function channelUrl() {
-  const explicit = handleFrom(process.env.TELEGRAM_CHANNEL_URL || "");
-  if (explicit) return "https://t.me/" + explicit;
-  const fromChat = handleFrom(process.env.TELEGRAM_CHAT_ID || "");
-  if (fromChat) return "https://t.me/" + fromChat;
-  return "https://t.me/labledgerdesk";
-}
-
-function redactChat(chat) {
-  if (/^-?\d+$/.test(chat)) return "numeric-id";
-  return chat;
-}
-
-function hookSecret(token) {
-  return createHash("sha256")
-    .update("labledger-desk:" + token)
-    .digest("hex")
-    .slice(0, 32);
-}
-
-function escHtml(s) {
-  const amp = "\x26";
-  return String(s)
-    .replace(/&/g, amp + "amp;")
-    .replace(/</g, amp + "lt;")
-    .replace(/>/g, amp + "gt;")
-    .replace(/"/g, amp + "quot;");
-}
-
 function formatDate(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
-}
-
-function clipDek(text, max) {
-  const t = String(text || "").replace(/\s+/g, " ").trim();
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max - 1);
-  const sp = cut.lastIndexOf(" ");
-  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;–-]+$/, "") + "…";
 }
 
 function kindOf(post) {
@@ -332,21 +282,13 @@ async function setupBot(token, info) {
   }
 }
 
-async function loadJson(path, fallback) {
-  try {
-    return JSON.parse(await readFile(path, "utf8"));
-  } catch {
-    return fallback;
-  }
-}
-
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 const token = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
-const chat = telegramChatId();
-const channel = channelUrl();
+const chat = chatIdFromEnv(process.env);
+const channel = channelUrlFromEnv(process.env);
 console.log("telegram token set:", Boolean(token));
 console.log("telegram chat:", redactChat(chat));
 console.log("telegram channel url:", channel);

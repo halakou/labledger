@@ -1,0 +1,12 @@
+# Keep the GitHub Actions we depend on current. Dependabot files pull requests
+# only; it never pushes to main, so the desk pipeline is never interrupted.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions

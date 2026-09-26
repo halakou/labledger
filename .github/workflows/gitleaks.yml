@@ -1,0 +1,21 @@
+name: gitleaks
+
+# Automated secret scanning over the full commit history on every push and
+# pull request. Free tier, no configuration needed. If a credential ever
+# enters this repo again, this workflow is what catches it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for leaked secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

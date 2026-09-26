@@ -1,0 +1,36 @@
+name: ci
+
+# Quality gate for every push to main and every pull request: the test suite,
+# a syntax pass over every source file, and the repository guard that refuses
+# files outside the allow-list or anything that looks like a credential.
+# Runs in parallel with pages.yml and never blocks the desk pipeline.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Repository guard (layout + secret scan)
+        run: node scripts/check-repo.mjs
+      - name: Unit tests
+        run: node --test test/
+      - name: Build smoke (pull requests only; main is built by pages.yml)
+        if: github.event_name == 'pull_request'
+        run: node scripts/build-desk.mjs
+        env:
+          SITE_URL: https://labledgerdesk.pages.dev
+      - name: Built site is served with a strict CSP
+        if: github.event_name == 'pull_request'
+        run: |
+          test -f dist-site/_headers
+          grep -q "Content-Security-Policy" dist-site/_headers
+          grep -q "sha256-" dist-site/_headers
+          test -f dist-site/desk-status.json

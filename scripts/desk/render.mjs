@@ -65,6 +65,13 @@ export function jsonLdScript(obj) {
   return "<script type=\"application/ld+json\">" + JSON.stringify(obj).replace(/</g, "\\u003c") + "</script>";
 }
 
+// The one inline script on the site: the board's search filter. Its SHA-256
+// hash is exported so _headers can ship a strict CSP that still allows it.
+export const SEARCH_SCRIPT = "(function(){var q=document.getElementById('q');var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));if(!rows.length)return;function norm(s){return (s||'').toLowerCase();}function counts(){var k={},t={},l={};rows.forEach(function(r){if(r.hidden)return;var kk=(r.getAttribute('data-kind')||''),tt=(r.getAttribute('data-topics')||'').split(' '),ll=(r.getAttribute('data-lab')||'');if(kk)k[kk]=(k[kk]||0)+1;tt.forEach(function(x){if(x)t[x]=(t[x]||0)+1;});if(ll)l[ll]=(l[ll]||0)+1;});[].forEach.call(document.querySelectorAll('.chip[data-chip]'),function(c){var g=c.parentNode.getAttribute('data-group');var m=g==='kind'?k:(g==='topic'?t:null);var n=m?m[c.getAttribute('data-chip')]||0:0;c.setAttribute('data-count',n);var cn=c.querySelector('.chip-n');if(cn)cn.textContent=n||'';c.setAttribute('data-active',n?'1':'');});[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){var n=l[b.getAttribute('data-lab')]||0;var bn=b.querySelector('.mbadge-n');if(bn)bn.textContent=n||'';b.style.opacity=n?'1':'.35';});}function apply(){var n=norm(q&&q.value);var vis=0;rows.forEach(function(r){var ok=true;if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;r.hidden=!ok;if(ok)vis++;});var c=document.getElementById('count');if(c)c.textContent=vis+' logged';counts();}if(q){q.addEventListener('input',apply);var p=new URLSearchParams(location.search);if(p.get('q'))q.value=p.get('q');apply();}})();";
+export const SEARCH_SCRIPT_HASH = createHash("sha256")
+  .update(SEARCH_SCRIPT, "utf8")
+  .digest("base64");
+
 export function shell({ title, description, path, body, extra = "", ogType = "website", ogImage }) {
   const url = SITE + path;
   const desc = clip(description, 158);
@@ -115,7 +122,7 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     esc(CHANNEL),
     "\" rel=\"noreferrer noopener\">Telegram</a> · <a href=\"/rss.xml\">RSS</a></p>",
     "</footer></div>",
-    "<script>(function(){var q=document.getElementById('q');var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));if(!rows.length)return;function norm(s){return (s||'').toLowerCase();}function counts(){var k={},t={},l={};rows.forEach(function(r){if(r.hidden)return;var kk=(r.getAttribute('data-kind')||''),tt=(r.getAttribute('data-topics')||'').split(' '),ll=(r.getAttribute('data-lab')||'');if(kk)k[kk]=(k[kk]||0)+1;tt.forEach(function(x){if(x)t[x]=(t[x]||0)+1;});if(ll)l[ll]=(l[ll]||0)+1;});[].forEach.call(document.querySelectorAll('.chip[data-chip]'),function(c){var g=c.parentNode.getAttribute('data-group');var m=g==='kind'?k:(g==='topic'?t:null);var n=m?m[c.getAttribute('data-chip')]||0:0;c.setAttribute('data-count',n);var cn=c.querySelector('.chip-n');if(cn)cn.textContent=n||'';c.setAttribute('data-active',n?'1':'');});[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){var n=l[b.getAttribute('data-lab')]||0;var bn=b.querySelector('.mbadge-n');if(bn)bn.textContent=n||'';b.style.opacity=n?'1':'.35';});}function apply(){var n=norm(q&&q.value);var vis=0;rows.forEach(function(r){var ok=true;if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;r.hidden=!ok;if(ok)vis++;});var c=document.getElementById('count');if(c)c.textContent=vis+' logged';counts();}if(q){q.addEventListener('input',apply);var p=new URLSearchParams(location.search);if(p.get('q'))q.value=p.get('q');apply();}})();</script>",
+    "<script>" + SEARCH_SCRIPT + "</script>",
     "</body></html>",
   ].join("");
 }

@@ -1,5 +1,6 @@
 const SITE = "https://labledgerdesk.pages.dev";
 const CHANNEL = "https://t.me/labledgerdesk";
+const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
 const GH_HEADERS = {
   accept: "application/vnd.github+json",
   "user-agent": "labledger-desk/1.0 (+https://labledgerdesk.pages.dev)",
@@ -18,6 +19,12 @@ function channelUrl(env) {
   return raw.startsWith("https://") ? raw : CHANNEL;
 }
 
+// A t.me/<handle> url (or @handle) becomes the chat id a bot can post to.
+function chatHandle(raw) {
+  const v = String(raw || "").trim().replace(/^https?:\/\/(www\.)?(t\.me|telegram\.me)\//i, "").replace(/^@/, "").split(/[/?#]/)[0];
+  return /^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(v) ? v : "labledgerdesk";
+}
+
 async function hookSecret(token) {
   const data = new TextEncoder().encode("labledger-desk:" + token);
   const buf = await crypto.subtle.digest("SHA-256", data);
@@ -26,6 +33,34 @@ async function hookSecret(token) {
 
 function textOf(msg) {
   return String(msg?.text || msg?.caption || "").trim();
+}
+
+// Best-effort channel alert, throttled in KV so a long outage costs one
+// message per cooldown, not one per cron tick. Never throws: alerting must
+// not be able to break the watchdog that does the alerting.
+async function maybeAlert(env, reason, detail) {
+  const token = String(env.TELEGRAM_BOT_TOKEN || "").trim();
+  if (!token || !env.DESK) return;
+  try {
+    const raw = await env.DESK.get("alerted");
+    const last = Number(raw) || 0;
+    if (Date.now() - last < ALERT_COOLDOWN_MS) return;
+    await env.DESK.put("alerted", String(Date.now()));
+    const handle = chatHandle(channelUrl(env));
+    await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: "@" + handle,
+        text: "\u26A0\uFE0F <b>Desk pipeline needs attention</b>\n\n" + reason + "\n\nThe watchdog keeps trying. " + detail,
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    /* alerting is best effort */
+  }
 }
 
 function replyFor(text, env) {
@@ -144,6 +179,21 @@ async function tick(env, postedLedger) {
       dispatch = await dispatchPages(env);
     } catch {
       dispatch = "dispatch-fail";
+    }
+    // The watchdog is the reason the desk stays current, so a watchdog that
+    // cannot dispatch is the one failure worth paging someone for.
+    if (dispatch === "no-token" || dispatch === "dispatch-fail") {
+      await maybeAlert(
+        env,
+        "The watchdog cannot rebuild the site.",
+        "dispatch status: <code>" + dispatch + "</code>",
+      );
+    } else if (String(dispatch).startsWith("dispatch-")) {
+      await maybeAlert(
+        env,
+        "The watchdog rebuild request was rejected.",
+        "GitHub answered: <code>" + dispatch + "</code>",
+      );
     }
   }
   const last = {

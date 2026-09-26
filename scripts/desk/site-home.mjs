@@ -12,7 +12,9 @@ import {
 } from "./core.mjs";
 import { OPEN_PROJECTS } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
-import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
+import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml, shell,
+  SEARCH_SCRIPT_HASH,
+} from "./render.mjs";
 import { GUIDE_ENTRIES } from "./learn.mjs";
 
 export async function writeStatic(fontNames) {
@@ -107,6 +109,7 @@ export async function writeLlms(briefs, openBriefs = []) {
     "_headers",
     [
       "/*",
+      "  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-" + SEARCH_SCRIPT_HASH + "'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'",
       "  X-Content-Type-Options: nosniff",
       "  Referrer-Policy: strict-origin-when-cross-origin",
       "  X-Frame-Options: DENY",

@@ -30,9 +30,10 @@ import {
 import { OPEN_BY_ID } from "./config.mjs";
 
 export async function fetchHttps(url, accept, hosts) {
-  if (!hostAllowed(url, hosts) && !hosts.includes("fonts.googleapis.com") && !hosts.includes("fonts.gstatic.com")) {
-    throw new Error("off allowlist " + url);
-  }
+  // The allow-list is the only security boundary on intake. There is no
+  // escape hatch here on purpose: fonts are fetched directly by ensureFonts()
+  // and never go through this path, so nothing needs to weaken it.
+  if (!hostAllowed(url, hosts)) throw new Error("off allowlist " + url);
   const res = await fetch(url, {
     headers: { "user-agent": UA, accept },
     redirect: "manual",

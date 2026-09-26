@@ -1,34 +1,12 @@
 // One-shot: post the donate announcement to the channel.
 // Run manually with real secrets. Not part of the daily loop.
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile as writeRaw } from "node:fs/promises";
+import { chatIdFromEnv } from "./desk/tg.mjs";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const rawChat = process.env.TELEGRAM_CHAT_ID || "";
-const url = process.env.SITE_URL || "https://labledgerdesk.pages.dev";
+const url = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
 const postedFile = process.env.POSTED_FILE || ".desk-posted.json";
-
-function handleFrom(raw) {
-  if (!raw) return "";
-  let v = String(raw).trim();
-  v = v.replace(/^https?:\/\/(www\.)?(t\.me|telegram\.me)\//i, "");
-  v = v.replace(/^@/, "");
-  v = v.split(/[/?#]/)[0];
-  if (/^-?\d+$/.test(v)) return "";
-  if (/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(v)) return v;
-  return "";
-}
-
-function telegramChatId() {
-  const chat = rawChat.trim();
-  const h = handleFrom(chat);
-  if (h) return "@" + h;
-  if (/^-?\d+$/.test(chat)) return chat;
-  const fromUrl = handleFrom(process.env.TELEGRAM_CHANNEL_URL || "");
-  if (fromUrl) return "@" + fromUrl;
-  return "@labledgerdesk";
-}
-
-const chat = telegramChatId();
+const chat = chatIdFromEnv(process.env);
 
 if (!token) {
   console.error("TELEGRAM_BOT_TOKEN required");
@@ -36,14 +14,14 @@ if (!token) {
 }
 
 const text = [
-  "🪶 <b>The cost ledger is now public</b>",
+  "\u{1F9AC} <b>The cost ledger is now public</b>",
   "",
   "We published what it actually costs to run this desk:",
   "",
-  "• Servers we rent — <b>0</b>",
-  "• Paywalls — <b>0</b>",
-  "• Briefs logged so far — <b>64</b>",
-  "• Review hours — the only line that is not free",
+  "\u2022 Servers we rent — <b>0</b>",
+  "\u2022 Paywalls — <b>0</b>",
+  "\u2022 Briefs logged so far — <b>64</b>",
+  "\u2022 Review hours — the only line that is not free",
   "",
   "If the desk has saved you an hour this month, the best way to say it",
   "costs nothing: send us a lab we missed, forward one dated brief to",
@@ -87,6 +65,5 @@ if (!data.ok) {
 posted[guid] = new Date().toISOString();
 // NOTE: net.mjs write() targets OUT (dist-site) which is wiped every build —
 // the ledger must live in the repo root to persist between runs.
-import { writeFile as writeRaw } from "node:fs/promises";
 await writeRaw(postedFile, JSON.stringify(posted, null, 2));
 console.log("posted message", data.result?.message_id);
