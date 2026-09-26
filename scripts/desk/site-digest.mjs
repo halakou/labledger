@@ -2,44 +2,59 @@ import { CHANNEL, LABS, SITE, esc, runLog } from "./core.mjs";
 import { formatRange, mondayOf, write } from "./net.mjs";
 import { jsonLdScript, rowHtml, shell } from "./render.mjs";
 
+export const METHOD_SECTIONS = [
+  {
+    h: "What this is",
+    p: "Lab Ledger Desk is a public register of official AI announcements from named labs, research groups, and the press that covers them. Each page is a brief of about 100 words: what moved, why it matters, and the primary source. Labels such as Launch, Research, and Note are keyword tags, not a human editor\u2019s verdict.",
+  },
+  {
+    h: "What this is not",
+    p: "It is not a newspaper with invented reporters. It does not copy lab posts in full. It does not invent launches. It does not use unofficial RSS proxies. It does not run an email list. Meta and xAI are absent because they publish no official feed the desk will fetch.",
+  },
+  {
+    h: "How a brief is made",
+    p: "About every fifteen minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article\u2019s own og:title and og:description. If that description is Anthropic\u2019s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary \u2014 DeepMind often does \u2014 the desk fills the summary from that same host\u2019s meta description. Duplicates are dropped by guid. A fixed template is filled to about 100 words. Telegram carries the same brief only after the page exists.",
+  },
+  {
+    h: "Archive",
+    p: "The board shows about twenty to twenty-eight current briefs. The ledger keeps earlier pages so a filed URL stays put. The desk does not rewrite an old brief\u2019s path. Caps at five hundred kept files.",
+  },
+  {
+    h: "Marks",
+    p: "Each lab sits in a house square. Where an official favicon or a small mark can be fetched from that lab\u2019s own host at build time, it is stored on this site. No third-party logo CDN is called when you read a page. If the host refuses the icon, the house letter stays.",
+  },
+  {
+    h: "Tags",
+    p: "Launch, Research, and Note are content types. LLM, Hardware, Medical, Safety, Open models, Agents, Science, and Enterprise are topic tags. They are keyword matches against the official title and summary. They are not extra reporting.",
+  },
+  {
+    h: "Weekly digest",
+    p: "The week page lists this week\u2019s filed briefs. There is no sign-up form and no mailbox. Follow RSS or Telegram if you want the same record without opening the site every day.",
+  },
+];
+
+function methodSection(s) {
+  if (s.h === "Weekly digest") {
+    return (
+      "<h2>" +
+      esc(s.h) +
+      "</h2><p>The week page lists this week\u2019s filed briefs. There is no sign-up form and no mailbox. Follow <a href=\"/rss.xml\">RSS</a> or <a href=\"" +
+      esc(CHANNEL) +
+      "\" rel=\"noreferrer noopener\">Telegram</a> if you want the same record without opening the site every day.</p>"
+    );
+  }
+  return "<h2>" + esc(s.h) + "</h2><p>" + esc(s.p) + "</p>";
+}
+
 export async function writeDigest({ allBriefs, briefs, today }) {
   const methodFaq = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "What is Lab Ledger Desk?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "A public register of official AI announcements from named labs, research groups, and the press that covers them — plus release notes from open-source AI projects. Each page is a brief of about 100 words: what moved, why it matters, and the primary source.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "How is Anthropic filed without RSS?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Anthropic publishes no RSS. The desk reads https://www.anthropic.com/news over HTTPS, then the article's own og:title and og:description. If that description is Anthropic's site-wide boilerplate, the desk takes the first paragraph of the article instead. It does not use RSSHub or any unofficial proxy.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Does it invent news?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "No. It does not invent launches, rewrite claims, or fetch hosts outside the allow-list.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Is there a newsletter?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "There is no email list. The weekly digest is a public page. Follow the RSS feed or the Telegram channel for the same briefs.",
-        },
-      },
-    ],
+    mainEntity: METHOD_SECTIONS.map((s) => ({
+      "@type": "Question",
+      name: s.h,
+      acceptedAnswer: { "@type": "Answer", text: s.p },
+    })),
   };
   await write(
     "method/index.html",
@@ -51,9 +66,7 @@ export async function writeDigest({ allBriefs, briefs, today }) {
       extra: jsonLdScript(methodFaq),
       body: [
         "<article class=\"method\"><p class=\"kicker\">Method</p><h1>How the desk works</h1>",
-        "<h2>What this is</h2><p>Lab Ledger Desk is a public register of official AI announcements from named labs, research groups, and the press that covers them. Each page is a brief of about 100 words: what moved, why it matters, and the primary source. Labels such as Launch, Research, and Note are keyword tags, not a human editor’s verdict.</p>",
-        "<h2>What this is not</h2><p>It is not a newspaper with invented reporters. It does not copy lab posts in full. It does not invent launches. It does not use unofficial RSS proxies. It does not run an email list. Meta and xAI are absent because they publish no official feed the desk will fetch.</p>",
-        "<h2>How a brief is made</h2><p>About every fifteen minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article’s own og:title and og:description. If that description is Anthropic’s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary — DeepMind often does — the desk fills the summary from that same host’s meta description. Duplicates are dropped by guid. A fixed template is filled to about 100 words. Telegram carries the same brief only after the page exists.</p>",
+        METHOD_SECTIONS.slice(0, 3).map(methodSection).join(""),
         "<h2>Sources on this desk date</h2>",
         "<table><thead><tr><th>Lab</th><th>Method</th><th>Host</th></tr></thead><tbody>",
         LABS.map((l) => {
@@ -84,12 +97,7 @@ export async function writeDigest({ allBriefs, briefs, today }) {
         ". Ledger kept ",
         String(allBriefs.length),
         " briefs so old URLs do not 404.</p>",
-        "<h2>Archive</h2><p>The board shows about twenty to twenty-eight current briefs. The ledger keeps earlier pages so a filed URL stays put. The desk does not rewrite an old brief’s path. Caps at five hundred kept files.</p>",
-        "<h2>Marks</h2><p>Each lab sits in a house square. Where an official favicon or a small mark can be fetched from that lab’s own host at build time, it is stored on this site. No third-party logo CDN is called when you read a page. If the host refuses the icon, the house letter stays.</p>",
-        "<h2>Tags</h2><p>Launch, Research, and Note are content types. LLM, Hardware, Medical, Safety, Open models, Agents, Science, and Enterprise are topic tags. They are keyword matches against the official title and summary. They are not extra reporting.</p>",
-        "<h2>Weekly digest</h2><p>The week page lists this week’s filed briefs. There is no sign-up form and no mailbox. Follow <a href=\"/rss.xml\">RSS</a> or <a href=\"",
-        esc(CHANNEL),
-        "\" rel=\"noreferrer noopener\">Telegram</a> if you want the same record without opening the site every day.</p>",
+        METHOD_SECTIONS.slice(3).map(methodSection).join(""),
         "<h2>Channel</h2><p>The public desk channel is <a href=\"",
         esc(CHANNEL),
         "\" rel=\"noreferrer noopener\">",

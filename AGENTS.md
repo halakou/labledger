@@ -66,6 +66,8 @@ scripts/desk/house.css     all styling. The public site is intentionally light-o
 scripts/desk/glyphs.mjs    fallback glyph per source (when no real logo)
 scripts/desk/raster.mjs    PNG/ICO decode for mark normalization
 scripts/desk/fetch-mark.mjs  fetch + normalize one source logo
+scripts/desk/seed-marks.mjs  one-shot helper for missing fallback marks
+assets/fonts/              Fraunces and Source Sans 3, vendored. ensureFonts copies these. It does not call Google.
 scripts/telegram-desk.mjs  queue -> channel, posted-ledger KV mirror
 scripts/post-donate-announce.mjs  one channel announcement
 scripts/cleanup-channel-posts.mjs  delete dupes (manual, workflow_dispatch)
@@ -130,8 +132,9 @@ and RSS all derive from it.
 ## Testing protocol (mandatory)
 
 Nothing is published untested. `pages.yml` runs the guard and the unit tests
-before deploy and aborts if they fail. A direct push can still land on `main`
-until branch protection is turned on in GitHub settings. Clone to `/tmp/<name>test`, run
+before deploy and aborts if they fail. Branch protection on `main`
+(`protect-main`) rejects a direct push: changes merge only through a pull
+request whose `verify` and `gitleaks` checks are green. Clone to `/tmp/<name>test`, run
 `node scripts/build-desk.mjs` there (it writes to its own `dist-site` and
 `.desk-*` files — it cannot touch the live site; only CI deploys). Then:
 `node --check` every file you touched, validate any XML with
@@ -167,11 +170,11 @@ If `ageMs` is large and `dispatch` is not `dispatched`, the pipeline is stuck.
 ## Secrets (names only — values live in GitHub + Cloudflare, never in code)
 
 `CLOUDFLARE_API_TOKEN`, `DISPATCH_TOKEN`, `TELEGRAM_BOT_TOKEN`,
-`TELEGRAM_CHAT_ID`, `TELEGRAM_CHANNEL_URL`, `TELEGRAM_WEBHOOK_URL`.
-Optional: `TELEGRAM_ALERT_CHAT_ID` — a private chat (numeric id or @handle)
-the watchdog pages when it cannot rebuild. Until that secret exists, outage
-alerts are not sent. Do not point it at the public channel.
+`TELEGRAM_CHAT_ID`, `TELEGRAM_CHANNEL_URL`, `TELEGRAM_WEBHOOK_URL`,
+`TELEGRAM_ALERT_CHAT_ID`. The alert id is a private chat. Outage messages
+go there, not to the public channel. Do not point it at `@labledgerdesk`.
 Worker secrets are pushed by `deploy-worker.yml` on any `cloudflare/**` change.
+`INGEST_SECRET` is unused and should not be recreated.
 
 ## Known small debts
 
@@ -188,5 +191,6 @@ as a module. `node scripts/check-repo.mjs` enforces the repo layout and scans
 for credentials. CI (`.github/workflows/ci.yml`) runs both on every push.
 `pages.yml` runs them again and refuses to deploy if they fail, then checks
 that the built site has a CSP hash and a noindex 404. The manual protocol
-below still applies to markup and content changes. Branch protection on
-`main` is a GitHub setting, not something this repo can turn on by itself.
+below still applies to markup and content changes. `main` is protected by
+the `protect-main` ruleset: pull request required, `verify` and `gitleaks`
+required, force-push and deletion blocked.

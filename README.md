@@ -103,8 +103,8 @@ node scripts/build-desk.mjs   # full local build, writes only to dist-site
 CI (`.github/workflows/ci.yml`) runs the guard and the tests on every push
 and pull request, plus a full build smoke on pull requests. `pages.yml`
 runs the guard and the tests again and will not deploy if they fail.
-A commit can still land on `main` until branch protection is enabled in
-GitHub settings. Production will not publish a failing build.
+`main` rejects a direct push. A change merges only through a pull request
+after `verify` and `gitleaks` are green.
 
 ## Run it yourself
 

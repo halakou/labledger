@@ -3,8 +3,9 @@ name: ci
 # Quality gate for every push to main and every pull request: the test suite,
 # a syntax pass over every source file, and the repository guard that refuses
 # files outside the allow-list or anything that looks like a credential.
-# pages.yml runs the same guard and tests again and refuses to deploy if
-# they fail. This workflow does not block the desk by itself.
+# The protect-main ruleset requires this job (verify) and gitleaks before a
+# pull request can merge. pages.yml runs the same guard and tests again and
+# refuses to deploy if they fail.
 on:
   push:
     branches: [main]
@@ -15,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
       - name: Repository guard (layout + secret scan)

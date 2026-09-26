@@ -11,11 +11,13 @@ import {
   classifyKind,
   classifyTopics,
   clip,
+  clipSentence,
   composeWhat,
   composeWhy,
   hostAllowed,
   kindLabel,
   parseFeed,
+  presentRelease,
   runLog,
 } from "./desk/core.mjs";
 import {
@@ -61,6 +63,7 @@ async function fetchOpenPack(proj) {
     const items = parseFeed(xml)
       .filter((item) => item.link.startsWith("https://github.com/"))
       .filter((item) => !OPEN_BLOCK.some((re) => re.test(item.title.trim())))
+      .map((item) => presentRelease(proj.label, item))
       .slice(0, PER_OPEN * 2);
     return { proj, items };
   }
@@ -210,7 +213,22 @@ const openPool = [];
 for (const { proj, items } of openPacks) {
   for (const item of items.slice(0, PER_OPEN)) {
     const guid = item.guid || item.link;
-    if (openByGuid.has(guid)) continue;
+    if (openByGuid.has(guid)) {
+      const prev = openByGuid.get(guid);
+      if (item.title && item.title !== prev.headline) prev.headline = item.title.slice(0, 220);
+      const prevWords = String(prev.what || "").split(/\s+/).filter(Boolean).length;
+      if (!item.thinRelease || prevWords < 12) {
+        const dateLabel = prev.dateLabel;
+        const kind = classifyKind(item.title, item.summary);
+        const topics = classifyTopics(item.title, item.summary);
+        prev.dek = clipSentence(item.summary, 168) || prev.dek;
+        prev.what = composeWhat(item.summary, proj.label, item.title, dateLabel);
+        prev.why = composeWhy(proj.label, dateLabel, kind, topics, item.summary);
+        prev.kind = kind;
+        prev.topics = topics;
+      }
+      continue;
+    }
     const fakePack = { lab: { ...proj, label: proj.label } };
     const brief = makeBrief(fakePack, item, openNextId);
     brief.lab = proj.label;
