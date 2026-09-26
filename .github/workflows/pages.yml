@@ -25,7 +25,7 @@ jobs:
       actions: write
       contents: write
     steps:
-      - uses: liskin/gh-workflow-keepalive@v1
+      - uses: liskin/gh-workflow-keepalive@f72ff1a1336129f29bf0166c0fd0ca6cf1bcb38c # v1
 
   publish:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
@@ -34,15 +34,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
       - name: Gate before publish
         run: |
           node scripts/check-repo.mjs
           node --test test/*.test.mjs
-      - uses: actions/cache/restore@v6
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             .desk-posted.json
@@ -68,13 +68,13 @@ jobs:
           grep -q "noindex" dist-site/404.html
           ! grep -q "onclick=" dist-site/donate/index.html
       - name: Publish public site
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           command: deploy --config cloudflare/labledgerdesk.toml
       - name: Publish pages.dev
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
@@ -96,7 +96,7 @@ jobs:
           TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/post-donate-announce.mjs
-      - uses: actions/cache/save@v6
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         if: always()
         with:
           path: |

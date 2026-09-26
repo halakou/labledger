@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fetchHttps, extFrom, looksLikeImage } from "../scripts/desk/net.mjs";
+import { fetchHttps, extFrom, looksLikeImage, ensureFonts, FONT_FILES } from "../scripts/desk/net.mjs";
 import { hostAllowed } from "../scripts/desk/core.mjs";
 
 test("fetchHttps refuses any host outside the allow-list before any network call", async () => {
@@ -46,4 +46,15 @@ test("looksLikeImage sniffs real image magic bytes", () => {
   assert.equal(looksLikeImage(Buffer.from("plain text"), "text/plain"), false);
   assert.equal(looksLikeImage(Buffer.alloc(4), "image/png"), false);
   assert.equal(looksLikeImage(Buffer.alloc(0), "image/png"), false);
+});
+
+test("fonts are copied from the vendored files and never fetched", async () => {
+  const { access, stat } = await import("node:fs/promises");
+  for (const name of FONT_FILES) {
+    const st = await stat(new URL("../assets/fonts/" + name, import.meta.url));
+    assert.ok(st.size > 1000, name);
+  }
+  const names = await ensureFonts();
+  assert.deepEqual(names, FONT_FILES);
+  for (const name of names) await access(".desk-assets/fonts/" + name);
 });

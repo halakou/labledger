@@ -16,6 +16,7 @@ import {
   composeWhat,
   composeWhy,
   factsFor,
+  presentRelease,
 } from "../scripts/desk/core.mjs";
 import { mondayOf } from "../scripts/desk/net.mjs";
 
@@ -170,4 +171,32 @@ test("factsFor does not write a doubled article before names that already start 
   });
   assert.match(facts[0], /^Filed from The Verge /);
   assert.doesNotMatch(facts[0], /the The/);
+});
+
+test("factsFor names a GitHub release feed instead of calling it RSS", () => {
+  const facts = factsFor({
+    lab: "vLLM",
+    via: "github release",
+    source: "https://github.com/vllm-project/vllm/releases/tag/v0.1.0",
+    dateLabel: "26 Sep 2026",
+    what: "A short claim that is long enough to count as a sentence for the facts list.",
+  });
+  assert.match(facts[0], /official GitHub releases feed/);
+  assert.doesNotMatch(facts[0], /official RSS/);
+});
+
+test("presentRelease names the project on a version-only title and does not invent notes", () => {
+  const out = presentRelease("vLLM", { title: "v0.34.3", summary: "", link: "https://github.com/vllm-project/vllm/releases/tag/v0.34.3" });
+  assert.equal(out.title, "vLLM v0.34.3");
+  assert.equal(out.thinRelease, true);
+  assert.match(out.summary, /did not include notes/);
+  assert.doesNotMatch(out.summary, /faster|benchmark|feature/i);
+});
+
+test("presentRelease keeps real release notes", () => {
+  const notes = "Fixes a scheduler crash when the batch is empty. Adds a metric for queue wait.";
+  const out = presentRelease("vLLM", { title: "Scheduler fix", summary: notes });
+  assert.equal(out.title, "Scheduler fix");
+  assert.equal(out.thinRelease, false);
+  assert.equal(out.summary, notes);
 });

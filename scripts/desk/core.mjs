@@ -260,13 +260,47 @@ export function composeWhy(lab, dateLabel, kind, topics, summary) {
   return "Filed as " + label + " from " + lab + ", " + dateLabel + "." + topicBit;
 }
 
+const VERSION_TITLE = /^v?\d+\.\d+[\w.+-]*$/i;
+
+// GitHub release titles are often just "v0.34.3". Keep that version, but put
+// the project name on the headline, and say plainly when the feed had no notes.
+// Never invent a changelog the source did not publish.
+export function presentRelease(label, item) {
+  const raw = String(item?.title || "").trim();
+  const versionOnly = VERSION_TITLE.test(raw);
+  const who = String(label || "The project");
+  const headline = (versionOnly ? who + " " + raw : raw).slice(0, 220);
+  let summary = String(item?.summary || "").replace(/\s+/g, " ").trim();
+  const words = summary ? summary.split(" ").filter(Boolean).length : 0;
+  const thinRelease = words < 12;
+  if (thinRelease) {
+    summary =
+      who +
+      " published release " +
+      (raw || "an untagged build") +
+      " on its official releases feed. The feed did not include notes, so this brief is the version and the primary source, nothing more.";
+  }
+  return {
+    ...item,
+    title: headline,
+    summary: summary.slice(0, 2500),
+    thinRelease,
+    rawTitle: raw,
+  };
+}
+
 export function sentences(text) {
   return text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.length > 24 && s.length < 400);
 }
 
 export function factsFor(b) {
   const host = hostOf(b.source) || b.source;
-  const method = b.via === "listing" ? "official HTML listing and article meta" : "official RSS";
+  const method =
+    b.via === "listing"
+      ? "official HTML listing and article meta"
+      : b.via === "github release"
+        ? "official GitHub releases feed"
+        : "official RSS";
   const lab = String(b.lab || "the source");
   const article = /^the\s/i.test(lab) ? "" : "the ";
   const out = [

@@ -1,9 +1,8 @@
 import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
-  AMP,
   FONT_DIR,
-  FONT_UA,
   LAB_BY_ID,
   MARK_MAX,
   OG_CANDIDATES,
@@ -29,9 +28,8 @@ import {
 import { OPEN_BY_ID } from "./config.mjs";
 
 export async function fetchHttps(url, accept, hosts) {
-  // The allow-list is the only security boundary on intake. There is no
-  // escape hatch here on purpose: fonts are fetched directly by ensureFonts()
-  // and never go through this path, so nothing needs to weaken it.
+  // The allow-list is the only security boundary on intake. Fonts are vendored
+  // in assets/fonts and copied by ensureFonts(); they never travel this path.
   if (!hostAllowed(url, hosts)) throw new Error("off allowlist " + url);
   const res = await fetch(url, {
     headers: { "user-agent": UA, accept },
@@ -207,53 +205,17 @@ export function looksLikeImage(buf, type) {
   return false;
 }
 
+const VENDORED_FONTS = fileURLToPath(new URL("../../assets/fonts/", import.meta.url));
+export const FONT_FILES = ["fraunces-600.woff2", "source-sans-3-400.woff2", "source-sans-3-600.woff2"];
+
 export async function ensureFonts() {
   await mkdir(FONT_DIR, { recursive: true });
-  const files = {
-    "fraunces-600.woff2": null,
-    "source-sans-3-400.woff2": null,
-    "source-sans-3-600.woff2": null,
-  };
-  const haveAll = await Promise.all(Object.keys(files).map((name) => exists(join(FONT_DIR, name))));
-  if (haveAll.every(Boolean)) return Object.keys(files);
-  try {
-    const cssRes = await fetch(
-      "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600" +
-        AMP +
-        "family=Source+Sans+3:wght@400;600" +
-        AMP +
-        "display=swap",
-      { headers: { "user-agent": FONT_UA, accept: "text/css" }, signal: AbortSignal.timeout(12000) },
-    );
-    if (!cssRes.ok) throw new Error("font css " + cssRes.status);
-    const css = await cssRes.text();
-    const blocks = css.split("/* ");
-    for (const block of blocks) {
-      if (!block.startsWith("latin */")) continue;
-      const family = (block.match(/font-family:\s*'([^']+)'/) || [])[1];
-      const weight = (block.match(/font-weight:\s*(\d+)/) || [])[1];
-      const src = (block.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/) || [])[1];
-      if (!family || !weight || !src) continue;
-      const name =
-        family === "Fraunces" ? "fraunces-" + weight + ".woff2" : "source-sans-3-" + weight + ".woff2";
-      if (!files[name]) files[name] = src;
-    }
-    for (const [name, src] of Object.entries(files)) {
-      if (!src) continue;
-      if (await exists(join(FONT_DIR, name))) continue;
-      const res = await fetch(src, {
-        headers: { "user-agent": FONT_UA },
-        signal: AbortSignal.timeout(12000),
-      });
-      if (!res.ok) continue;
-      const buf = Buffer.from(await res.arrayBuffer());
-      if (buf.length < 1000) continue;
-      await writeFile(join(FONT_DIR, name), buf);
-    }
-  } catch (err) {
-    runLog.push("fonts: " + (err?.message || err));
+  for (const name of FONT_FILES) {
+    const dest = join(FONT_DIR, name);
+    if (await exists(dest)) continue;
+    await copyFile(join(VENDORED_FONTS, name), dest);
   }
-  return Object.keys(files);
+  return FONT_FILES;
 }
 
 export async function write(path, content) {

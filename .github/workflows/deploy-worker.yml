@@ -11,14 +11,28 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
       - name: Deploy worker
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           workingDirectory: cloudflare
           command: deploy --config wrangler.toml
+      - name: Install hash-pinned wrangler
+        run: |
+          curl -fsSL -o /tmp/wrangler.tgz https://registry.npmjs.org/wrangler/-/wrangler-4.135.0.tgz
+          node --input-type=module -e '
+            import { createHash } from "node:crypto";
+            import { readFileSync } from "node:fs";
+            const got = createHash("sha512").update(readFileSync("/tmp/wrangler.tgz")).digest("base64");
+            const want = "WrNBQSfIG6YcILJcodYr5ty8vgkzGsV8YX+kfd+uZ5/Bd8cUW0GnUIRKAVfn5kYKqh1m/BPcji9h1d7mE8euFw==";
+            if (got !== want) { console.error("wrangler tarball hash mismatch"); process.exit(1); }
+          '
+          npm install -g /tmp/wrangler.tgz
       - name: Set worker secrets
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -28,11 +42,11 @@ jobs:
         run: |
           cd cloudflare
           if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
-            printf '%s' "$TELEGRAM_BOT_TOKEN" | npx --yes wrangler@4.135.0 secret put TELEGRAM_BOT_TOKEN
+            printf '%s' "$TELEGRAM_BOT_TOKEN" | wrangler secret put TELEGRAM_BOT_TOKEN
           fi
           if [ -n "$DISPATCH_TOKEN" ]; then
-            printf '%s' "$DISPATCH_TOKEN" | npx --yes wrangler@4.135.0 secret put DISPATCH_TOKEN
+            printf '%s' "$DISPATCH_TOKEN" | wrangler secret put DISPATCH_TOKEN
           fi
           if [ -n "$TELEGRAM_ALERT_CHAT_ID" ]; then
-            printf '%s' "$TELEGRAM_ALERT_CHAT_ID" | npx --yes wrangler@4.135.0 secret put TELEGRAM_ALERT_CHAT_ID
+            printf '%s' "$TELEGRAM_ALERT_CHAT_ID" | wrangler secret put TELEGRAM_ALERT_CHAT_ID
           fi

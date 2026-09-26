@@ -17,6 +17,21 @@ import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml
 } from "./render.mjs";
 import { GUIDE_ENTRIES } from "./learn.mjs";
 
+export const HOME_FAQ = [
+  {
+    h: "What does the desk file?",
+    p: "Official announcements from named labs and research groups \u2014 plus the open-source releases that move the stack underneath them. One brief per move, about 100 words. The primary source stays on the page.",
+  },
+  {
+    h: "Which sources are on the board?",
+    p: "Every source below is read straight from the publisher's own feed or release page. No wire service, no aggregator, no screenshot.",
+  },
+  {
+    h: "Does the desk invent launches?",
+    p: "No. It reads allow-listed official sources, fills a fixed template, and mirrors the same brief to Telegram after the page exists. There is no email list \u2014 use RSS or the weekly digest.",
+  },
+];
+
 export async function writeStatic(fontNames) {
   await write(CSS_NAME, CSS);
   for (const name of fontNames) {
@@ -238,32 +253,11 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
       },
       {
         "@type": "FAQPage",
-        mainEntity: [
-          {
-            "@type": "Question",
-            name: "What does Lab Ledger Desk file?",
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: "Official announcements from named AI labs and research groups, plus official release notes from open-source AI projects. One brief per move, about 100 words, with the primary source on the page.",
-            },
-          },
-          {
-            "@type": "Question",
-            name: "Which sources are on the board?",
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: "Allow-listed official feeds and release pages from named labs and open-source projects — read straight from the publisher. No wire service, no aggregator, no screenshot.",
-            },
-          },
-          {
-            "@type": "Question",
-            name: "Does the desk invent launches?",
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: "No. It files the official claim and keeps the source on the page.",
-            },
-          },
-        ],
+        mainEntity: HOME_FAQ.map((item) => ({
+          "@type": "Question",
+          name: item.h,
+          acceptedAnswer: { "@type": "Answer", text: item.p },
+        })),
       },
     ],
   };
@@ -315,10 +309,9 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
               "</section>",
             ].join("")
           : "",
-        "<article class=\"method\"><h2>What does the desk file?</h2>",
-        "<p>Official announcements from named labs and research groups — plus the open-source releases that move the stack underneath them. One brief per move, about 100 words. The primary source stays on the page.</p>",
-        "<h2>Which sources are on the board?</h2>",
-        "<p>Every source below is read straight from the publisher's own feed or release page. No wire service, no aggregator, no screenshot.</p>",
+        "<article class=\"method\">",
+        "<h2>" + esc(HOME_FAQ[0].h) + "</h2><p>" + esc(HOME_FAQ[0].p) + "</p>",
+        "<h2>" + esc(HOME_FAQ[1].h) + "</h2><p>" + esc(HOME_FAQ[1].p) + "</p>",
         "<table><thead><tr><th>Source</th><th>Read from</th></tr></thead><tbody>",
         LABS.map((l) => {
           const how = l.listing && !l.feed ? "official /news listing" : l.feed ? "official RSS" : "no official source";
@@ -329,10 +322,12 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
           return "<tr><td><a href=\"/lab/" + p.id + "/\">" + esc(p.label) + "</a></td><td>" + how + "</td></tr>";
         }).join(""),
         "</tbody></table>",
-        "<h2>Does the desk invent launches?</h2>",
-        "<p>No. It reads allow-listed official sources, fills a fixed template, and mirrors the same brief to <a href=\"",
-        esc(CHANNEL),
-        "\" rel=\"noreferrer noopener\">Telegram</a> after the page exists. There is no email list — use RSS or the weekly digest.</p>",
+        "<h2>" + esc(HOME_FAQ[2].h) + "</h2><p>" +
+          esc(HOME_FAQ[2].p).replace(
+            "Telegram",
+            "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a>",
+          ) +
+          "</p>",
         "</article>",
       ].join(""),
     }),
