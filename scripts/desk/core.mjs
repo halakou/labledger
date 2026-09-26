@@ -267,8 +267,10 @@ export function sentences(text) {
 export function factsFor(b) {
   const host = hostOf(b.source) || b.source;
   const method = b.via === "listing" ? "official HTML listing and article meta" : "official RSS";
+  const lab = String(b.lab || "the source");
+  const article = /^the\s/i.test(lab) ? "" : "the ";
   const out = [
-    "Filed from the " + b.lab + " " + method + " on " + b.dateLabel + ".",
+    "Filed from " + article + lab + " " + method + " on " + b.dateLabel + ".",
     "Primary source host: " + host + ".",
   ];
   const claim = sentences(b.what)[0];

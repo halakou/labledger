@@ -23,6 +23,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           cd cloudflare
@@ -31,4 +32,7 @@ jobs:
           fi
           if [ -n "$DISPATCH_TOKEN" ]; then
             printf '%s' "$DISPATCH_TOKEN" | npx --yes wrangler@4.135.0 secret put DISPATCH_TOKEN
+          fi
+          if [ -n "$TELEGRAM_ALERT_CHAT_ID" ]; then
+            printf '%s' "$TELEGRAM_ALERT_CHAT_ID" | npx --yes wrangler@4.135.0 secret put TELEGRAM_ALERT_CHAT_ID
           fi

@@ -1,6 +1,7 @@
 # Build state — regenerated on every run and restored from the Actions cache.
 # Never commit these: they hold Telegram message ids and fetched assets.
 .desk-posted.json
+.desk-queue.json
 .desk-archive.json
 .desk-open.json
 .desk-assets/

@@ -95,13 +95,16 @@ cloudflare/                   the watchdog Worker + static-asset config
 ## Testing
 
 ```bash
-node --test test/        # 35 unit tests, zero dependencies
+node --test test/*.test.mjs   # unit tests, zero dependencies
 node scripts/check-repo.mjs   # layout + credential guard
 node scripts/build-desk.mjs   # full local build, writes only to dist-site
 ```
 
-CI (`.github/workflows/ci.yml`) runs the guard, the tests, and — on pull
-requests — a full build smoke. Nothing reaches `main` untested.
+CI (`.github/workflows/ci.yml`) runs the guard and the tests on every push
+and pull request, plus a full build smoke on pull requests. `pages.yml`
+runs the guard and the tests again and will not deploy if they fail.
+A commit can still land on `main` until branch protection is enabled in
+GitHub settings. Production will not publish a failing build.
 
 ## Run it yourself
 

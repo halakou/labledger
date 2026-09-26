@@ -142,6 +142,8 @@ export async function writeLlms(briefs, openBriefs = []) {
       "/desk-status.json",
       "  Content-Type: application/json; charset=utf-8",
       "  Cache-Control: public, max-age=60, must-revalidate",
+      "/404.html",
+      "  X-Robots-Tag: noindex",
       "",
     ].join("\n"),
   );

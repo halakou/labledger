@@ -11,6 +11,20 @@ test("the CSP hash matches the script that actually ships", () => {
 test("shell emits the exact script the CSP allows", () => {
   const html = shell({ title: "t", description: "d", path: "/", body: "<main></main>" });
   assert.ok(html.includes("<script>" + SEARCH_SCRIPT + "</script>"), "script must ship verbatim");
+  assert.equal(html.includes("onclick="), false);
+});
+
+test("shell can mark a page noindex without changing the default", () => {
+  const hidden = shell({ title: "t", description: "d", path: "/404.html", body: "", robots: "noindex, follow" });
+  assert.ok(hidden.includes('content="noindex, follow"'));
+  const shown = shell({ title: "t", description: "d", path: "/", body: "" });
+  assert.ok(shown.includes('content="index,follow,max-image-preview:large"'));
+});
+
+test("the one script also copies donate addresses and does not use inline handlers", () => {
+  assert.ok(SEARCH_SCRIPT.includes("support-addr"));
+  assert.ok(SEARCH_SCRIPT.includes("addEventListener"));
+  assert.equal(SEARCH_SCRIPT.includes("onclick"), false);
 });
 
 test("shell escapes user-controlled title and description", () => {

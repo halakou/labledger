@@ -5,7 +5,6 @@ import {
   FONT_DIR,
   FONT_UA,
   LAB_BY_ID,
-  MARK_DIR,
   MARK_MAX,
   OG_CANDIDATES,
   OUT,
@@ -206,30 +205,6 @@ export function looksLikeImage(buf, type) {
   if (head.includes("<svg") || head.includes("<?xml")) return true;
   if (/image\/|icon|svg/i.test(type)) return true;
   return false;
-}
-
-export async function fetchMark(lab) {
-  await mkdir(MARK_DIR, { recursive: true });
-  for (const ext of [".svg", ".png", ".ico", ".webp", ".jpg"]) {
-    const cached = join(MARK_DIR, lab.id + ext);
-    if (await exists(cached)) return "/marks/" + lab.id + ext;
-  }
-  for (const url of lab.icons || []) {
-    if (!hostAllowed(url, lab.hosts)) continue;
-    try {
-      const { res } = await fetchHttps(url, "image/*, image/svg+xml, */*", lab.hosts);
-      const type = res.headers.get("content-type") || "";
-      const buf = Buffer.from(await res.arrayBuffer());
-      if (!looksLikeImage(buf, type)) continue;
-      const ext = extFrom(url, type);
-      const dest = join(MARK_DIR, lab.id + ext);
-      await writeFile(dest, buf);
-      return "/marks/" + lab.id + ext;
-    } catch {
-      /* letter fallback */
-    }
-  }
-  return null;
 }
 
 export async function ensureFonts() {
