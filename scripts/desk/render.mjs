@@ -41,6 +41,18 @@ export function markToSprite(markFile) {
 
 export const CSS = (await readFile(join(here, "house.css"), "utf8")).replace(/\n/g, "");
 
+// The desk's own mark: an official seal (rust disc, block L) stamped over an
+// ink rule — "a summary issued from an official source". Inline so it costs
+// no extra request and inherits the site palette. The <use> sprite is for
+// source logos only.
+export const DESK_MARK_SVG =
+  '<span class="brand-mark" aria-hidden="true">' +
+  '<svg viewBox="0 0 96 96" width="32" height="32">' +
+  '<rect x="13" y="66" width="70" height="9" fill="#241f18"/>' +
+  '<circle cx="48" cy="42" r="28" fill="#6e2f22"/>' +
+  '<path d="M33 20 h12 v31 h22 v12 H33 z" fill="#241f18"/>' +
+  "</svg></span>";
+
 // Content-addressed assets. The compiled CSS and the mark sprite ship as
 // styles-<hash>.css and sprite-<hash>.svg. A returning browser can hold them
 // forever and still receives the new bytes the instant a deploy changes them,
@@ -72,6 +84,24 @@ export const SEARCH_SCRIPT = "(function(){var addrs=[].slice.call(document.query
 export const SEARCH_SCRIPT_HASH = createHash("sha256")
   .update(SEARCH_SCRIPT, "utf8")
   .digest("base64");
+
+const NAV = [
+  ["/", "Today"],
+  ["/week/", "Week"],
+  ["/learn/", "Guide"],
+  ["/method/", "Method"],
+  ["/donate/", "Support"],
+];
+
+// Nav links mark the current page with aria-current="page" so keyboard and
+// screen-reader users know where they are. `path` is the page's own canonical
+// path, so this costs no new state — the shell already receives it.
+function navHtml(path) {
+  return NAV.map(([href, label]) => {
+    const current = href === path ? ' aria-current="page"' : "";
+    return '<a href="' + href + '"' + current + ">" + label + "</a>";
+  }).join("");
+}
 
 export function shell({ title, description, path, body, extra = "", ogType = "website", ogImage, robots }) {
   const url = SITE + path;
@@ -114,9 +144,11 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
     extra,
     "</head><body><div class=\"wrap\"><header>",
-    "<a class=\"brand\" href=\"/\">Lab Ledger<span class=\"desk\">Desk</span></a>",
-    "<nav><a href=\"/\">Today</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/method/\">Method</a><a href=\"/donate/\">Support</a>",
-    "<a href=\"", esc(CHANNEL), "\" rel=\"noreferrer noopener\">Channel</a></nav>",
+    "<a class=\"brand\" href=\"/\">",
+    DESK_MARK_SVG,
+    "<span class=\"brand-text\">Lab Ledger<span class=\"desk\">Desk</span></span></a>",
+    "<nav>" + navHtml(path) +
+      "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Channel</a></nav>",
     "</header>",
     Array.isArray(body) ? body.join("") : String(body || ""),
     "<footer><p>Every brief here starts at an official source. Nothing is rewritten from a rumor.</p>",

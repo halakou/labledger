@@ -179,8 +179,15 @@ await writeFile(
   }),
 );
 
-const briefs = allBriefs.slice(0, MAX_BRIEFS);
+// The board leads with today's briefs, then backfills the most recent earlier
+// ones so a quiet morning still shows a full board. The desk date is the date
+// the build ran, so "today" means "filed since the last desk day started".
 const today = new Date().toISOString().slice(0, 10);
+const byToday = allBriefs.filter((b) => b.dateLabel === today);
+const briefs = [
+  ...byToday,
+  ...allBriefs.filter((b) => b.dateLabel !== today).slice(0, Math.max(0, MAX_BRIEFS - byToday.length)),
+];
 
 // --- Open releases rail -------------------------------------------------
 const openPacks = await Promise.all(

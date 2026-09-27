@@ -136,6 +136,25 @@ function wrapDraw(rgb, str, x, y, scale, color, maxChars, maxLines) {
   lines.forEach((line, i) => drawText(rgb, line, x, y + i * (7 * scale + 10), scale, color));
 }
 
+// The desk's own mark, drawn with the same fillRect primitives so the card
+// needs no extra asset file: an official seal (rust disc, block L) stamped
+// over an ink rule — "a summary issued from an official source".
+function drawDeskMark(rgb, x, y, s) {
+  const ink = INK;
+  const rust = [110, 47, 34];
+  // ink rule (drawn first, the seal stamps over it)
+  fillRect(rgb, x + 6 * s, y + 62 * s, 76 * s, 8 * s, ink[0], ink[1], ink[2]);
+  // rust seal — approximated as a filled disc by stamping horizontal bands
+  const cx = x + 44 * s, cy = y + 38 * s, r = 26 * s;
+  for (let dy = -r; dy <= r; dy += 1) {
+    const half = Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)));
+    fillRect(rgb, cx - half, cy + dy, half * 2, 1, rust[0], rust[1], rust[2]);
+  }
+  // block L (ink on rust)
+  fillRect(rgb, x + 28 * s, y + 14 * s, 10 * s, 28 * s, ink[0], ink[1], ink[2]);
+  fillRect(rgb, x + 28 * s, y + 32 * s, 20 * s, 10 * s, ink[0], ink[1], ink[2]);
+}
+
 function pngBuffer(rgb) {
   const raw = Buffer.alloc((W * 3 + 1) * H);
   for (let y = 0; y < H; y += 1) {
@@ -181,7 +200,8 @@ export async function writeOgCard(brief) {
   drawText(rgb, brief.lab || "DESK", 212, 92, 4, INK);
   drawText(rgb, (kindLabel(brief.kind) + "  \u00b7  " + (brief.dateLabel || "")).toUpperCase(), 212, 140, 3, MUTED);
   wrapDraw(rgb, brief.headline || "", 56, 250, 6, INK, 28, 3);
-  drawText(rgb, "LAB LEDGER DESK", 56, 560, 3, MUTED);
+  drawDeskMark(rgb, 56, 525, 1);
+  drawText(rgb, "LAB LEDGER DESK", 116, 560, 3, MUTED);
   fillRect(rgb, 56, 600, 180, 6, r, g, b);
   const rel = "og" + brief.path.replace(/\/$/, "") + ".png";
   const full = join(OUT, rel);
