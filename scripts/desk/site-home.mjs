@@ -43,7 +43,10 @@ export async function writeStatic(fontNames) {
   // copied to OUT.
   await write(
     "favicon.svg",
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#1c1914"/><path fill="#f4efe4" d="M9 6h7v14h8v6H9z"/><rect x="9" y="27.5" width="14" height="1.5" fill="#6e2f22"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">' +
+      '<rect width="96" height="96" rx="18" fill="#6e2f22"/>' +
+      '<path d="M33 20 h12 v31 h22 v12 H33 z" fill="#fffaf2"/>' +
+      "</svg>",
   );
   const ogOk = await copyOg();
   await write("googlece6d31c0feb18c8c.html", "google-site-verification: googlece6d31c0feb18c8c.html");

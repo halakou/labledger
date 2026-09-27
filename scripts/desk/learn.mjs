@@ -561,9 +561,15 @@ function escDate(iso) {
   return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-// The desk's own mark, reused in the byline: a dark square, a cream L, an
-// accent bar underneath. It is the favicon, drawn in CSS.
-const MARK = '<span class="g-mark" aria-hidden="true">L</span>';
+// The desk's own mark, reused in the byline: an official seal (rust disc,
+// block L) stamped over an ink rule. Same mark as the header brand, small.
+const MARK =
+  '<span class="g-mark" aria-hidden="true">' +
+  '<svg viewBox="0 0 96 96" width="20" height="20">' +
+  '<rect x="13" y="66" width="70" height="9" fill="#241f18"/>' +
+  '<circle cx="48" cy="42" r="28" fill="#6e2f22"/>' +
+  '<path d="M33 20 h12 v31 h22 v12 H33 z" fill="#241f18"/>' +
+  "</svg></span>";
 
 // Callouts and quotes are asides, not sections, so they stay out of the TOC.
 const TOC_KINDS = ["prose", "terms", "steps", "code"];
