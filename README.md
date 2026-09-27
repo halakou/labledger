@@ -11,8 +11,8 @@ runtime — it keeps running if every laptop on earth disappears.
 ## Why this exists
 
 AI news is mostly screenshots, rumours, and rewrites. This desk does one thing
-differently: **every brief starts at a primary source** — an official feed or
-release page from a named lab — read directly, dated, and linked on the page.
+differently: **every brief starts at a named source** — a lab feed, a press
+desk, or a GitHub release — read directly, dated, and linked on the page.
 Nothing is paraphrased into a claim the source did not make, nothing is
 invented, and no unnamed source ever appears.
 
@@ -26,7 +26,7 @@ GitHub Actions (clock)  ──every ~15 min──▶  pages.yml
                                                 │
    ┌────────────────────────────────────────────┘
    ▼
-node scripts/build-desk.mjs      fetch 27 allow-listed official sources
+node scripts/build-desk.mjs      fetch 27 allow-listed sources
    │                              → dedupe by guid → briefs → queue
    ▼
 wrangler deploy                  static site → Cloudflare Pages + Worker assets
@@ -40,21 +40,33 @@ Cloudflare Worker (cron */5)     staleness watchdog
 ```
 
 Two independent schedulers on two free tiers. If GitHub's scheduler goes
-quiet — which it does, routinely — the Worker notices and re-dispatches. That
-is the independence guarantee, and it is the reason the desk has never gone
-stale.
+quiet — which it does, routinely — the Worker notices and re-dispatches. A
+publish that dies on the network is retried on the next cycle, so one red run
+does not leave the site stale.
+
+## Sources
+
+27 allow-listed origins, and no others.
+
+- **18 feeds** in `LABS`: the labs and companies, plus five press desks —
+  MIT News, MIT Review, WIRED, TechCrunch, and The Verge.
+- **9 GitHub release boards** in `OPEN_PROJECTS`: PyTorch, vLLM, SGLang,
+  Ollama, Transformers, ComfyUI, DeepSpeed, LangChain, and JAX. They are
+  filed on `/open/`, separate from the news board.
+
+A host that is not in that registry is never fetched.
 
 ## What is in the repo
 
 ```
 scripts/build-desk.mjs        ingest: fetch → dedupe → briefs → publish
-scripts/desk/config.mjs       the source registry (27) — the security boundary
+scripts/desk/config.mjs       the source registry (18 feeds + 9 open projects)
 scripts/desk/core.mjs         brief shape, parseFeed, classify, esc, slugify
 scripts/desk/net.mjs          fetch layer — allow-list enforcement lives here
 scripts/desk/render.mjs       page chrome, rows, JSON-LD, the one inline script
 scripts/desk/site-home.mjs    home, board, llms.txt, _headers, desk-status.json
 scripts/desk/archives.mjs     /lab/ /topic/ /kind/ /b/YYYY/M/D/slug/, sitemap
-scripts/desk/sprite.mjs       one sprite.svg for all 27 marks + contrast tiles
+scripts/desk/sprite.mjs       one sprite.svg for every source mark + contrast tiles
 scripts/desk/ogcard.mjs       per-brief 1200×630 OG image, hand-drawn
 scripts/desk/learn.mjs        /learn/ field guide — original explainers
 scripts/desk/donate.mjs       /donate/ cost ledger
@@ -120,7 +132,8 @@ and it cannot touch the live site — only CI deploys.
 ## Tech stack
 
 Node 22 built-ins · GitHub Actions · Cloudflare Pages · Cloudflare Workers ·
-Workers KV · static HTML/CSS/SVG. Nothing else, nothing paid.
+Workers KV · static HTML/CSS/SVG · fonts vendored in `assets/fonts/` (no
+Google Fonts fetch). Nothing else, nothing paid.
 
 ## License
 

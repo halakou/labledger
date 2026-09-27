@@ -8,9 +8,10 @@ does not.
 ## What it is
 
 A fully automated AI news desk. Zero cost, zero dependencies, zero human
-runtime. It reads official announcements from 27 allow-listed sources, builds a
-static site, posts the same briefs to Telegram, and keeps going if every laptop
-on earth disappears. Nothing is invented. Every brief points at a primary source.
+runtime. It reads 27 allow-listed sources (18 feeds plus 9 GitHub release
+boards), builds a static site, posts the same briefs to Telegram, and keeps
+going if every laptop on earth disappears. Nothing is invented. Every brief
+points at a primary source.
 
 - Site: https://labledgerdesk.pages.dev
 - Channel: https://t.me/labledgerdesk
@@ -47,14 +48,14 @@ the independence guarantee.
 
 ```
 scripts/build-desk.mjs     ingest: fetch -> dedupe by guid -> briefs -> queue -> publish
-scripts/desk/config.mjs    SOURCE REGISTRY (27), KINDS, TOPICS, caps, OUT paths
+scripts/desk/config.mjs    SOURCE REGISTRY: 18 LABS + 9 OPEN_PROJECTS. KINDS, TOPICS, caps, OUT
 scripts/desk/core.mjs      brief shape, parseFeed, classify, esc, slugify, date
 scripts/desk/net.mjs       fetch layer — allow-list enforcement lives here
 scripts/desk/render.mjs    shell() page chrome, rowHtml, markHtml, JSON-LD
 scripts/desk/site-home.mjs home, /open/ board, llms.txt, _headers, desk-status.json
 scripts/desk/archives.mjs  /lab/ /topic/ /kind/ /b/YYYY/M/D/slug/ sitemap, rss.xml
 scripts/desk/open-archives.mjs  /open/ pages + /open/rss.xml
-scripts/desk/sprite.mjs    ONE sprite.svg for all 27 marks + contrast tiles
+scripts/desk/sprite.mjs    ONE sprite.svg for every source mark + contrast tiles
 scripts/desk/ogcard.mjs    per-brief 1200x630 OG image, hand-drawn
 scripts/desk/learn.mjs     /learn/ field guide — original explainers
 scripts/desk/donate.mjs    /donate/ — cost ledger + TON/USDT rails
@@ -94,9 +95,10 @@ cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands
    Node 22 built-ins. A change that needs `npm install` is a wrong change.
 3. **Site before Telegram.** `telegram-desk.mjs` runs after pages deploy. The
    channel must never lead the site.
-4. **No invented news.** Briefs come only from allow-listed official feeds or
-   the Anthropic `/news` listing. Classification is keyword tagging, never a
-   verdict. Never paraphrase a source into a claim it did not make.
+4. **No invented news.** Briefs come only from the allow-list: a `LABS` feed
+   (labs, companies, and the five press desks), the Anthropic `/news` listing,
+   or an `OPEN_PROJECTS` GitHub release. Classification is keyword tagging,
+   never a verdict. Never paraphrase a source into a claim it did not make.
 5. **Free tier, forever.** GitHub Actions free, Cloudflare Pages/Workers/KV
    free tiers. If a feature needs a paid plan, it does not ship.
 6. **Old URLs stay.** The archive never deletes, only slices to 500.
@@ -110,7 +112,7 @@ cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands
 
 ## How to change things
 
-### Add source #29
+### Add a source
 Add an entry to `LABS` (or `OPEN_PROJECTS` for a GitHub-releases project) in
 `config.mjs`: `id, label, mark, color, feed, hosts, iconHosts`. If the logo will
 not fetch, add a real fallback glyph in `glyphs.mjs` — the default is a star and

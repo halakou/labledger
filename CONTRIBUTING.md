@@ -1,8 +1,9 @@
 # Contributing to Lab Ledger Desk
 
-This desk is a public register of official AI-lab announcements. The code is
-small, has zero dependencies, and runs on free tiers forever. Contributions
-are welcome — especially corrections.
+This desk is a public register. A brief comes from an allow-listed lab feed,
+a named press desk, or a GitHub release. The code is small, has zero
+dependencies, and runs on free tiers forever. Contributions are welcome —
+especially corrections.
 
 ## The two rules that govern everything
 
