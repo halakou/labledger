@@ -74,32 +74,17 @@ test("shell links the web app manifest", () => {
   assert.ok(html.includes('<link rel="manifest" href="/manifest.webmanifest">'));
 });
 
-test("shell defaults to English and honours the lang option", () => {
-  const en = shell({ title: "t", description: "d", path: "/", body: "" });
-  assert.ok(en.includes('<html lang="en" dir="ltr">'));
-  const fa = shell({ title: "t", description: "d", path: "/fa/", body: "", lang: "fa" });
-  assert.ok(fa.includes('<html lang="fa" dir="rtl">'));
-});
-
-test("shell emits hreflang alternates only when more than one language is listed", () => {
-  const one = shell({ title: "t", description: "d", path: "/", body: "", alternates: [["en", "https://x/"]] });
-  assert.ok(!one.includes('hreflang="en"'), "a single-language page carries no hreflang rows");
-  const two = shell({
-    title: "t",
-    description: "d",
-    path: "/",
-    body: "",
-    alternates: [
-      ["en", "https://x/"],
-      ["fa", "https://x/fa/"],
-    ],
-  });
-  assert.ok(two.includes('hreflang="en"'));
-  assert.ok(two.includes('hreflang="fa"'));
-  assert.ok(two.includes('hreflang="x-default"'));
-});
-
 test("the inline script registers the service worker", () => {
   assert.ok(SEARCH_SCRIPT.includes("serviceWorker"), "the one script must register /sw.js");
   assert.ok(SEARCH_SCRIPT.includes("register('/sw.js')"));
+});
+
+test("the site is English-only: no lang switch, no rtl, no hreflang", () => {
+  // The desk publishes in one language. This keeps a reintroduced translation
+  // layer from silently shipping a second locale again.
+  const html = shell({ title: "t", description: "d", path: "/", body: "" });
+  assert.ok(html.includes('<html lang="en">'), "the document language is English");
+  assert.ok(!html.includes('dir="rtl"'), "no right-to-left document");
+  assert.ok(!html.includes("hreflang"), "no hreflang alternates");
+  assert.ok(!html.includes("/fa/"), "no Persian route");
 });
