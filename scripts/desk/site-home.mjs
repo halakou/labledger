@@ -16,22 +16,28 @@ import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml
   SEARCH_SCRIPT_HASH,
 } from "./render.mjs";
 import { GUIDE_ENTRIES } from "./learn.mjs";
-import { dictFor } from "./i18n.mjs";
 
 // The homepage shows a capped slice of the board. The full ledger lives at
 // /week/ and /lab/<id>/ — the homepage is a front page, not an archive.
 export const HOME_MAX = 20;
 
-// The FAQ is built from the i18n dictionary so a translated homepage reads
-// naturally instead of carrying English questions under a Persian header.
-export function homeFaq(lang) {
-  const d = dictFor(lang);
-  return [
-    { h: d.faq_what_h, p: d.faq_what_p },
-    { h: d.faq_sources_h, p: d.faq_sources_p },
-    { h: d.faq_invent_h, p: d.faq_invent_p },
-  ];
-}
+// The FAQ ships in English: the board's content is filed from English-language
+// official sources, so the page stays one language end to end. {tg} becomes a
+// link to the channel in the visible page and a plain word in JSON-LD.
+export const HOME_FAQ = [
+  {
+    h: "What does the desk file?",
+    p: "Official announcements from named labs and research groups — plus the open-source releases that move the stack underneath them. One brief per move, about 100 words. The primary source stays on the page.",
+  },
+  {
+    h: "Which sources are on the board?",
+    p: "Every source below is read straight from the publisher's own feed or release page. No wire service, no aggregator, no screenshot.",
+  },
+  {
+    h: "Does the desk invent launches?",
+    p: "No. It reads allow-listed official sources, fills a fixed template, and mirrors the same brief to {tg} after the page exists. There is no email list — use RSS or the weekly digest.",
+  },
+];
 
 export async function writeStatic(fontNames) {
   await write(CSS_NAME, CSS);
@@ -150,7 +156,6 @@ export async function writeLlms(briefs, openBriefs = []) {
       "",
       "## Pages",
       "- " + SITE + "/ — today's board",
-      "- " + SITE + "/fa/ — نسخهٔ فارسی صفحهٔ اصلی",
       "- " + SITE + "/week/ — weekly digest",
       "- " + SITE + "/method/ — how the desk works",
       "- " + SITE + "/rss.xml — machine feed",
@@ -269,8 +274,7 @@ function markRow(labs) {
   );
 }
 
-export async function writeHome({ allBriefs, briefs, openBriefs = [], today }, lang = "en") {
-  const d = dictFor(lang);
+export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
   // The homepage is a front page, not the whole archive: a capped slice of
   // the board, with the rest reachable from /week/ and each lab's archive.
   const shown = briefs.slice(0, HOME_MAX);
@@ -280,12 +284,12 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }, l
     const how = l.listing && !l.feed ? "Official listing" : l.feed ? "Official RSS" : "No official source";
     return "<a href=\"/lab/" + l.id + "/\"><b>" + esc(l.label) + "</b><span>" + how + "</span></a>";
   }).join("");
-  const faq = homeFaq(lang);
+  const faq = HOME_FAQ;
   // The {tg} marker becomes a link in the visible page; in JSON-LD it is a
   // plain word, since structured data carries no markup.
   const faqPlain = faq.map((item) => ({
     h: item.h,
-    p: item.p.replace("{tg}", lang === "fa" ? "تلگرام" : "Telegram"),
+    p: item.p.replace("{tg}", "Telegram"),
   }));
   const homeSchema = {
     "@context": "https://schema.org",
@@ -337,39 +341,30 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }, l
       },
     ],
   };
-  const isFa = lang === "fa";
   await write(
-    isFa ? "fa/index.html" : "index.html",
+    "index.html",
     shell({
-      title: isFa
-        ? "Lab Ledger Desk — حرکت‌های اصلی آزمایشگاه‌ها"
-        : "Lab Ledger Desk — Primary moves from the labs",
-      description: isFa
-        ? "اعلامیه‌های رسمی هوش مصنوعی از آزمایشگاه‌های نام‌دار، گروه‌های پژوهشی و مطبوعاتی که آن‌ها را پوشش می‌دهند — به‌اضافهٔ یادداشت‌های انتشار متن‌باز. تاریخ‌دار، مستند، نگه‌داشته."
-        : "Official AI announcements from named labs, research groups, and the press that covers them — plus open-source release notes. Dated, sourced, kept.",
-      path: isFa ? "/fa/" : "/",
-      lang,
-      alternates: [
-        ["en", SITE + "/"],
-        ["fa", SITE + "/fa/"],
-      ],
+      title: "Lab Ledger Desk — Primary moves from the labs",
+      description:
+        "Official AI announcements from named labs, research groups, and the press that covers them — plus open-source release notes. Dated, sourced, kept.",
+      path: "/",
       extra: jsonLdScript(homeSchema),
       body: [
-        "<section class=\"hero\"><div><h1>", esc(d.hero_h1), "</h1>",
-        "<p>", esc(d.hero_p), "</p>",
-        "<div class=\"meta\"><span>", esc(d.meta_desk_date), " <strong><time datetime=\"",
+        "<section class=\"hero\"><div><h1>What the labs moved. Sourced, dated, kept.</h1>",
+        "<p>Every brief starts at the source — an official feed or release page from a named lab, read directly and dated. Nothing is rewritten from a rumor, nothing is invented, and the primary link sits on every page.</p>",
+        "<div class=\"meta\"><span>Desk date <strong><time datetime=\"",
         esc(today),
         "\">",
         esc(today),
         "</time></strong></span>",
-        "<span>", esc(d.meta_open_briefs), " <strong>",
+        "<span>Open briefs <strong>",
         String(shown.length),
         "</strong></span>",
-        "<span>", esc(d.meta_ledger), " <strong>",
+        "<span>Ledger <strong>",
         String(allBriefs.length),
         "</strong></span></div></div>",
-        "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">", esc(d.search_label), "</label>",
-        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"", esc(d.search_placeholder), "\" autocomplete=\"off\">",
+        "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Look up a lab, a launch, or a topic</label>",
+        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Anthropic, hardware, Claude…\" autocomplete=\"off\">",
         "<div class=\"chips\" data-group=\"kind\">",
         chips(KINDS, "/kind/"),
         "</div>",
@@ -378,18 +373,18 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }, l
         "</div></form>",
         markRow([...LABS, ...OPEN_PROJECTS]),
         "</section>",
-        "<section class=\"board\" id=\"today\"><div class=\"board-head\"><span>", esc(d.board_head), "</span><span id=\"count\">",
+        "<section class=\"board\" id=\"today\"><div class=\"board-head\"><span>The board</span><span id=\"count\">",
         String(shown.length),
-        " ", esc(d.board_logged), "</span></div>",
+        " logged</span></div>",
         board,
         "<div class=\"labs\">",
         labGrid,
         "</div></section>",
         openShown.length
           ? [
-              "<section class=\"board\" id=\"open\"><div class=\"board-head\"><span>", esc(d.open_head), "</span><span>",
+              "<section class=\"board\" id=\"open\"><div class=\"board-head\"><span>Open releases</span><span>",
               String(openShown.length),
-              " ", esc(d.open_filed), "</span></div>",
+              " filed</span></div>",
               openShown.map(rowHtml).join(""),
               "</section>",
             ].join("")
@@ -399,13 +394,11 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }, l
         "<h2>" + esc(faq[1].h) + "</h2><p>" + esc(faq[1].p) + "</p>",
         // The full source table lives once, at /method/. Duplicating it here
         // made the homepage a third of its current weight for no reader value.
-        "<p><a class=\"support-cta\" href=\"/method/\">" + esc(d.method_link) +
-          (lang === "fa" ? " ←" : " →") + "</a></p>",
+        "<p><a class=\"support-cta\" href=\"/method/\">How the desk works →</a></p>",
         "<h2>" + esc(faq[2].h) + "</h2><p>" +
           esc(faq[2].p).replace(
             "{tg}",
-            "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">" +
-              esc(lang === "fa" ? "تلگرام" : "Telegram") + "</a>",
+            "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a>",
           ) +
           "</p>",
         "</article>",

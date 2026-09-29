@@ -367,7 +367,6 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/donate/", today],
     ["/open/", today],
     ["/open/rss.xml", today],
-    ["/fa/", today],
     ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
     ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/", today]),
     ...TOPICS.map((t) => ["/topic/" + t.id + "/", today]),

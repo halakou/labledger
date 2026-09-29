@@ -103,26 +103,9 @@ function navHtml(path) {
   }).join("");
 }
 
-// Languages the desk publishes. Content is English (it is filed from
-// English-language official sources); the chrome — nav, hero, FAQ — is
-// translated so a Persian reader can navigate the board. `dir` travels with
-// the language: Persian is right-to-left.
-export const LANGS = [
-  { id: "en", label: "English", dir: "ltr" },
-  { id: "fa", label: "فارسی", dir: "rtl" },
-];
-
-export function langMeta(id) {
-  return LANGS.find((l) => l.id === id) || LANGS[0];
-}
-
 // The skip link is the first focusable element on every page: keyboard and
 // screen-reader users jump straight past the masthead to the board.
-function skipLink(lang) {
-  return lang === "fa"
-    ? '<a class="skip" href="#main">پرش به تابلو</a>'
-    : '<a class="skip" href="#main">Skip to the board</a>';
-}
+const SKIP_LINK = '<a class="skip" href="#main">Skip to the board</a>';
 
 export function shell({
   title,
@@ -133,33 +116,14 @@ export function shell({
   ogType = "website",
   ogImage,
   robots,
-  lang = "en",
-  alternates = [],
 }) {
   const url = SITE + path;
   const desc = clip(description, 158);
   const image = ogImage || SITE + "/og.jpg";
   const absImage = image.startsWith("http") ? image : SITE + image;
   const robotsContent = robots || "index,follow,max-image-preview:large";
-  const meta = langMeta(lang);
-  // hreflang: x-default points at the canonical English page, each listed
-  // language at its own URL. Only pages that actually exist get a row.
-  const hreflang =
-    alternates.length > 1
-      ? alternates
-          .map(
-            ([code, href]) =>
-              '<link rel="alternate" hreflang="' +
-              esc(code) +
-              '" href="' +
-              esc(href) +
-              '">',
-          )
-          .join("") +
-        '<link rel="alternate" hreflang="x-default" href="' + esc(url) + '">'
-      : "";
   return [
-    "<!doctype html><html lang=\"" + esc(meta.id) + "\" dir=\"" + esc(meta.dir) + "\"><head><meta charset=\"utf-8\">",
+    "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
     "<title>", esc(title), "</title>",
     "<meta name=\"description\" content=\"", esc(desc), "\">",
@@ -192,9 +156,8 @@ export function shell({
     "<meta name=\"twitter:description\" content=\"", esc(desc), "\">",
     "<meta name=\"twitter:image\" content=\"", esc(absImage), "\">",
     "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
-    hreflang,
     extra,
-    "</head><body>" + skipLink(lang) + "<div class=\"wrap\"><header>",
+    "</head><body>" + SKIP_LINK + "<div class=\"wrap\"><header>",
     "<a class=\"brand\" href=\"/\">",
     DESK_MARK_SVG,
     "<span class=\"brand-text\">Lab Ledger<span class=\"desk\">Desk</span></span></a>",
