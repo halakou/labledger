@@ -109,30 +109,52 @@ function composeMessage(post) {
   };
 }
 
-async function tg(token, method, body) {
-  const res = await fetch("https://api.telegram.org/bot" + token + "/" + method, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20000),
-  });
-  return res.json().catch(() => ({ ok: false, description: "non-json " + res.status }));
+async function tg(token, method, body, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      const res = await fetch("https://api.telegram.org/bot" + token + "/" + method, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20000),
+      });
+      return await res.json().catch(() => ({ ok: false, description: "non-json " + res.status }));
+    } catch (err) {
+      if (attempt < retries) {
+        console.log("telegram " + method + " retry " + attempt + "/" + retries + " after: " + (err?.message || err));
+        await sleep(1000 * attempt);
+      } else {
+        return { ok: false, description: "network " + (err?.message || err) };
+      }
+    }
+  }
 }
 
-async function tgPhoto(token, chat, filePath, msg) {
+async function tgPhoto(token, chat, filePath, msg, retries = 2) {
   const bytes = await readFile(filePath);
-  const form = new FormData();
-  form.set("chat_id", chat);
-  form.set("photo", new Blob([bytes], { type: "image/png" }), "card.png");
-  form.set("caption", msg.text);
-  form.set("parse_mode", "HTML");
-  form.set("reply_markup", JSON.stringify(msg.payload.reply_markup));
-  const res = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
-    method: "POST",
-    body: form,
-    signal: AbortSignal.timeout(30000),
-  });
-  return res.json().catch(() => ({ ok: false, description: "non-json " + res.status }));
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      const form = new FormData();
+      form.set("chat_id", chat);
+      form.set("photo", new Blob([bytes], { type: "image/png" }), "card.png");
+      form.set("caption", msg.text);
+      form.set("parse_mode", "HTML");
+      form.set("reply_markup", JSON.stringify(msg.payload.reply_markup));
+      const res = await fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
+        method: "POST",
+        body: form,
+        signal: AbortSignal.timeout(30000),
+      });
+      return await res.json().catch(() => ({ ok: false, description: "non-json " + res.status }));
+    } catch (err) {
+      if (attempt < retries) {
+        console.log("telegram sendPhoto retry " + attempt + "/" + retries + " after: " + (err?.message || err));
+        await sleep(1000 * attempt);
+      } else {
+        return { ok: false, description: "network " + (err?.message || err) };
+      }
+    }
+  }
 }
 
 async function sendPost(token, chat, post) {
@@ -300,8 +322,12 @@ if (!token) {
 }
 
 const info = await diagnose(token, chat);
-await setupChannel(token, chat, info);
-await setupBot(token, info);
+if (info?.ok) {
+  await setupChannel(token, chat, info);
+  await setupBot(token, info);
+} else {
+  console.log("telegram diagnose failed, skipping setup");
+}
 
 const queue = await loadJson(QUEUE_FILE, { briefs: [] });
 const posted = await loadJson(POSTED_FILE, {});
@@ -348,7 +374,7 @@ const rest = unposted.filter((b) => !fresh.includes(b));
 const hourUTC = new Date().getUTCHours();
 const quiet = false;
 const cap = fresh.length ? 5 : rest.length ? (postedCount === 0 ? 6 : 3) : 2;
-const toSend = fresh.length ? fresh.slice(0, 5) : rest.slice(0, postedCount === 0 ? 6 : 2);
+const toSend = (fresh.length ? fresh : rest).slice(0, cap);
 console.log(
   "telegram sync unposted:",
   unposted.length,

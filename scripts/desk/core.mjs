@@ -42,8 +42,14 @@ export function decodeOnce(text) {
     .replace(new RegExp(AMP + "quot;", "g"), '"')
     .replace(new RegExp(AMP + "#39;", "g"), "'")
     .replace(new RegExp(AMP + "apos;", "g"), "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
+    .replace(/&#(\d+);/g, (_, n) => {
+      const code = Number(n);
+      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : "";
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => {
+      const code = parseInt(n, 16);
+      return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : "";
+    });
 }
 
 export function decode(text) {

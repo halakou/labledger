@@ -34,10 +34,20 @@ const SECRET_PATTERNS = [
 
 // Walk the working tree rather than shelling out to git, so the guard runs
 // identically in CI and on any laptop without needing git on PATH.
-const SKIP = new Set([".git", "node_modules", "dist-site", ".desk-assets", ".wrangler"]);
+const SKIP = new Set([
+  ".git",
+  "node_modules",
+  "dist-site",
+  ".desk-assets",
+  ".wrangler",
+  ".desk-posted.json",
+  ".desk-queue.json",
+  ".desk-archive.json",
+  ".desk-open.json",
+]);
 function list(dir, acc) {
   for (const name of readdirSync(dir)) {
-    if (SKIP.has(name)) continue;
+    if (SKIP.has(name) || /^\.desk-.*\.json$/.test(name)) continue;
     const p = join(dir, name);
     if (statSync(p).isDirectory()) list(p, acc);
     else acc.push(p.replace(/\\/g, "/"));

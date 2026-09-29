@@ -13,6 +13,12 @@ if (!token) {
   process.exit(1);
 }
 
+let briefsCount = 64;
+try {
+  const archive = JSON.parse(await readFile(".desk-archive.json", "utf8"));
+  if (Array.isArray(archive?.briefs) && archive.briefs.length) briefsCount = archive.briefs.length;
+} catch {}
+
 const text = [
   "\u{1F9AC} <b>The cost ledger is now public</b>",
   "",
@@ -20,7 +26,7 @@ const text = [
   "",
   "\u2022 Servers we rent — <b>0</b>",
   "\u2022 Paywalls — <b>0</b>",
-  "\u2022 Briefs logged so far — <b>64</b>",
+  "\u2022 Briefs logged so far — <b>" + briefsCount + "</b>",
   "\u2022 Review hours — the only line that is not free",
   "",
   "If the desk has saved you an hour this month, the best way to say it",

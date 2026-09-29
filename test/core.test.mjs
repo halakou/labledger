@@ -34,6 +34,8 @@ test("decode unescapes entities and numeric character references", () => {
   assert.equal(decode("&amp;lt;"), "<");
   assert.equal(decode("&#65;"), "A");
   assert.equal(decode("&#x41;"), "A");
+  assert.equal(decode("&#128640;"), "🚀");
+  assert.equal(decode("&#x1F916;"), "🤖");
   assert.equal(decode("&quot;q&quot;"), '"q"');
 });
 
