@@ -9,6 +9,11 @@ on:
     # Weekly re-enable so GitHub does not disable schedules after 60 quiet days.
     - cron: "19 4 * * 1"
   workflow_dispatch:
+    inputs:
+      announce_donate:
+        description: "Post the donate announcement to Telegram"
+        type: boolean
+        default: false
   workflow_run:
     workflows: ["clock"]
     types: [completed]
@@ -90,6 +95,7 @@ jobs:
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/telegram-desk.mjs
       - name: Announce the cost ledger once
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.announce_donate == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
