@@ -14,7 +14,11 @@ body{line-height:1.55}
 a{color:inherit}
 h1,h2,h3{font-family:Fraunces,ui-serif,Georgia,serif;font-weight:600;text-wrap:balance;letter-spacing:-.02em;line-height:1.15}
 p{text-wrap:pretty}
-.wrap{max-width:64rem;margin:0 auto;padding:0 1rem;min-height:100vh;display:flex;flex-direction:column}
+.wrap{max-width:64rem;margin:0 auto;padding:0 1rem;min-height:100vh;display:flex;flex-direction:column;position:relative}
+/* Skip link: first focusable element, off-screen until focused. Keyboard and
+   screen-reader users jump straight to #main, past the masthead and nav. */
+.skip{position:absolute;left:-9999rem;top:0;z-index:100;background:var(--ink);color:var(--paper);padding:.75rem 1rem;text-decoration:none;font-weight:600;font-size:.85rem;border-radius:0 0 4px 0}
+.skip:focus{left:0}
 header{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;border-bottom:1px solid var(--rule);padding:1rem 0}
 footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;border-top:1px solid var(--rule);margin-top:auto;padding:1.5rem 0;color:var(--muted);font-size:.92rem}
 .brand{display:flex;align-items:center;gap:.65rem;text-decoration:none;font-family:Fraunces,Georgia,serif;font-size:1.7rem;font-weight:600;letter-spacing:-.03em}

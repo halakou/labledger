@@ -61,3 +61,45 @@ test("rowHtml escapes every field it renders", () => {
   assert.ok(!html.includes("<i>"), "headline must be escaped");
   assert.ok(html.includes("Brief 042"));
 });
+
+test("shell wraps the body in a <main> landmark and emits a skip link", () => {
+  const html = shell({ title: "t", description: "d", path: "/", body: "<p>x</p>" });
+  assert.ok(html.includes('<main id="main">'), "body must sit inside <main>");
+  assert.ok(html.includes('class="skip"'), "a skip link must be the first focusable element");
+  assert.ok(html.includes('href="#main"'), "skip link must target #main");
+});
+
+test("shell links the web app manifest", () => {
+  const html = shell({ title: "t", description: "d", path: "/", body: "" });
+  assert.ok(html.includes('<link rel="manifest" href="/manifest.webmanifest">'));
+});
+
+test("shell defaults to English and honours the lang option", () => {
+  const en = shell({ title: "t", description: "d", path: "/", body: "" });
+  assert.ok(en.includes('<html lang="en" dir="ltr">'));
+  const fa = shell({ title: "t", description: "d", path: "/fa/", body: "", lang: "fa" });
+  assert.ok(fa.includes('<html lang="fa" dir="rtl">'));
+});
+
+test("shell emits hreflang alternates only when more than one language is listed", () => {
+  const one = shell({ title: "t", description: "d", path: "/", body: "", alternates: [["en", "https://x/"]] });
+  assert.ok(!one.includes('hreflang="en"'), "a single-language page carries no hreflang rows");
+  const two = shell({
+    title: "t",
+    description: "d",
+    path: "/",
+    body: "",
+    alternates: [
+      ["en", "https://x/"],
+      ["fa", "https://x/fa/"],
+    ],
+  });
+  assert.ok(two.includes('hreflang="en"'));
+  assert.ok(two.includes('hreflang="fa"'));
+  assert.ok(two.includes('hreflang="x-default"'));
+});
+
+test("the inline script registers the service worker", () => {
+  assert.ok(SEARCH_SCRIPT.includes("serviceWorker"), "the one script must register /sw.js");
+  assert.ok(SEARCH_SCRIPT.includes("register('/sw.js')"));
+});

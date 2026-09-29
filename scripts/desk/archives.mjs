@@ -367,6 +367,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/donate/", today],
     ["/open/", today],
     ["/open/rss.xml", today],
+    ["/fa/", today],
     ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
     ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/", today]),
     ...TOPICS.map((t) => ["/topic/" + t.id + "/", today]),
@@ -374,10 +375,19 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ...allBriefs.map((b) => [b.path, b.dateLabel]),
     ...allOpen.map((b) => [b.path, b.dateLabel]),
   ];
+  // Dedupe by path: a brief can appear in both the lab ledger and the
+  // open-release ledger under the same /b/YYYY/M/D/slug/ URL, and a
+  // duplicated <loc> makes the whole sitemap invalid for Google.
+  const seenPaths = new Set();
+  const unique = urls.filter(([u]) => {
+    if (seenPaths.has(u)) return false;
+    seenPaths.add(u);
+    return true;
+  });
   await write(
     "sitemap.xml",
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">" +
-      urls.map(([u, d]) => "<url><loc>" + SITE + u + "</loc><lastmod>" + d + "</lastmod></url>").join("") +
+      unique.map(([u, d]) => "<url><loc>" + SITE + u + "</loc><lastmod>" + d + "</lastmod></url>").join("") +
       "</urlset>",
   );
   await write(
