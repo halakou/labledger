@@ -21,7 +21,9 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeMarkSprite([...new Set([...LABS, ...OPEN_PROJECTS].map((l) => l.id))]);
   await writeLlms(briefs, openBriefs);
   const ogCount = await writeOgCards([...allBriefs, ...allOpen]);
-  await writeHome({ allBriefs, briefs, openBriefs, today });
+  await writeHome({ allBriefs, briefs, openBriefs, today }, "en");
+  // Persian homepage: same board, translated chrome, right-to-left.
+  await writeHome({ allBriefs, briefs, openBriefs, today }, "fa");
   await writeOpenBoard({ openBriefs, today });
   await writeOpenArchives({ allOpen, today });
   await writeOpenRss(openBriefs);

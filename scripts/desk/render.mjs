@@ -80,7 +80,7 @@ export function jsonLdScript(obj) {
 // The one inline script on the site: board search, plus donate-address copy.
 // Its SHA-256 hash is exported so _headers can ship a strict CSP that still
 // allows it. Do not add a second <script>. Copy handlers must live in here.
-export const SEARCH_SCRIPT = "(function(){var addrs=[].slice.call(document.querySelectorAll('.support-addr'));function copyAddr(el){var text=(el.textContent||'').replace(/^\\s+|\\s+$/g,'');if(!text||!navigator.clipboard||!navigator.clipboard.writeText)return;navigator.clipboard.writeText(text).then(function(){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied');},1400);}).catch(function(){});}addrs.forEach(function(el){el.setAttribute('role','button');el.setAttribute('tabindex','0');el.setAttribute('aria-label','Copy address');el.addEventListener('click',function(){copyAddr(el);});el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();copyAddr(el);}});});var q=document.getElementById('q');var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));if(!rows.length)return;function norm(s){return (s||'').toLowerCase();}function counts(){var k={},t={},l={};rows.forEach(function(r){if(r.hidden)return;var kk=(r.getAttribute('data-kind')||''),tt=(r.getAttribute('data-topics')||'').split(' '),ll=(r.getAttribute('data-lab')||'');if(kk)k[kk]=(k[kk]||0)+1;tt.forEach(function(x){if(x)t[x]=(t[x]||0)+1;});if(ll)l[ll]=(l[ll]||0)+1;});[].forEach.call(document.querySelectorAll('.chip[data-chip]'),function(c){var g=c.parentNode.getAttribute('data-group');var m=g==='kind'?k:(g==='topic'?t:null);var n=m?m[c.getAttribute('data-chip')]||0:0;c.setAttribute('data-count',n);var cn=c.querySelector('.chip-n');if(cn)cn.textContent=n||'';c.setAttribute('data-active',n?'1':'');});[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){var n=l[b.getAttribute('data-lab')]||0;var bn=b.querySelector('.mbadge-n');if(bn)bn.textContent=n||'';b.style.opacity=n?'1':'.35';});}function apply(){var n=norm(q&&q.value);var vis=0;rows.forEach(function(r){var ok=true;if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;r.hidden=!ok;if(ok)vis++;});var c=document.getElementById('count');if(c)c.textContent=vis+' logged';counts();}if(q){q.addEventListener('input',apply);var p=new URLSearchParams(location.search);if(p.get('q'))q.value=p.get('q');apply();}})();";
+export const SEARCH_SCRIPT = "(function(){var addrs=[].slice.call(document.querySelectorAll('.support-addr'));function copyAddr(el){var text=(el.textContent||'').replace(/^\\s+|\\s+$/g,'');if(!text||!navigator.clipboard||!navigator.clipboard.writeText)return;navigator.clipboard.writeText(text).then(function(){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied');},1400);}).catch(function(){});}addrs.forEach(function(el){el.setAttribute('role','button');el.setAttribute('tabindex','0');el.setAttribute('aria-label','Copy address');el.addEventListener('click',function(){copyAddr(el);});el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();copyAddr(el);}});});var q=document.getElementById('q');var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));function norm(s){return (s||'').toLowerCase();}function counts(){var k={},t={},l={};rows.forEach(function(r){if(r.hidden)return;var kk=(r.getAttribute('data-kind')||''),tt=(r.getAttribute('data-topics')||'').split(' '),ll=(r.getAttribute('data-lab')||'');if(kk)k[kk]=(k[kk]||0)+1;tt.forEach(function(x){if(x)t[x]=(t[x]||0)+1;});if(ll)l[ll]=(l[ll]||0)+1;});[].forEach.call(document.querySelectorAll('.chip[data-chip]'),function(c){var g=c.parentNode.getAttribute('data-group');var m=g==='kind'?k:(g==='topic'?t:null);var n=m?m[c.getAttribute('data-chip')]||0:0;c.setAttribute('data-count',n);var cn=c.querySelector('.chip-n');if(cn)cn.textContent=n||'';c.setAttribute('data-active',n?'1':'');});[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){var n=l[b.getAttribute('data-lab')]||0;var bn=b.querySelector('.mbadge-n');if(bn)bn.textContent=n||'';b.style.opacity=n?'1':'.35';});}function apply(){var n=norm(q&&q.value);var vis=0;rows.forEach(function(r){var ok=true;if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;r.hidden=!ok;if(ok)vis++;});var c=document.getElementById('count');if(c)c.textContent=vis+' logged';counts();}if(q){q.addEventListener('input',apply);var p=new URLSearchParams(location.search);if(p.get('q'))q.value=p.get('q');apply();}if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}})();";
 export const SEARCH_SCRIPT_HASH = createHash("sha256")
   .update(SEARCH_SCRIPT, "utf8")
   .digest("base64");
@@ -103,14 +103,63 @@ function navHtml(path) {
   }).join("");
 }
 
-export function shell({ title, description, path, body, extra = "", ogType = "website", ogImage, robots }) {
+// Languages the desk publishes. Content is English (it is filed from
+// English-language official sources); the chrome — nav, hero, FAQ — is
+// translated so a Persian reader can navigate the board. `dir` travels with
+// the language: Persian is right-to-left.
+export const LANGS = [
+  { id: "en", label: "English", dir: "ltr" },
+  { id: "fa", label: "فارسی", dir: "rtl" },
+];
+
+export function langMeta(id) {
+  return LANGS.find((l) => l.id === id) || LANGS[0];
+}
+
+// The skip link is the first focusable element on every page: keyboard and
+// screen-reader users jump straight past the masthead to the board.
+function skipLink(lang) {
+  return lang === "fa"
+    ? '<a class="skip" href="#main">پرش به تابلو</a>'
+    : '<a class="skip" href="#main">Skip to the board</a>';
+}
+
+export function shell({
+  title,
+  description,
+  path,
+  body,
+  extra = "",
+  ogType = "website",
+  ogImage,
+  robots,
+  lang = "en",
+  alternates = [],
+}) {
   const url = SITE + path;
   const desc = clip(description, 158);
   const image = ogImage || SITE + "/og.jpg";
   const absImage = image.startsWith("http") ? image : SITE + image;
   const robotsContent = robots || "index,follow,max-image-preview:large";
+  const meta = langMeta(lang);
+  // hreflang: x-default points at the canonical English page, each listed
+  // language at its own URL. Only pages that actually exist get a row.
+  const hreflang =
+    alternates.length > 1
+      ? alternates
+          .map(
+            ([code, href]) =>
+              '<link rel="alternate" hreflang="' +
+              esc(code) +
+              '" href="' +
+              esc(href) +
+              '">',
+          )
+          .join("") +
+        '<link rel="alternate" hreflang="x-default" href="' + esc(url) + '">'
+      : "";
   return [
-    "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
+    "<!doctype html><html lang=\"" + esc(meta.id) + "\" dir=\"" + esc(meta.dir) + "\"><head><meta charset=\"utf-8\">",
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
     "<title>", esc(title), "</title>",
     "<meta name=\"description\" content=\"", esc(desc), "\">",
@@ -119,6 +168,7 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     "<meta name=\"color-scheme\" content=\"light\">",
     "<link rel=\"canonical\" href=\"", esc(url), "\">",
     "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\">",
+    "<link rel=\"manifest\" href=\"/manifest.webmanifest\">",
     "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Lab Ledger Desk\" href=\"", SITE, "/rss.xml\">",
     // The sprite and the fonts are the only resources above the fold on every
     // page. Preloading them removes the last render-blocking round trips and
@@ -142,15 +192,18 @@ export function shell({ title, description, path, body, extra = "", ogType = "we
     "<meta name=\"twitter:description\" content=\"", esc(desc), "\">",
     "<meta name=\"twitter:image\" content=\"", esc(absImage), "\">",
     "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
+    hreflang,
     extra,
-    "</head><body><div class=\"wrap\"><header>",
+    "</head><body>" + skipLink(lang) + "<div class=\"wrap\"><header>",
     "<a class=\"brand\" href=\"/\">",
     DESK_MARK_SVG,
     "<span class=\"brand-text\">Lab Ledger<span class=\"desk\">Desk</span></span></a>",
     "<nav>" + navHtml(path) +
       "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Channel</a></nav>",
     "</header>",
+    "<main id=\"main\">",
     Array.isArray(body) ? body.join("") : String(body || ""),
+    "</main>",
     "<footer><p>Every brief here starts at an official source. Nothing is rewritten from a rumor.</p>",
     "<p><a href=\"/method/\">How the desk works</a> · <a href=\"/week/\">Weekly digest</a> · <a href=\"/learn/\">Field guide</a> · <a href=\"/donate/\">Support</a> · <a href=\"",
     esc(CHANNEL),
