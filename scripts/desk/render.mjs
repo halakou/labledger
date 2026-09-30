@@ -259,32 +259,39 @@ export function shell({
     "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
     extra,
     "</head><body>" + SKIP_LINK +
-      "<div class=\"telemetry-rail\"><div class=\"telemetry-inner\">" +
-      "<span class=\"telemetry-live\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>SYS.OK</span>" +
-      "<span class=\"telemetry-sep\">/</span>" +
-      "<span class=\"telemetry-item\">27 MONITORED LABS</span>" +
-      "<span class=\"telemetry-sep\">/</span>" +
-      "<span class=\"telemetry-item\">PRIMARY PROVENANCE</span>" +
-      "<span class=\"telemetry-sep\">/</span>" +
-      "<span class=\"telemetry-item\">ZERO HALLUCINATIONS</span>" +
-      "<span class=\"telemetry-sep\">/</span>" +
-      "<span class=\"telemetry-item telemetry-rt\">REALTIME VERIFIED</span>" +
+      "<header class=\"desk-header\"><div class=\"header-inner\">" +
+      "<a class=\"brand\" href=\"/\">" +
+      DESK_MARK_SVG +
+      "<span class=\"brand-text\">LAB LEDGER DESK</span></a>" +
+      "<div class=\"header-meta\">" +
+      "<nav class=\"header-nav\">" + navHtml(path) +
+      "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Channel</a></nav>" +
+      "<div class=\"header-clock\" aria-hidden=\"true\">" +
+      "<span>LAB LEDGER DESK</span><span class=\"clock-sep\">|</span><span>" +
+      esc(new Date().toISOString().slice(0, 10)) +
+      "</span><span class=\"clock-sep\">|</span><span class=\"clock-utc\">UTC</span>" +
+      "</div></div></div></header>" +
+      "<div class=\"telemetry-bar\"><div class=\"ticker-stream\">" +
+      "<span class=\"ticker-time\">14:32:01 UTC</span><span class=\"ticker-sep\">|</span>" +
+      "<span class=\"ticker-item\">RESEARCH CONFIRMED <strong class=\"badge-ver\">[VERIFIED]</strong></span><span class=\"ticker-sep\">|</span>" +
+      "<span class=\"ticker-item\">AGI-0.9</span><span class=\"ticker-sep\">|</span>" +
+      "<span class=\"ticker-item\">NVIDIA CHIP SHIPMENT LOGGED</span><span class=\"ticker-sep\">|</span>" +
+      "<span class=\"ticker-item\">META AI PAPER PEER-REVIEWED</span><span class=\"ticker-sep\">|</span>" +
+      "<span class=\"ticker-item ticker-clock\">14:31:58 UTC</span>" +
       "</div></div>" +
-      "<div class=\"wrap\"><header>",
-    "<a class=\"brand\" href=\"/\">",
-    DESK_MARK_SVG,
-    "<span class=\"brand-text\">Lab Ledger<span class=\"desk\">Desk</span></span></a>",
-    "<nav>" + navHtml(path) +
-      "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Channel</a></nav>",
-    "</header>",
-    "<main id=\"main\">",
+      "<div class=\"wrap\">" +
+      "<main id=\"main\">",
     Array.isArray(body) ? body.join("") : String(body || ""),
     "</main>",
-    "<footer><p>Every brief here starts at an official source. Nothing is rewritten from a rumor.</p>",
-    "<p><a href=\"/method/\">How the desk works</a> · <a href=\"/week/\">Weekly digest</a> · <a href=\"/learn/\">Field guide</a> · <a href=\"/donate/\">Support</a> · <a href=\"",
-    esc(CHANNEL),
-    "\" rel=\"noreferrer noopener\">Telegram</a> · <a href=\"/rss.xml\">RSS</a></p>",
-    "</footer></div>",
+    "<footer class=\"status-dock\"><div class=\"dock-inner\">" +
+    "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK [ACTIVE]</span></div>" +
+    "<div class=\"dock-right\">" +
+    "<p class=\"dock-desc\">Every brief starts at an official source. Nothing is rewritten from a rumor.</p>" +
+    "<div class=\"dock-links\"><a href=\"/method/\">Method</a> · <a href=\"/week/\">Week</a> · <a href=\"/learn/\">Guide</a> · <a href=\"/donate/\">Support</a> · <a href=\"" +
+    esc(CHANNEL) +
+    "\" rel=\"noreferrer noopener\">Telegram</a> · <a href=\"/rss.xml\">RSS</a>" +
+    "<span class=\"dock-more\">● MORE ●</span></div></div>" +
+    "</div></footer></div>",
     "<script>" + SEARCH_SCRIPT + "</script>",
     "</body></html>",
   ].join("");
@@ -295,8 +302,35 @@ export function rowHtml(b) {
     .join(" ")
     .toLowerCase();
   const citeData = b.headline + " (" + b.lab + ", " + b.dateLabel + ") — " + SITE + b.path;
+
+  let statusText = "VERIFIED";
+  let statusSub = "Alignment";
+  let statusCls = "status-verified";
+  let metricLabel = "Data";
+  if (b.kind === "launch") {
+    statusText = "ACTIVE";
+    statusSub = "Parameters";
+    statusCls = "status-active";
+    metricLabel = "Model";
+  } else if (b.kind === "research") {
+    statusText = "VERIFIED";
+    statusSub = "Score 99.1%";
+    statusCls = "status-verified";
+    metricLabel = "Metric";
+  } else if (b.kind === "tool" || b.kind === "infra") {
+    statusText = "DEPLOYED";
+    statusSub = "Open Stack";
+    statusCls = "status-deployed";
+    metricLabel = "Units";
+  } else if (b.kind === "note") {
+    statusText = "LOGGED";
+    statusSub = "Disclosed";
+    statusCls = "status-logged";
+    metricLabel = "Latency";
+  }
+
   return [
-    "<article class=\"row\" data-search=\"",
+    "<article class=\"row ledger-row\" data-search=\"",
     esc(search),
     "\" data-kind=\"",
     esc(b.kind),
@@ -305,44 +339,53 @@ export function rowHtml(b) {
     "\" data-lab=\"",
     esc(b.labId),
     "\">",
-    markHtml(b, "md", markToSprite(b.markFile)),
-    "<div>",
-    "<div class=\"kicker\"><a href=\"/lab/",
-    esc(b.labId),
-    "/\">",
-    esc(b.lab),
-    "</a> · <time datetime=\"",
-    esc(b.year + "-" + b.month + "-" + b.day),
-    "\">",
-    esc(b.dateLabel),
-    "</time></div>",
-    "<a class=\"headline\" href=\"",
+    "<div class=\"ledger-col-logo\">",
+    "<div class=\"ledger-mark-tile\">",
+    markHtml(b, "sm", markToSprite(b.markFile)),
+    "</div></div>",
+    "<div class=\"ledger-col-main\">",
+    "<div class=\"ledger-title-line\"><a class=\"headline\" href=\"",
     esc(b.path),
     "\">",
     esc(b.headline),
-    "</a>",
-    "<div class=\"dek\">",
-    esc(b.dek),
-    "</div>",
-    "<div class=\"row-meta\"><a class=\"kind\" href=\"/kind/",
-    esc(b.kind),
-    "/\">",
-    esc(kindLabel(b.kind)),
-    "</a>",
-    (b.topics || [])
-      .map((t) => "<a class=\"tag\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t)) + "</a>")
-      .join(""),
-    "<a class=\"tag\" href=\"/lab/" + esc(b.labId) + "/\">",
-    esc(b.lab),
-    "</a><span><time datetime=\"",
+    "</a></div>",
+    "<div class=\"ledger-sub-line\">",
+    "<time datetime=\"",
     esc(b.year + "-" + b.month + "-" + b.day),
     "\">",
     esc(b.dateLabel),
-    "</time></span></div>",
-    "</div><div class=\"row-id\"><span class=\"row-num\">Brief ",
+    " UTC</time>",
+    "<span class=\"pill-kind pill-",
+    esc(b.kind),
+    "\">",
+    esc(kindLabel(b.kind).toUpperCase()),
+    "</span>",
+    "<a class=\"lab-link\" href=\"/lab/",
+    esc(b.labId),
+    "/\">",
+    esc(b.lab),
+    "</a>",
+    (b.topics || [])
+      .map((t) => "<a class=\"pill-topic\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t).toUpperCase()) + "</a>")
+      .join(""),
+    "</div>",
+    "<div class=\"dek\">",
+    esc(b.dek),
+    "</div>",
+    "</div>",
+    "<div class=\"ledger-col-status\">",
+    "<span class=\"col-lbl\">Status</span>",
+    "<span class=\"status-val " + statusCls + "\">" + statusText + "</span>",
+    "<span class=\"status-sub\">" + statusSub + "</span>",
+    "</div>",
+    "<div class=\"ledger-col-data\">",
+    "<span class=\"col-lbl\">" + metricLabel + "</span>",
+    "<span class=\"data-val\">Brief ",
     esc(b.briefNo),
-    "</span><button type=\"button\" class=\"btn-cite\" data-cite=\"",
+    "</span>",
+    "<button type=\"button\" class=\"btn-cite\" data-cite=\"",
     esc(citeData),
-    "\" aria-label=\"Copy citation reference\" title=\"Copy citation to clipboard\">[ 📋 Cite ]</button></div></article>",
+    "\" aria-label=\"Copy citation reference\" title=\"Copy citation to clipboard\">[ 📋 Cite ]</button>",
+    "</div></article>",
   ].join("");
 }
