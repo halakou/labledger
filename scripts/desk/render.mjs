@@ -22,7 +22,7 @@ export function markHtml(b, size, spriteHref) {
   }
   const isVector = HAS_VECTOR.has(id);
   const href = !isVector && (spriteHref || (b.markFile ? markToSprite(b.markFile) : null));
-  const cls = "mark" + (size === "sm" ? " sm" : size === "xs" ? " xs" : "") + (href || isVector ? "" : " letter");
+  const cls = "mark mark-" + id + (size === "sm" ? " sm" : size === "xs" ? " xs" : "") + (href || isVector ? "" : " letter");
   if (isVector) {
     return (
       '<div class="' +
@@ -204,22 +204,15 @@ function tickerHtml(items) {
   if (!rows.length) {
     return '<span class="ticker-item">Official sources only</span><span class="ticker-sep">\u00b7</span><span class="ticker-item">Nothing invented</span>';
   }
-  return rows.slice(0, 4).map((item) =>
+  const track = rows.slice(0, 6).map((item) =>
     '<a class="ticker-item" href="' + esc(item.path) + '"><span class="ticker-lab">' +
     esc(item.lab || "Source") + '</span><span class="ticker-dot">\u00b7</span>' + esc(clip(item.headline, 78)) + '</a>'
   ).join('<span class="ticker-sep">|</span>');
+  return '<div class="ticker-track">' + track + '<span class="ticker-sep">|</span>' + track + '</div>';
 }
 
 export function shell({
-  title,
-  description,
-  path,
-  body,
-  extra = "",
-  ogType = "website",
-  ogImage,
-  robots,
-  ticker = [],
+  title, description, path, body, extra = "", ogType = "website", ogImage, robots, ticker = [],
 }) {
   const url = SITE + path;
   const desc = clip(description, 158);
@@ -260,8 +253,7 @@ export function shell({
     extra,
     "</head><body>" + SKIP_LINK + VECTOR_MARKS +
       "<header class=\"desk-header\"><div class=\"header-inner\">" +
-      "<a class=\"brand\" href=\"/\">" +
-      DESK_MARK_SVG +
+      "<a class=\"brand\" href=\"/\">" + DESK_MARK_SVG +
       "<span class=\"brand-text\">LAB LEDGER DESK</span></a>" +
       "<nav class=\"header-nav\">" + navHtml(path) +
       "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Channel</a></nav>" +
@@ -270,15 +262,13 @@ export function shell({
       "<span class=\"clock-date\">" + esc(new Date().toISOString().slice(0, 10)) + "</span>" +
       "</div></div></header>" +
       "<div class=\"telemetry-bar\"><div class=\"ticker-stream\">" + tickerHtml(ticker) + "</div></div>" +
-      "<div class=\"wrap\">" +
-      "<main id=\"main\">",
+      "<div class=\"wrap\"><main id=\"main\">",
     Array.isArray(body) ? body.join("") : String(body || ""),
     "</main>",
     "<footer class=\"status-dock\"><div class=\"dock-inner\">" +
     "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span></span></div>" +
     "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"" +
-    esc(CHANNEL) +
-    "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a></nav>" +
+    esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a></nav>" +
     "</div></footer></div>",
     "<script>" + SEARCH_SCRIPT + "</script>",
     "</body></html>",
@@ -286,67 +276,24 @@ export function shell({
 }
 
 export function rowHtml(b) {
-  const search = [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel)]
-    .join(" ")
-    .toLowerCase();
+  const search = [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel)].join(" ").toLowerCase();
   const citeData = b.headline + " (" + b.lab + ", " + b.dateLabel + ") \u2014 " + SITE + b.path;
   const statusText = kindLabel(b.kind).toUpperCase();
   return [
-    "<article class=\"row ledger-row\" data-search=\"",
-    esc(search),
-    "\" data-kind=\"",
-    esc(b.kind),
-    "\" data-topics=\"",
-    esc((b.topics || []).join(" ")),
-    "\" data-lab=\"",
-    esc(b.labId),
-    "\">",
-    "<div class=\"ledger-col-logo\">",
-    "<div class=\"ledger-mark-tile\">",
-    markHtml(b, "sm", markToSprite(b.markFile)),
-    "</div></div>",
+    "<article class=\"row ledger-row\" data-search=\"", esc(search), "\" data-kind=\"", esc(b.kind),
+    "\" data-topics=\"", esc((b.topics || []).join(" ")), "\" data-lab=\"", esc(b.labId), "\">",
+    "<div class=\"ledger-col-logo\"><div class=\"ledger-mark-tile\">", markHtml(b, "sm", markToSprite(b.markFile)), "</div></div>",
     "<div class=\"ledger-col-main\">",
-    "<div class=\"ledger-title-line\"><a class=\"headline\" href=\"",
-    esc(b.path),
-    "\">",
-    esc(b.headline),
-    "</a></div>",
+    "<div class=\"ledger-title-line\"><a class=\"headline\" href=\"", esc(b.path), "\">", esc(b.headline), "</a></div>",
     "<div class=\"ledger-sub-line\">",
-    "<time datetime=\"",
-    esc(b.year + "-" + b.month + "-" + b.day),
-    "\">",
-    esc(b.dateLabel),
-    " UTC</time>",
-    "<span class=\"pill-kind pill-",
-    esc(b.kind),
-    "\">",
-    esc(kindLabel(b.kind).toUpperCase()),
-    "</span>",
-    "<a class=\"lab-link\" href=\"/lab/",
-    esc(b.labId),
-    "/\">",
-    esc(b.lab),
-    "</a>",
-    (b.topics || [])
-      .map((t) => "<a class=\"pill-topic\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t).toUpperCase()) + "</a>")
-      .join(""),
-    "</div>",
-    "<div class=\"dek\">",
-    esc(b.dek),
-    "</div>",
-    "</div>",
-    "<div class=\"ledger-col-status\">",
-    "<span class=\"col-lbl\">Status</span>",
-    "<span class=\"status-val status-" + esc(b.kind) + "\">" + esc(statusText) + "</span>",
-    "</div>",
-    "<div class=\"ledger-col-data\">",
-    "<span class=\"col-lbl\">Brief</span>",
-    "<span class=\"data-val\">",
-    esc(b.briefNo),
-    "</span>",
-    "<button type=\"button\" class=\"btn-cite\" data-cite=\"",
-    esc(citeData),
-    "\" aria-label=\"Copy citation\" title=\"Copy citation\">Cite</button>",
+    "<time datetime=\"", esc(b.year + "-" + b.month + "-" + b.day), "\">", esc(b.dateLabel), " UTC</time>",
+    "<span class=\"pill-kind pill-", esc(b.kind), "\">", esc(kindLabel(b.kind).toUpperCase()), "</span>",
+    "<a class=\"lab-link\" href=\"/lab/", esc(b.labId), "/\">", esc(b.lab), "</a>",
+    (b.topics || []).map((t) => "<a class=\"pill-topic\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t).toUpperCase()) + "</a>").join(""),
+    "</div><div class=\"dek\">", esc(b.dek), "</div></div>",
+    "<div class=\"ledger-col-status\"><span class=\"col-lbl\">Status</span><span class=\"status-val status-" + esc(b.kind) + "\">" + esc(statusText) + "</span></div>",
+    "<div class=\"ledger-col-data\"><span class=\"col-lbl\">Brief</span><span class=\"data-val\">", esc(b.briefNo), "</span>",
+    "<button type=\"button\" class=\"btn-cite\" data-cite=\"", esc(citeData), "\" aria-label=\"Copy citation\" title=\"Copy citation\">Cite</button>",
     "</div></article>",
   ].join("");
 }
