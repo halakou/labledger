@@ -3,31 +3,32 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { VECTOR_MARKS } from "./marks-vector.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 
-export function markHtml(b, size, spriteRef = null) {
-  const cls = "mark" + (size === "sm" ? " sm" : size === "xs" ? " xs" : "") + (b.markFile ? "" : " letter");
-  if (b.markFile) {
-    if (spriteRef) {
-      return (
-        '<div class="' +
-        cls +
-        '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="' +
-        spriteRef +
-        '"/></svg></span></div>'
-      );
+const HAS_VECTOR = new Set(["openai", "anthropic", "google", "mistral", "huggingface", "microsoft", "nvidia", "deepmind", "meta"]);
+
+export function markHtml(b, size) {
+  let id = b.labId || b.id || b.lab || "";
+  if (!id && b.path) {
+    // try to guess from path or lab name
+    const str = (b.lab + " " + b.path).toLowerCase();
+    for (const v of HAS_VECTOR) {
+      if (str.includes(v)) { id = v; break; }
     }
+  }
+  const isVector = HAS_VECTOR.has(id);
+  const cls = "mark" + (size === "sm" ? " sm" : size === "xs" ? " xs" : "") + (isVector ? "" : " letter");
+  if (isVector) {
     return (
       '<div class="' +
       cls +
-      '" style="background:' +
-      b.color +
-      '"><span class="glyph"><img src="' +
-      esc(b.markFile) +
-      '" alt="" width="38" height="38" loading="lazy" decoding="async"></span></div>'
+      '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="#mark-' +
+      id +
+      '"/></svg></span></div>'
     );
   }
-  return '<div class="' + cls + '" style="background:' + b.color + '">' + esc(b.mark) + "</div>";
+  return '<div class="' + cls + '" style="background:' + b.color + '"><span class="glyph" style="color: #fff; font-weight: 800; font-size: 1.2rem;">' + esc(b.mark) + "</span></div>";
 }
 
 // Turn "/marks/openai.png" into an external sprite symbol reference.
@@ -98,7 +99,6 @@ export const SEARCH_SCRIPT =
   "addrs.forEach(function(el){" +
   "el.setAttribute('role','button');" +
   "el.setAttribute('tabindex','0');" +
-  "el.setAttribute('aria-label','Copy address');" +
   "el.addEventListener('click',function(){copyAddr(el);});" +
   "el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();copyAddr(el);}});" +
   "});" +
@@ -118,65 +118,47 @@ export const SEARCH_SCRIPT =
   "});" +
   "var q=document.getElementById('q');" +
   "var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));" +
-  "function norm(s){return (s||'').toLowerCase();}" +
-  "function counts(){" +
-  "var k={},t={},l={};" +
-  "rows.forEach(function(r){" +
-  "if(r.hidden)return;" +
-  "var kk=(r.getAttribute('data-kind')||''),tt=(r.getAttribute('data-topics')||'').split(' '),ll=(r.getAttribute('data-lab')||'');" +
-  "if(kk)k[kk]=(k[kk]||0)+1;" +
-  "tt.forEach(function(x){if(x)t[x]=(t[x]||0)+1;});" +
-  "if(ll)l[ll]=(l[ll]||0)+1;" +
-  "});" +
-  "[].forEach.call(document.querySelectorAll('.chip[data-chip]'),function(c){" +
-  "var g=c.parentNode.getAttribute('data-group');" +
-  "var m=g==='kind'?k:(g==='topic'?t:null);" +
-  "var n=m?m[c.getAttribute('data-chip')]||0:0;" +
-  "c.setAttribute('data-count',n);" +
-  "var cn=c.querySelector('.chip-n');" +
-  "if(cn)cn.textContent=n||'';" +
-  "c.setAttribute('data-active',n?'1':'');" +
-  "});" +
-  "[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){" +
-  "var n=l[b.getAttribute('data-lab')]||0;" +
-  "var bn=b.querySelector('.mbadge-n');" +
-  "if(bn)bn.textContent=n||'';" +
-  "b.style.opacity=n?'1':'.35';" +
-  "});" +
-  "}" +
+  "var activeFilter = null;" +
   "function apply(){" +
-  "var n=norm(q&&q.value);" +
+  "var n=q?(q.value||'').toLowerCase():'';" +
   "var vis=0;" +
   "rows.forEach(function(r){" +
   "var ok=true;" +
   "if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;" +
-  "r.hidden=!ok;" +
+  "if(activeFilter&&r.getAttribute('data-lab')!==activeFilter)ok=false;" +
+  "r.style.display=ok?'flex':'none';" +
   "if(ok)vis++;" +
   "});" +
   "var c=document.getElementById('count');" +
   "if(c)c.textContent=vis+' logged';" +
-  "counts();" +
   "}" +
-  "if(q){" +
-  "q.addEventListener('input',apply);" +
-  "var p=new URLSearchParams(location.search);" +
-  "if(p.get('q'))q.value=p.get('q');" +
-  "apply();" +
-  "}" +
-  "document.addEventListener('keydown',function(e){" +
-  "if(e.target&&('INPUT'===e.target.tagName||'TEXTAREA'===e.target.tagName)){" +
-  "if(e.key==='Escape'){e.target.blur();}" +
-  "return;" +
-  "}" +
-  "if(e.key==='/'&&q){" +
-  "e.preventDefault();" +
-  "q.focus();" +
-  "if(q.scrollIntoView)q.scrollIntoView({behavior:'smooth',block:'center'});" +
-  "}" +
+  "[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){" +
+  "b.style.cursor='pointer';" +
+  "b.addEventListener('click',function(e){e.preventDefault();" +
+  "var l=b.getAttribute('data-lab');" +
+  "activeFilter=(activeFilter===l)?null:l;" +
+  "[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(bb){" +
+  "bb.style.opacity=(!activeFilter||bb.getAttribute('data-lab')===activeFilter)?'1':'.35';" +
+  "bb.style.border=(bb.getAttribute('data-lab')===activeFilter)?'1px solid var(--accent)':'none';" +
   "});" +
+  "apply();" +
+  "});" +
+  "});" +
+  "if(q){ q.addEventListener('input',apply); apply(); }" +
+  "function updateClocks(){" +
+  "var d=new Date();" +
+  "var hs=d.getUTCHours().toString().padStart(2,'0');" +
+  "var ms=d.getUTCMinutes().toString().padStart(2,'0');" +
+  "var ss=d.getUTCSeconds().toString().padStart(2,'0');" +
+  "var timeStr=hs+':'+ms+':'+ss+' UTC';" +
+  "[].forEach.call(document.querySelectorAll('.ticker-clock, .clock-utc'),function(c){" +
+  "if(c.classList.contains('clock-utc')) { c.textContent=timeStr; } else { c.textContent=timeStr; }" +
+  "});" +
+  "}" +
+  "setInterval(updateClocks,1000);" +
+  "updateClocks();" +
   "if(window.trustedTypes&&trustedTypes.createPolicy){" +
-  "try{trustedTypes.createPolicy('default',{createScriptURL:function(s){return s==='/sw.js'?s:'';}});" +
-  "}catch(e){}" +
+  "try{trustedTypes.createPolicy('default',{createScriptURL:function(s){return s==='/sw.js'?s:'';}});}catch(e){}" +
   "}" +
   "if('serviceWorker' in navigator){" +
   "navigator.serviceWorker.register('/sw.js').catch(function(){});" +
@@ -258,7 +240,7 @@ export function shell({
     "<meta name=\"twitter:image\" content=\"", esc(absImage), "\">",
     "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
     extra,
-    "</head><body>" + SKIP_LINK +
+    "</head><body>" + SKIP_LINK + VECTOR_MARKS +
       "<header class=\"desk-header\"><div class=\"header-inner\">" +
       "<a class=\"brand\" href=\"/\">" +
       DESK_MARK_SVG +
@@ -341,7 +323,7 @@ export function rowHtml(b) {
     "\">",
     "<div class=\"ledger-col-logo\">",
     "<div class=\"ledger-mark-tile\">",
-    markHtml(b, "sm", markToSprite(b.markFile)),
+    markHtml(b, "sm"),
     "</div></div>",
     "<div class=\"ledger-col-main\">",
     "<div class=\"ledger-title-line\"><a class=\"headline\" href=\"",

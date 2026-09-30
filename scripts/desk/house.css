@@ -120,7 +120,7 @@ p{text-wrap:pretty}
 
 /* Col 1: White Rounded Logo Tile */
 .ledger-col-logo{display:flex;align-items:center;justify-content:center}
-.ledger-mark-tile{width:54px;height:54px;background:#ffffff;border-radius:8px;display:grid;place-items:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.5)}
+.ledger-mark-tile{width:54px;height:54px;background:#ffffff;color:#000000;border-radius:8px;display:grid;place-items:center;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.5)}
 .ledger-mark-tile .mark{width:100%;height:100%;display:grid;place-items:center;background:transparent;border:none;padding:0}
 .ledger-mark-tile .mark-sprite{width:42px;height:42px}
 .ledger-mark-tile .mark.letter{color:#07080a;font-family:var(--font-sans);font-weight:800;font-size:1.7rem}
