@@ -174,7 +174,8 @@ html,body{font-synthesis:weight}
 
 html,body{overflow-x:hidden;max-width:100%}
 .mbadge-label{display:block;max-width:100%;font-size:.68rem;line-height:1.2;letter-spacing:.01em;text-align:center;color:#9aa6b2;white-space:normal}
-.mbadge-label:empty{display:none}
+ .mbadge-label:empty{display:none}
+.mbadge:has(.mbadge-label)::after{display:none}
 .cite-block{margin:1.1rem 0 0;padding:.85rem .95rem;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:linear-gradient(165deg,#161a22 0%,#0c0e12 78%)}
 .cite-kicker{display:block;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:#9aa6b2;margin:0 0 .4rem}
 .cite-block .support-addr{display:block;font-size:.82rem;line-height:1.45;color:#e6edf3;word-break:break-word;cursor:pointer}
