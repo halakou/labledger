@@ -6,9 +6,9 @@ import { blitContain, decodeMark } from "./raster.mjs";
 
 const W = 1200;
 const H = 630;
-const PAPER = [244, 239, 228];
-const INK = [28, 25, 20];
-const MUTED = [90, 83, 72];
+const PAPER = [8, 9, 10];
+const INK = [240, 243, 246];
+const MUTED = [154, 166, 178];
 
 const FONT = {
   A: "01110100011000111111100011000110001",
@@ -59,7 +59,7 @@ const FONT = {
 };
 
 function hexToRgb(hex) {
-  const n = String(hex || "#1c1914").replace("#", "");
+  const n = String(hex || "#f0f3f6").replace("#", "");
   return [parseInt(n.slice(0, 2), 16) || 28, parseInt(n.slice(2, 4), 16) || 25, parseInt(n.slice(4, 6), 16) || 20];
 }
 
@@ -178,10 +178,12 @@ export async function writeOgCard(brief) {
     rgb[i + 2] = PAPER[2];
   }
   const [r, g, b] = hexToRgb(brief.color);
-  fillRect(rgb, 0, 0, W, 10, r, g, b);
-  fillRect(rgb, 0, 0, 18, H, r, g, b);
-  fillRect(rgb, 56, 70, 132, 132, r, g, b);
-  fillRect(rgb, 68, 82, 108, 108, 255, 250, 242);
+  fillRect(rgb, 0, 0, W, 8, r, g, b);
+  fillRect(rgb, 0, 0, 8, H, r, g, b);
+  // dark glass tile with a top-left highlight
+  fillRect(rgb, 56, 70, 132, 132, 16, 19, 26);
+  fillRect(rgb, 56, 70, 132, 18, 38, 44, 56);
+  fillRect(rgb, 58, 72, 48, 8, 70, 76, 90);
   let drewMark = false;
   if (brief.markFile) {
     try {
@@ -196,7 +198,7 @@ export async function writeOgCard(brief) {
       drewMark = false;
     }
   }
-  if (!drewMark) drawText(rgb, (brief.mark || brief.lab || "?").slice(0, 1), 100, 114, 8, [r, g, b]);
+  if (!drewMark) drawText(rgb, (brief.mark || brief.lab || "?").slice(0, 1), 100, 114, 8, [240, 243, 246]);
   drawText(rgb, brief.lab || "DESK", 212, 92, 4, INK);
   drawText(rgb, (kindLabel(brief.kind) + "  \u00b7  " + (brief.dateLabel || "")).toUpperCase(), 212, 140, 3, MUTED);
   wrapDraw(rgb, brief.headline || "", 56, 250, 6, INK, 28, 3);

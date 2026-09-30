@@ -108,3 +108,10 @@ test("every board source has a specialized vector mark", async () => {
     assert.equal(html.includes("letter"), false, source.id + " must not fall back to a letter");
   }
 });
+
+test("shell ships a mobile dock and a live badge hook", () => {
+  const html = shell({ title: "t", description: "d", path: "/", body: "" });
+  assert.ok(html.includes('class="mobile-dock"'));
+  assert.ok(html.includes('id="desk-live"'));
+  assert.ok(SEARCH_SCRIPT.includes("/desk-status.json"));
+});

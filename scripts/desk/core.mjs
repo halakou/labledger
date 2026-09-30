@@ -256,14 +256,20 @@ export function composeWhat(summary, lab, headline, dateLabel) {
 }
 
 export function composeWhy(lab, dateLabel, kind, topics, summary) {
-  // The "why" is the one piece of desk-voice text on a brief: it says what
-  // kind of thing this is, in one short line, so the reader can tell a launch
-  // from a research note from a footnote. It must not restate the summary —
-  // that is what `what` is for, and restating it is what makes a page read
-  // machine-generated.
+  // Desk-voice only: name the filing kind and the source. Never restate the
+  // summary and never invent a reason the source did not give. Three factual
+  // shapes rotate so consecutive briefs do not read like one template.
   const label = kind === "launch" ? "a launch filing" : kind === "research" ? "a research filing" : "a public note";
   const topicBit = topics.length ? " Tagged " + topics.map(topicLabel).join(" / ") + "." : "";
-  return "Filed as " + label + " from " + lab + ", " + dateLabel + "." + topicBit;
+  const seed = String(lab || "") + "|" + String(dateLabel || "") + "|" + String(kind || "");
+  let n = 0;
+  for (let i = 0; i < seed.length; i += 1) n = (n + seed.charCodeAt(i) * (i + 1)) % 3;
+  const lines = [
+    "Filed as " + label + " from " + lab + ", " + dateLabel + ".",
+    lab + " posted " + label + " on " + dateLabel + ".",
+    "This is " + label + " from " + lab + " dated " + dateLabel + ".",
+  ];
+  return lines[n] + topicBit;
 }
 
 const VERSION_TITLE = /^v?\d+\.\d+[\w.+-]*$/i;

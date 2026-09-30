@@ -141,9 +141,9 @@ html,body{font-synthesis:weight}
   letter-spacing:.01em;
   text-align:center;
   color:#9aa6b2;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  overflow:visible;
+  text-overflow:unset;
+  white-space:normal;
 }
 .mbadge:hover::after{color:#fff}
 .mbadge:hover .mark{border-color:rgba(255,255,255,.38)}
@@ -160,7 +160,7 @@ html,body{font-synthesis:weight}
   .frontiers-list{display:grid;grid-template-columns:1fr;overflow:visible;gap:.55rem}
   .frontier-card{min-width:0;width:auto;margin:0}
   .frontier-headline{font-size:.86rem}
-  .markrow{grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem .28rem}
+  .markrow{grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem .4rem}
   .mbadge .mark{width:54px;height:54px;border-radius:14px}
   .mbadge .mark-sprite{width:28px;height:28px}
   .mbadge::after{font-size:.58rem}
@@ -170,4 +170,21 @@ html,body{font-synthesis:weight}
   .panel-badge{margin-left:0}
   .ledger-col-data .btn-cite{min-height:44px}
   .chip,.header-nav a{min-height:36px}
+}
+
+html,body{overflow-x:hidden;max-width:100%}
+.mbadge-label{display:block;max-width:100%;font-size:.68rem;line-height:1.2;letter-spacing:.01em;text-align:center;color:#9aa6b2;white-space:normal}
+.mbadge-label:empty{display:none}
+.cite-block{margin:1.1rem 0 0;padding:.85rem .95rem;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:linear-gradient(165deg,#161a22 0%,#0c0e12 78%)}
+.cite-kicker{display:block;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:#9aa6b2;margin:0 0 .4rem}
+.cite-block .support-addr{display:block;font-size:.82rem;line-height:1.45;color:#e6edf3;word-break:break-word;cursor:pointer}
+.desk-live{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.08em;color:var(--accent-green)}
+.mobile-dock{display:none}
+@media(max-width:720px){
+  .mobile-dock{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:50;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;background:#050608;border-top:1px solid rgba(255,255,255,.12);padding:.28rem .2rem calc(.28rem + env(safe-area-inset-bottom));}
+  .mobile-dock a{min-height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:#9aa6b2}
+  .mobile-dock a[aria-current=page],.mobile-dock a:hover{color:#fff}
+  body{padding-bottom:4.4rem}
+  .header-nav a,.chip,.chip-link,.btn-cite,.mobile-dock a,.source-links a{min-height:44px}
+  .status-dock{margin-bottom:0}
 }

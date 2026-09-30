@@ -53,10 +53,10 @@ export async function writeStatic(fontNames) {
   );
   const ogOk = await copyOg();
   await write("googlece6d31c0feb18c8c.html", "google-site-verification: googlece6d31c0feb18c8c.html");
-  await write("desk-status.json", JSON.stringify({ ok: true, builtAt: new Date().toISOString(), service: "labledger-desk" }));
+  await write("desk-status.json", JSON.stringify({ ok: true, builtAt: new Date().toISOString(), service: "labledger-desk", site: SITE, feeds: LABS.length, boards: OPEN_PROJECTS.length }));
   await write(
     "robots.txt",
-    ["User-agent: *", "Allow: /", "Sitemap: " + SITE + "/sitemap.xml", "", "User-agent: GPTBot", "Allow: /", "User-agent: ChatGPT-User", "Allow: /", "User-agent: PerplexityBot", "Allow: /", "User-agent: Google-Extended", "Allow: /", "User-agent: ClaudeBot", "Allow: /", "User-agent: anthropic-ai", "Allow: /", ""].join("\n"),
+    ["User-agent: *", "Allow: /", "Sitemap: " + SITE + "/sitemap.xml", "LLMs: " + SITE + "/llms.txt", "", "User-agent: GPTBot", "Allow: /", "User-agent: ChatGPT-User", "Allow: /", "User-agent: PerplexityBot", "Allow: /", "User-agent: Google-Extended", "Allow: /", "User-agent: ClaudeBot", "Allow: /", "User-agent: anthropic-ai", "Allow: /", ""].join("\n"),
   );
   await write(
     "manifest.webmanifest",
@@ -93,6 +93,17 @@ export async function writeStatic(fontNames) {
       "e.respondWith(cached.then(function(r){return r||network;}));",
       "});",
     ].join(""),
+  );
+  await write(
+    ".well-known/security.txt",
+    [
+      "Contact: mailto:halakouac@gmail.com",
+      "Expires: 2027-09-30T00:00:00.000Z",
+      "Preferred-Languages: en",
+      "Canonical: " + SITE + "/.well-known/security.txt",
+      "Policy: https://github.com/halakou/labledger/blob/main/SECURITY.md",
+      "",
+    ].join("\n"),
   );
   return ogOk;
 }
@@ -136,6 +147,26 @@ export async function writeLlms(briefs, openBriefs = []) {
       "",
     ].join("\n"),
   );
+  await write(
+    "feed.json",
+    JSON.stringify({
+      version: "https://jsonfeed.org/version/1.1",
+      title: "Lab Ledger Desk",
+      home_page_url: SITE + "/",
+      feed_url: SITE + "/feed.json",
+      description: "Official AI-lab briefs. Named sources only.",
+      items: briefs.slice(0, 40).map((b) => ({
+        id: SITE + b.path,
+        url: SITE + b.path,
+        title: b.headline,
+        content_text: [b.what, b.why, "Primary source: " + b.source].filter(Boolean).join(" "),
+        date_published: b.publishedAt,
+        authors: [{ name: b.lab }],
+        tags: [b.kind, ...(b.topics || [])],
+        external_url: b.source,
+      })),
+    }),
+  );
   const a = getAssets();
   await write(
     "_headers",
@@ -145,7 +176,8 @@ export async function writeLlms(briefs, openBriefs = []) {
       "  X-Content-Type-Options: nosniff",
       "  Referrer-Policy: strict-origin-when-cross-origin",
       "  X-Frame-Options: DENY",
-      "  Permissions-Policy: camera=(), microphone=(), geolocation=()",
+      "  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=(), interest-cohort=()",
+      "  X-Permitted-Cross-Domain-Policies: none",
       "  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
       "  Cross-Origin-Opener-Policy: same-origin",
       "  Cross-Origin-Embedder-Policy: require-corp",
@@ -177,6 +209,12 @@ export async function writeLlms(briefs, openBriefs = []) {
       "/desk-status.json",
       "  Content-Type: application/json; charset=utf-8",
       "  Cache-Control: public, max-age=60, must-revalidate",
+      "/feed.json",
+      "  Content-Type: application/feed+json; charset=utf-8",
+      "  Cache-Control: public, max-age=300, must-revalidate",
+      "/.well-known/security.txt",
+      "  Content-Type: text/plain; charset=utf-8",
+      "  Cache-Control: public, max-age=86400",
       "/404.html",
       "  X-Robots-Tag: noindex",
       "",
@@ -194,8 +232,8 @@ function topicChips(items) {
 
 function markRow(labs) {
   return (
-    '<div class="markrow" aria-hidden="true">' +
-    labs.map((l) => '<a class="mbadge" href="/lab/' + esc(l.id) + '/" data-lab="' + esc(l.id) + '" title="' + esc(l.label) + '">' + markHtml(l, "xs", markToSprite(l.markFile)) + '<span class="mbadge-n"></span></a>').join("") +
+    '<div class="markrow">' +
+    labs.map((l) => '<a class="mbadge" href="/lab/' + esc(l.id) + '/" data-lab="' + esc(l.id) + '" title="' + esc(l.label) + '">' + markHtml(l, "xs", markToSprite(l.markFile)) + '<span class="mbadge-label">' + esc(l.label) + "</span></a>").join("") +
     "</div>"
   );
 }

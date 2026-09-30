@@ -177,6 +177,14 @@ export const SEARCH_SCRIPT =
   "if('serviceWorker' in navigator){" +
   "navigator.serviceWorker.register('/sw.js').catch(function(){});" +
   "}" +
+  "var live=document.getElementById('desk-live');" +
+  "if(live){" +
+  "fetch('/desk-status.json').then(function(r){return r.json();}).then(function(d){" +
+  "if(!d||!d.builtAt)return;" +
+  "var mins=Math.max(0,Math.round((Date.now()-Date.parse(d.builtAt))/60000));" +
+  "live.textContent=mins<2?'LIVE':mins+' MIN';" +
+  "}).catch(function(){});" +
+  "}" +
   "})();";
 export const SEARCH_SCRIPT_HASH = createHash("sha256")
   .update(SEARCH_SCRIPT, "utf8")
@@ -266,10 +274,11 @@ export function shell({
     Array.isArray(body) ? body.join("") : String(body || ""),
     "</main>",
     "<footer class=\"status-dock\"><div class=\"dock-inner\">" +
-    "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span></span></div>" +
+    "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span> <span id=\"desk-live\" class=\"desk-live\">LIVE</span></span></div>" +
     "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"" +
     esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a></nav>" +
-    "</div></footer></div>",
+    "</div></footer></div>" +
+    "<nav class=\"mobile-dock\" aria-label=\"Mobile\">" + navHtml(path) + "</nav>",
     "<script>" + SEARCH_SCRIPT + "</script>",
     "</body></html>",
   ].join("");

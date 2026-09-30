@@ -202,3 +202,15 @@ test("presentRelease keeps real release notes", () => {
   assert.equal(out.thinRelease, false);
   assert.equal(out.summary, notes);
 });
+
+test("composeWhy rotates factual lines and never invents a claim", () => {
+  const a = composeWhy("OpenAI", "2026-09-26", "launch", ["llm"], "secret invented claim");
+  const b = composeWhy("Anthropic", "2026-09-27", "research", [], "secret invented claim");
+  assert.ok(a.includes("launch"));
+  assert.ok(a.includes("OpenAI"));
+  assert.ok(b.includes("research"));
+  assert.ok(b.includes("Anthropic"));
+  assert.ok(!a.includes("secret invented claim"));
+  assert.ok(!b.includes("secret invented claim"));
+  assert.notEqual(a.split(".")[0], b.split(".")[0]);
+});
