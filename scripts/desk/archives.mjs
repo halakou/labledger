@@ -353,7 +353,10 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
         b.telegramUrl
           ? "<a class=\"tg\" href=\"" + esc(b.telegramUrl) + "\" rel=\"noreferrer noopener\">Open the matching Telegram post</a>"
           : "<a class=\"tg\" href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Follow the desk on Telegram</a>",
-        "<a class=\"back\" href=\"/\">\u2190 Back to the board</a></div></article>",
+        "<a class=\"back\" href=\"/\">\u2190 Back to the board</a></div>",
+        "<div class=\"cite-block\"><span class=\"cite-kicker\">Cite this brief</span><code class=\"support-addr\">",
+        esc(b.headline + " (" + b.lab + ", " + b.dateLabel + ") \u2014 " + SITE + b.path),
+        "</code></div></article>",
       ].join(""),
     }));
   }
@@ -367,6 +370,9 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/donate/", today],
     ["/open/", today],
     ["/open/rss.xml", today],
+    ["/rss.xml", today],
+    ["/feed.json", today],
+    ["/llms.txt", today],
     ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
     ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/", today]),
     ...TOPICS.map((t) => ["/topic/" + t.id + "/", today]),

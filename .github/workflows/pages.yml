@@ -71,6 +71,9 @@ jobs:
           grep -q "Content-Security-Policy" dist-site/_headers
           grep -q "sha256-" dist-site/_headers
           grep -q "noindex" dist-site/404.html
+          grep -q "X-Permitted-Cross-Domain-Policies" dist-site/_headers
+          test -f dist-site/feed.json
+          test -f dist-site/.well-known/security.txt
           ! grep -q "onclick=" dist-site/donate/index.html
       - name: Publish public site
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3

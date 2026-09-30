@@ -214,6 +214,7 @@ async function tick(env, postedLedger) {
     siteHttp: found.http,
     ageMs: Number.isFinite(age) ? age : null,
     dispatch,
+    staleAfterMs: STALE_MS,
   };
   if (env.DESK) {
     await env.DESK.put("last", JSON.stringify(last));
@@ -239,7 +240,7 @@ export default {
       } catch {
         last = raw;
       }
-      return Response.json({ ok: true, last, service: "labledger-desk" });
+      return Response.json({ ok: true, last, service: "labledger-desk", staleAfterMs: STALE_MS }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY" } });
     }
     if (url.pathname === "/posted" && (request.method === "POST" || request.method === "GET")) {
       // GitHub Actions mirrors the posted ledger here after each successful run,
