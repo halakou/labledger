@@ -189,3 +189,7 @@ html,body{overflow-x:hidden;max-width:100%}
   .header-nav a,.chip,.chip-link,.btn-cite,.mobile-dock a,.source-links a{min-height:44px}
   .status-dock{margin-bottom:0}
 }
+.mbadge-fresh{display:block;font-family:var(--font-mono);font-size:.52rem;letter-spacing:.03em;color:#6e7a86;line-height:1.2}
+.mbadge:hover .mbadge-fresh{color:#c9d1d9}
+.skip{position:absolute;left:-999px;top:0;z-index:80;background:#111;color:#fff;padding:.5rem .8rem}
+.skip:focus{left:.6rem;top:.6rem}
