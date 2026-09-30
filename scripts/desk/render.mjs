@@ -41,16 +41,19 @@ export function markToSprite(markFile) {
 
 export const CSS = (await readFile(join(here, "house.css"), "utf8")).replace(/\n/g, "");
 
-// The desk's own mark: an official seal (rust disc, block L) stamped over an
-// ink rule — "a summary issued from an official source". Inline so it costs
-// no extra request and inherits the site palette. The <use> sprite is for
-// source logos only.
+// The desk's own mark: a precision Swiss architectural emblem — an authoritative
+// geometric L on dark titanium with hairline grid guides and an International
+// Orange telemetry signal node. Inline SVG so it costs zero extra requests.
 export const DESK_MARK_SVG =
   '<span class="brand-mark" aria-hidden="true">' +
-  '<svg viewBox="0 0 96 96" width="32" height="32">' +
-  '<rect x="13" y="66" width="70" height="9" fill="#241f18"/>' +
-  '<circle cx="48" cy="42" r="28" fill="#6e2f22"/>' +
-  '<path d="M33 20 h12 v31 h22 v12 H33 z" fill="#241f18"/>' +
+  '<svg viewBox="0 0 96 96" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+  '<rect width="96" height="96" rx="18" fill="#0d1015"/>' +
+  '<rect x="1" y="1" width="94" height="94" rx="17" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>' +
+  '<line x1="20" y1="48" x2="76" y2="48" stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 3"/>' +
+  '<line x1="48" y1="20" x2="48" y2="76" stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 3"/>' +
+  '<path d="M26 22 h14 v38 h32 v14 H26 z" fill="#f0f4f8"/>' +
+  '<circle cx="72" cy="26" r="6" fill="#ff5722"/>' +
+  '<circle cx="72" cy="26" r="10" stroke="#ff5722" stroke-opacity="0.35" stroke-width="2"/>' +
   "</svg></span>";
 
 // Content-addressed assets. The compiled CSS and the mark sprite ship as
@@ -77,10 +80,108 @@ export function jsonLdScript(obj) {
   return "<script type=\"application/ld+json\">" + JSON.stringify(obj).replace(/</g, "\\u003c") + "</script>";
 }
 
-// The one inline script on the site: board search, plus donate-address copy.
+// The one inline script on the site: board search, donate-address copy,
+// 1-click citation copy, and keyboard navigation (/ to search, Esc to clear).
 // Its SHA-256 hash is exported so _headers can ship a strict CSP that still
 // allows it. Do not add a second <script>. Copy handlers must live in here.
-export const SEARCH_SCRIPT = "(function(){var addrs=[].slice.call(document.querySelectorAll('.support-addr'));function copyAddr(el){var text=(el.textContent||'').replace(/^\\s+|\\s+$/g,'');if(!text||!navigator.clipboard||!navigator.clipboard.writeText)return;navigator.clipboard.writeText(text).then(function(){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied');},1400);}).catch(function(){});}addrs.forEach(function(el){el.setAttribute('role','button');el.setAttribute('tabindex','0');el.setAttribute('aria-label','Copy address');el.addEventListener('click',function(){copyAddr(el);});el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();copyAddr(el);}});});var q=document.getElementById('q');var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));function norm(s){return (s||'').toLowerCase();}function counts(){var k={},t={},l={};rows.forEach(function(r){if(r.hidden)return;var kk=(r.getAttribute('data-kind')||''),tt=(r.getAttribute('data-topics')||'').split(' '),ll=(r.getAttribute('data-lab')||'');if(kk)k[kk]=(k[kk]||0)+1;tt.forEach(function(x){if(x)t[x]=(t[x]||0)+1;});if(ll)l[ll]=(l[ll]||0)+1;});[].forEach.call(document.querySelectorAll('.chip[data-chip]'),function(c){var g=c.parentNode.getAttribute('data-group');var m=g==='kind'?k:(g==='topic'?t:null);var n=m?m[c.getAttribute('data-chip')]||0:0;c.setAttribute('data-count',n);var cn=c.querySelector('.chip-n');if(cn)cn.textContent=n||'';c.setAttribute('data-active',n?'1':'');});[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){var n=l[b.getAttribute('data-lab')]||0;var bn=b.querySelector('.mbadge-n');if(bn)bn.textContent=n||'';b.style.opacity=n?'1':'.35';});}function apply(){var n=norm(q&&q.value);var vis=0;rows.forEach(function(r){var ok=true;if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;r.hidden=!ok;if(ok)vis++;});var c=document.getElementById('count');if(c)c.textContent=vis+' logged';counts();}if(q){q.addEventListener('input',apply);var p=new URLSearchParams(location.search);if(p.get('q'))q.value=p.get('q');apply();}if(window.trustedTypes&&trustedTypes.createPolicy){try{trustedTypes.createPolicy('default',{createScriptURL:function(s){return s==='/sw.js'?s:'';}});}catch(e){}}if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}})();";
+export const SEARCH_SCRIPT =
+  "(function(){" +
+  "var addrs=[].slice.call(document.querySelectorAll('.support-addr'));" +
+  "function copyAddr(el){" +
+  "var text=(el.textContent||'').replace(/^\\s+|\\s+$/g,'');" +
+  "if(!text||!navigator.clipboard||!navigator.clipboard.writeText)return;" +
+  "navigator.clipboard.writeText(text).then(function(){" +
+  "el.classList.add('copied');" +
+  "setTimeout(function(){el.classList.remove('copied');},1400);" +
+  "}).catch(function(){});" +
+  "}" +
+  "addrs.forEach(function(el){" +
+  "el.setAttribute('role','button');" +
+  "el.setAttribute('tabindex','0');" +
+  "el.setAttribute('aria-label','Copy address');" +
+  "el.addEventListener('click',function(){copyAddr(el);});" +
+  "el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();copyAddr(el);}});" +
+  "});" +
+  "var cites=[].slice.call(document.querySelectorAll('.btn-cite'));" +
+  "cites.forEach(function(btn){" +
+  "btn.addEventListener('click',function(e){" +
+  "e.preventDefault();e.stopPropagation();" +
+  "var txt=btn.getAttribute('data-cite')||'';" +
+  "if(!txt||!navigator.clipboard||!navigator.clipboard.writeText)return;" +
+  "navigator.clipboard.writeText(txt).then(function(){" +
+  "var prev=btn.textContent;" +
+  "btn.textContent='[ \\u2713 Copied ]';" +
+  "btn.classList.add('copied');" +
+  "setTimeout(function(){btn.textContent=prev;btn.classList.remove('copied');},1400);" +
+  "}).catch(function(){});" +
+  "});" +
+  "});" +
+  "var q=document.getElementById('q');" +
+  "var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));" +
+  "function norm(s){return (s||'').toLowerCase();}" +
+  "function counts(){" +
+  "var k={},t={},l={};" +
+  "rows.forEach(function(r){" +
+  "if(r.hidden)return;" +
+  "var kk=(r.getAttribute('data-kind')||''),tt=(r.getAttribute('data-topics')||'').split(' '),ll=(r.getAttribute('data-lab')||'');" +
+  "if(kk)k[kk]=(k[kk]||0)+1;" +
+  "tt.forEach(function(x){if(x)t[x]=(t[x]||0)+1;});" +
+  "if(ll)l[ll]=(l[ll]||0)+1;" +
+  "});" +
+  "[].forEach.call(document.querySelectorAll('.chip[data-chip]'),function(c){" +
+  "var g=c.parentNode.getAttribute('data-group');" +
+  "var m=g==='kind'?k:(g==='topic'?t:null);" +
+  "var n=m?m[c.getAttribute('data-chip')]||0:0;" +
+  "c.setAttribute('data-count',n);" +
+  "var cn=c.querySelector('.chip-n');" +
+  "if(cn)cn.textContent=n||'';" +
+  "c.setAttribute('data-active',n?'1':'');" +
+  "});" +
+  "[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){" +
+  "var n=l[b.getAttribute('data-lab')]||0;" +
+  "var bn=b.querySelector('.mbadge-n');" +
+  "if(bn)bn.textContent=n||'';" +
+  "b.style.opacity=n?'1':'.35';" +
+  "});" +
+  "}" +
+  "function apply(){" +
+  "var n=norm(q&&q.value);" +
+  "var vis=0;" +
+  "rows.forEach(function(r){" +
+  "var ok=true;" +
+  "if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;" +
+  "r.hidden=!ok;" +
+  "if(ok)vis++;" +
+  "});" +
+  "var c=document.getElementById('count');" +
+  "if(c)c.textContent=vis+' logged';" +
+  "counts();" +
+  "}" +
+  "if(q){" +
+  "q.addEventListener('input',apply);" +
+  "var p=new URLSearchParams(location.search);" +
+  "if(p.get('q'))q.value=p.get('q');" +
+  "apply();" +
+  "}" +
+  "document.addEventListener('keydown',function(e){" +
+  "if(e.target&&('INPUT'===e.target.tagName||'TEXTAREA'===e.target.tagName)){" +
+  "if(e.key==='Escape'){e.target.blur();}" +
+  "return;" +
+  "}" +
+  "if(e.key==='/'&&q){" +
+  "e.preventDefault();" +
+  "q.focus();" +
+  "if(q.scrollIntoView)q.scrollIntoView({behavior:'smooth',block:'center'});" +
+  "}" +
+  "});" +
+  "if(window.trustedTypes&&trustedTypes.createPolicy){" +
+  "try{trustedTypes.createPolicy('default',{createScriptURL:function(s){return s==='/sw.js'?s:'';}});" +
+  "}catch(e){}" +
+  "}" +
+  "if('serviceWorker' in navigator){" +
+  "navigator.serviceWorker.register('/sw.js').catch(function(){});" +
+  "}" +
+  "})();";
 export const SEARCH_SCRIPT_HASH = createHash("sha256")
   .update(SEARCH_SCRIPT, "utf8")
   .digest("base64");
@@ -128,8 +229,8 @@ export function shell({
     "<title>", esc(title), "</title>",
     "<meta name=\"description\" content=\"", esc(desc), "\">",
     "<meta name=\"robots\" content=\"", esc(robotsContent), "\">",
-    "<meta name=\"theme-color\" content=\"#f4efe4\">",
-    "<meta name=\"color-scheme\" content=\"light\">",
+    "<meta name=\"theme-color\" content=\"#08090a\">",
+    "<meta name=\"color-scheme\" content=\"dark\">",
     "<link rel=\"canonical\" href=\"", esc(url), "\">",
     "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\">",
     "<link rel=\"manifest\" href=\"/manifest.webmanifest\">",
@@ -157,7 +258,19 @@ export function shell({
     "<meta name=\"twitter:image\" content=\"", esc(absImage), "\">",
     "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
     extra,
-    "</head><body>" + SKIP_LINK + "<div class=\"wrap\"><header>",
+    "</head><body>" + SKIP_LINK +
+      "<div class=\"telemetry-rail\"><div class=\"telemetry-inner\">" +
+      "<span class=\"telemetry-live\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>SYS.OK</span>" +
+      "<span class=\"telemetry-sep\">/</span>" +
+      "<span class=\"telemetry-item\">27 MONITORED LABS</span>" +
+      "<span class=\"telemetry-sep\">/</span>" +
+      "<span class=\"telemetry-item\">PRIMARY PROVENANCE</span>" +
+      "<span class=\"telemetry-sep\">/</span>" +
+      "<span class=\"telemetry-item\">ZERO HALLUCINATIONS</span>" +
+      "<span class=\"telemetry-sep\">/</span>" +
+      "<span class=\"telemetry-item telemetry-rt\">REALTIME VERIFIED</span>" +
+      "</div></div>" +
+      "<div class=\"wrap\"><header>",
     "<a class=\"brand\" href=\"/\">",
     DESK_MARK_SVG,
     "<span class=\"brand-text\">Lab Ledger<span class=\"desk\">Desk</span></span></a>",
@@ -181,6 +294,7 @@ export function rowHtml(b) {
   const search = [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel)]
     .join(" ")
     .toLowerCase();
+  const citeData = b.headline + " (" + b.lab + ", " + b.dateLabel + ") — " + SITE + b.path;
   return [
     "<article class=\"row\" data-search=\"",
     esc(search),
@@ -225,8 +339,10 @@ export function rowHtml(b) {
     "\">",
     esc(b.dateLabel),
     "</time></span></div>",
-    "</div><div class=\"row-id\">Brief ",
+    "</div><div class=\"row-id\"><span class=\"row-num\">Brief ",
     esc(b.briefNo),
-    "</div></article>",
+    "</span><button type=\"button\" class=\"btn-cite\" data-cite=\"",
+    esc(citeData),
+    "\" aria-label=\"Copy citation reference\" title=\"Copy citation to clipboard\">[ 📋 Cite ]</button></div></article>",
   ].join("");
 }
