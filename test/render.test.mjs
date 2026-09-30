@@ -59,7 +59,9 @@ test("rowHtml escapes every field it renders", () => {
   const html = rowHtml(b);
   assert.ok(!html.includes("<b>b</b>"), "lab must be escaped");
   assert.ok(!html.includes("<i>"), "headline must be escaped");
-  assert.ok(html.includes("Brief 042"));
+  assert.ok(html.includes(">042<"), "brief number stays on the card");
+  assert.equal(html.includes("99.1"), false, "status must not invent a score");
+  assert.equal(html.includes("Cite"), true);
 });
 
 test("shell wraps the body in a <main> landmark and emits a skip link", () => {
@@ -87,4 +89,12 @@ test("the site is English-only: no lang switch, no rtl, no hreflang", () => {
   assert.ok(!html.includes('dir="rtl"'), "no right-to-left document");
   assert.ok(!html.includes("hreflang"), "no hreflang alternates");
   assert.ok(!html.includes("/fa/"), "no Persian route");
+});
+
+test("the shell ticker never ships invented telemetry", () => {
+  const html = shell({ title: "t", description: "d", path: "/", body: "" });
+  assert.equal(html.includes("AGI-0.9"), false);
+  assert.equal(html.includes("META AI PAPER"), false);
+  assert.equal(html.includes("MORE"), false);
+  assert.ok(html.includes("Official sources only"));
 });
