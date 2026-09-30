@@ -50,9 +50,12 @@ export async function writeStatic(fontNames) {
   // copied to OUT.
   await write(
     "favicon.svg",
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">' +
-      '<rect width="96" height="96" rx="18" fill="#6e2f22"/>' +
-      '<path d="M33 20 h12 v31 h22 v12 H33 z" fill="#fffaf2"/>' +
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">' +
+      '<rect width="96" height="96" rx="18" fill="#0d1015"/>' +
+      '<rect x="1" y="1" width="94" height="94" rx="17" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>' +
+      '<path d="M26 22 h14 v38 h32 v14 H26 z" fill="#f0f4f8"/>' +
+      '<circle cx="72" cy="26" r="6" fill="#ff5722"/>' +
+      '<circle cx="72" cy="26" r="10" stroke="#ff5722" stroke-opacity="0.35" stroke-width="2"/>' +
       "</svg>",
   );
   const ogOk = await copyOg();
@@ -100,8 +103,8 @@ export async function writeStatic(fontNames) {
       start_url: "/",
       scope: "/",
       display: "standalone",
-      background_color: "#f4efe4",
-      theme_color: "#f4efe4",
+      background_color: "#08090a",
+      theme_color: "#08090a",
       icons: [
         { src: "/favicon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
         { src: "/og.jpg", sizes: "1200x630", type: "image/jpeg", purpose: "any" },
@@ -363,8 +366,8 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
         "<span>Ledger <strong>",
         String(allBriefs.length),
         "</strong></span></div></div>",
-        "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Look up a lab, a launch, or a topic</label>",
-        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Anthropic, hardware, Claude…\" autocomplete=\"off\">",
+        "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Filter briefs <span class=\"search-kbd\">/</span></label>",
+        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Search by lab, model, topic, or release…\" autocomplete=\"off\">",
         "<div class=\"chips\" data-group=\"kind\">",
         chips(KINDS, "/kind/"),
         "</div>",
