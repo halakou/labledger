@@ -8,6 +8,7 @@ import {
   OUT,
   SITE,
   TOPICS,
+  clip,
   esc,
 } from "./core.mjs";
 import { OPEN_PROJECTS } from "./config.mjs";
@@ -283,6 +284,31 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
   const shown = briefs.slice(0, HOME_MAX);
   const openShown = openBriefs.slice(0, HOME_MAX);
   const board = shown.map(rowHtml).join("") || "<p class=\"empty\">Desk is waiting on the next official post.</p>";
+
+  // Trending frontiers for the left column (matching the reference console)
+  const frontierDefs = [
+    { id: "openai", label: "OpenAI" },
+    { id: "anthropic", label: "Anthropic" },
+    { id: "google", label: "Google" },
+    { id: "deepmind", label: "DeepMind" },
+    { id: "nvidia", label: "NVIDIA" },
+    { id: "mistral", label: "Mistral" },
+    { id: "microsoft", label: "Microsoft AI" },
+  ];
+  const trendingFrontiers = [];
+  for (const f of frontierDefs) {
+    const latest = allBriefs.find((b) => b.labId === f.id);
+    if (latest) {
+      trendingFrontiers.push({
+        id: f.id,
+        label: f.label,
+        headline: latest.headline,
+        dek: latest.dek,
+        path: latest.path,
+      });
+    }
+  }
+
   const labGrid = LABS.map((l) => {
     const how = l.listing && !l.feed ? "Official listing" : l.feed ? "Official RSS" : "No official source";
     return "<a href=\"/lab/" + l.id + "/\"><b>" + esc(l.label) + "</b><span>" + how + "</span></a>";
@@ -353,42 +379,61 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
       path: "/",
       extra: jsonLdScript(homeSchema),
       body: [
-        "<section class=\"hero\"><div><h1>What the labs moved. Sourced, dated, kept.</h1>",
-        "<p>Every brief starts at the source — an official feed or release page from a named lab, read directly and dated. Nothing is rewritten from a rumor, nothing is invented, and the primary link sits on every page.</p>",
-        "<div class=\"meta\"><span>Desk date <strong><time datetime=\"",
-        esc(today),
-        "\">",
-        esc(today),
-        "</time></strong></span>",
-        "<span>Open briefs <strong>",
-        String(shown.length),
-        "</strong></span>",
-        "<span>Ledger <strong>",
-        String(allBriefs.length),
-        "</strong></span></div></div>",
-        "<form class=\"search\" action=\"/\" method=\"get\" role=\"search\"><label for=\"q\">Filter briefs <span class=\"search-kbd\">/</span></label>",
-        "<input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Search by lab, model, topic, or release…\" autocomplete=\"off\">",
-        "<div class=\"chips\" data-group=\"kind\">",
-        chips(KINDS, "/kind/"),
+        "<div class=\"dashboard-grid\">",
+        // LEFT COLUMN: TRENDING FRONTIERS
+        "<aside class=\"frontiers-col\">",
+        "<div class=\"panel-hdr\"><h2 class=\"panel-title\">TRENDING FRONTIERS</h2></div>",
+        "<div class=\"frontiers-list\">",
+        trendingFrontiers
+          .map(
+            (f) =>
+              "<div class=\"frontier-card\">" +
+              "<a class=\"frontier-name\" href=\"/lab/" +
+              esc(f.id) +
+              "/\">" +
+              esc(f.label) +
+              "</a>" +
+              "<a class=\"frontier-headline\" href=\"" +
+              esc(f.path) +
+              "\">" +
+              esc(f.headline) +
+              "</a>" +
+              "<div class=\"frontier-dek\">" +
+              esc(clip(f.dek, 140)) +
+              "</div>" +
+              "</div>",
+          )
+          .join(""),
         "</div>",
-        "<div class=\"chips\" data-group=\"topic\">",
-        chips(TOPICS, "/topic/"),
-        "</div></form>",
+        "<div class=\"frontiers-sources-box\"><h3 class=\"mini-hdr\">27 MONITORED LABS</h3>" +
+        "<div class=\"labs-mini-grid\">" +
+        labGrid +
+        "</div></div>",
+        "</aside>",
+        // RIGHT COLUMN: ACTIVITY LEDGER
+        "<section class=\"ledger-col\" id=\"today\">",
+        "<div class=\"panel-hdr\">",
+        "<h2 class=\"panel-title\">ACTIVITY LEDGER</h2>",
+        "<span id=\"count\" class=\"panel-badge\">" + String(shown.length) + " LOGGED</span>",
+        "</div>",
+        "<form class=\"search-bar\" action=\"/\" method=\"get\" role=\"search\">",
+        "<div class=\"search-box\"><input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Search by lab, model, topic, or release…\" autocomplete=\"off\"><span class=\"search-kbd\">/</span></div>",
+        "<div class=\"chips\" data-group=\"kind\">" + chips(KINDS, "/kind/") + "</div>",
+        "<div class=\"chips\" data-group=\"topic\">" + chips(TOPICS, "/topic/") + "</div>",
+        "</form>",
         markRow([...LABS, ...OPEN_PROJECTS]),
-        "</section>",
-        "<section class=\"board\" id=\"today\"><div class=\"board-head\"><span>The board</span><span id=\"count\">",
-        String(shown.length),
-        " logged</span></div>",
+        "<div class=\"ledger-feed\">",
         board,
-        "<div class=\"labs\">",
-        labGrid,
-        "</div></section>",
+        "</div>",
+        "</section>",
+        "</div>",
         openShown.length
           ? [
-              "<section class=\"board\" id=\"open\"><div class=\"board-head\"><span>Open releases</span><span>",
-              String(openShown.length),
-              " filed</span></div>",
-              openShown.map(rowHtml).join(""),
+              "<section class=\"open-rail-section\" id=\"open\">",
+              "<div class=\"panel-hdr\"><h2 class=\"panel-title\">OPEN INFRASTRUCTURE RAIL</h2><span class=\"panel-badge\">" +
+                String(openShown.length) +
+                " FILED</span></div>",
+              "<div class=\"ledger-feed\">" + openShown.map(rowHtml).join("") + "</div>",
               "</section>",
             ].join("")
           : "",
