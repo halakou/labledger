@@ -148,10 +148,6 @@ export function clip(text, max) {
   return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;\u2013-]+$/, "") + "\u2026";
 }
 
-// Trim a summary to a display length the way an editor would: never cut a
-// sentence in half. Whole sentences are kept while they still fit; a partial
-// final sentence is dropped instead of clipped mid-word. An ellipsis is only
-// added when the source genuinely continues past the last kept sentence.
 export function clipSentence(text, max) {
   const t = String(text || "").replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
@@ -162,8 +158,6 @@ export function clipSentence(text, max) {
     if (candidate.length > max) break;
     out = candidate;
   }
-  // Nothing fit as a whole sentence: take one sentence and trim it at a word
-  // boundary rather than slicing a word in half.
   if (!out) {
     const s = parts[0] || t;
     if (s.length <= max) return s;
@@ -244,39 +238,29 @@ export function topicLabel(id) {
 }
 
 export function composeWhat(summary, lab, headline, dateLabel) {
-  // The "what" answers the reader's only question on a brief page: what did
-  // the source actually say? The source's own first sentences are always
-  // better than anything generated to replace them, so the job here is to
-  // carry those sentences intact, not to pad them. When the source gave us
-  // nothing, say so plainly in one short line — a sentence about the desk
-  // is not a substitute for a sentence about the news.
   let body = String(summary || "").replace(/\s+/g, " ").trim();
-  if (!body) return lab + " published “" + headline + "” on " + dateLabel + ".";
+  if (!body) return lab + " published \u201c" + headline + "\u201d on " + dateLabel + ".";
   return clipSentence(body, 320);
 }
 
 export function composeWhy(lab, dateLabel, kind, topics, summary) {
-  // Desk-voice only: name the filing kind and the source. Never restate the
-  // summary and never invent a reason the source did not give. Three factual
-  // shapes rotate so consecutive briefs do not read like one template.
   const label = kind === "launch" ? "a launch filing" : kind === "research" ? "a research filing" : "a public note";
   const topicBit = topics.length ? " Tagged " + topics.map(topicLabel).join(" / ") + "." : "";
   const seed = String(lab || "") + "|" + String(dateLabel || "") + "|" + String(kind || "");
   let n = 0;
-  for (let i = 0; i < seed.length; i += 1) n = (n + seed.charCodeAt(i) * (i + 1)) % 3;
+  for (let i = 0; i < seed.length; i += 1) n = (n + seed.charCodeAt(i) * (i + 1)) % 5;
   const lines = [
     "Filed as " + label + " from " + lab + ", " + dateLabel + ".",
     lab + " posted " + label + " on " + dateLabel + ".",
     "This is " + label + " from " + lab + " dated " + dateLabel + ".",
+    "Desk record: " + label + " by " + lab + " (" + dateLabel + ").",
+    lab + " \u00b7 " + dateLabel + " \u00b7 " + label + ".",
   ];
   return lines[n] + topicBit;
 }
 
 const VERSION_TITLE = /^v?\d+\.\d+[\w.+-]*$/i;
 
-// GitHub release titles are often just "v0.34.3". Keep that version, but put
-// the project name on the headline, and say plainly when the feed had no notes.
-// Never invent a changelog the source did not publish.
 export function presentRelease(label, item) {
   const raw = String(item?.title || "").trim();
   const versionOnly = VERSION_TITLE.test(raw);
