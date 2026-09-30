@@ -6,34 +6,38 @@ import { fileURLToPath } from "node:url";
 import { VECTOR_MARKS } from "./marks-vector.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 
-const HAS_VECTOR = new Set(["openai", "anthropic", "google", "mistral", "huggingface", "microsoft", "nvidia", "deepmind", "meta"]);
+const HAS_VECTOR = new Set([
+  "openai", "anthropic", "google", "mistral", "huggingface", "microsoft", "nvidia", "deepmind", "meta",
+  "aws", "apple", "gresearch", "bair", "mit", "mittr", "wired", "techcrunch", "msftai", "theverge",
+  "pytorch", "vllm", "sglang", "ollama", "transformers", "comfyui", "deepspeed", "langchain", "jax",
+]);
 
 export function markHtml(b, size, spriteHref) {
-  let id = b.labId || b.id || b.lab || "";
+  let id = b.labId || b.id || "";
   if (!id && b.path) {
     const str = (b.lab + " " + b.path).toLowerCase();
     for (const v of HAS_VECTOR) {
       if (str.includes(v)) { id = v; break; }
     }
   }
-  const href = spriteHref || (b.markFile ? markToSprite(b.markFile) : null);
-  const isVector = !href && HAS_VECTOR.has(id);
+  const isVector = HAS_VECTOR.has(id);
+  const href = !isVector && (spriteHref || (b.markFile ? markToSprite(b.markFile) : null));
   const cls = "mark" + (size === "sm" ? " sm" : size === "xs" ? " xs" : "") + (href || isVector ? "" : " letter");
-  if (href) {
-    return (
-      '<div class="' +
-      cls +
-      '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="' +
-      esc(href) +
-      '"/></svg></span></div>'
-    );
-  }
   if (isVector) {
     return (
       '<div class="' +
       cls +
       '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="#mark-' +
       id +
+      '"/></svg></span></div>'
+    );
+  }
+  if (href) {
+    return (
+      '<div class="' +
+      cls +
+      '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="' +
+      esc(href) +
       '"/></svg></span></div>'
     );
   }

@@ -82,8 +82,6 @@ test("the inline script registers the service worker", () => {
 });
 
 test("the site is English-only: no lang switch, no rtl, no hreflang", () => {
-  // The desk publishes in one language. This keeps a reintroduced translation
-  // layer from silently shipping a second locale again.
   const html = shell({ title: "t", description: "d", path: "/", body: "" });
   assert.ok(html.includes('<html lang="en">'), "the document language is English");
   assert.ok(!html.includes('dir="rtl"'), "no right-to-left document");
@@ -97,4 +95,16 @@ test("the shell ticker never ships invented telemetry", () => {
   assert.equal(html.includes("META AI PAPER"), false);
   assert.equal(html.includes("MORE"), false);
   assert.ok(html.includes("Official sources only"));
+});
+
+test("every board source has a specialized vector mark", async () => {
+  const { LABS, OPEN_PROJECTS } = await import("../scripts/desk/config.mjs");
+  const { VECTOR_MARKS } = await import("../scripts/desk/marks-vector.mjs");
+  const { markHtml } = await import("../scripts/desk/render.mjs");
+  for (const source of [...LABS, ...OPEN_PROJECTS]) {
+    assert.ok(VECTOR_MARKS.includes('id="mark-' + source.id + '"'), source.id + " needs a mark");
+    const html = markHtml({ id: source.id, labId: source.id, mark: source.mark, color: source.color }, "sm", "/sprite.svg#m-" + source.id);
+    assert.ok(html.includes("#mark-" + source.id), source.id + " must use its vector mark");
+    assert.equal(html.includes("letter"), false, source.id + " must not fall back to a letter");
+  }
 });
