@@ -21,8 +21,9 @@
 .chips-kind{margin:0 0 0 .4rem}
 .frontier-card{display:grid;grid-template-columns:46px 1fr;gap:.75rem;align-items:center;border:1px solid var(--rule);border-radius:10px;padding:.8rem .85rem;margin:0 0 .6rem;background:#0d0f13;text-decoration:none}
 .frontier-card:hover{border-color:var(--rule-strong);background:var(--card-hover)}
-.frontier-mark .mark{width:46px;height:46px;border-radius:8px;background:#101216;color:#fff;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;overflow:hidden}
-.frontier-mark .mark-sprite{width:28px;height:28px}
+.frontier-mark .mark,.ledger-mark-tile,.mbadge .mark{background:radial-gradient(120% 80% at 28% 18%, rgba(255,255,255,.32), rgba(255,255,255,.06) 38%, #0b0d12 70%);color:#fff;border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 8px 16px rgba(0,0,0,.35), 0 0 14px color-mix(in srgb, currentColor 50%, transparent)}
+.frontier-mark .mark{width:46px;height:46px;border-radius:10px;display:grid;place-items:center;overflow:hidden}
+.frontier-mark .mark-sprite,.ledger-mark-tile .mark-sprite,.mbadge .mark-sprite{width:28px;height:28px;filter:drop-shadow(0 1px 0 rgba(255,255,255,.4)) drop-shadow(0 0 5px currentColor)}
 .frontier-name{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:750;margin:0;color:#fff}
 .frontier-date{display:block;font-family:var(--font-mono);font-size:.68rem;color:var(--muted);margin:.15rem 0 .2rem}
 .frontier-headline{display:block;font-size:.9rem;font-weight:600;line-height:1.35;color:#d7dee6}
@@ -38,7 +39,7 @@
 .row.ledger-row{grid-template-columns:64px minmax(0,1fr) 112px 112px;align-items:stretch}
 .ledger-col-status,.ledger-col-data{justify-content:center;min-width:0}
 .ledger-col-data .btn-cite{width:100%;justify-content:center;margin-top:.45rem;padding:.4rem .5rem;font-size:.78rem}
-.ledger-mark-tile{background:#101216;color:#fff;border:1px solid rgba(255,255,255,.1)}
+.ledger-mark-tile{border-radius:12px}
 .ledger-mark-tile .mark.letter{color:#fff}
 .status-val{color:#fff}
 .status-val.status-launch{color:var(--accent)}
