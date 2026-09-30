@@ -10,14 +10,12 @@ import { writeDonate } from "./donate.mjs";
 import { writeDigest } from "./site-digest.mjs";
 import { writeLearn } from "./learn.mjs";
 
-export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap }) {
+export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap, feedHealth = [] }) {
   await rm(OUT, { recursive: true, force: true });
   await mkdir(OUT, { recursive: true });
   await mkdir(OUT + "/fonts", { recursive: true });
   await mkdir(OUT + "/marks", { recursive: true });
-  const ogOk = await writeStatic(fontNames);
-  // The sprite must be written after OUT is cleared, and it reads the fetched
-  // marks, so build it here rather than in build-desk.mjs.
+  const ogOk = await writeStatic(fontNames, feedHealth);
   await writeMarkSprite([...new Set([...LABS, ...OPEN_PROJECTS].map((l) => l.id))]);
   await writeLlms(briefs, openBriefs);
   const ogCount = await writeOgCards([...allBriefs, ...allOpen]);
@@ -27,7 +25,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeOpenRss(openBriefs);
   await writeDonate({ today, briefsCount: allBriefs.length, openCount: openBriefs.length, labsCount: LABS.length + OPEN_PROJECTS.length });
   const guideCount = await writeLearn();
-  const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
+  const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today, feedHealth });
   await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });
   console.log(
     "wrote board " +
