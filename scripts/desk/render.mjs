@@ -8,17 +8,26 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 const HAS_VECTOR = new Set(["openai", "anthropic", "google", "mistral", "huggingface", "microsoft", "nvidia", "deepmind", "meta"]);
 
-export function markHtml(b, size) {
+export function markHtml(b, size, spriteHref) {
   let id = b.labId || b.id || b.lab || "";
   if (!id && b.path) {
-    // try to guess from path or lab name
     const str = (b.lab + " " + b.path).toLowerCase();
     for (const v of HAS_VECTOR) {
       if (str.includes(v)) { id = v; break; }
     }
   }
-  const isVector = HAS_VECTOR.has(id);
-  const cls = "mark" + (size === "sm" ? " sm" : size === "xs" ? " xs" : "") + (isVector ? "" : " letter");
+  const href = spriteHref || (b.markFile ? markToSprite(b.markFile) : null);
+  const isVector = !href && HAS_VECTOR.has(id);
+  const cls = "mark" + (size === "sm" ? " sm" : size === "xs" ? " xs" : "") + (href || isVector ? "" : " letter");
+  if (href) {
+    return (
+      '<div class="' +
+      cls +
+      '"><span class="glyph"><svg class="mark-sprite" aria-hidden="true"><use href="' +
+      esc(href) +
+      '"/></svg></span></div>'
+    );
+  }
   if (isVector) {
     return (
       '<div class="' +
@@ -28,23 +37,17 @@ export function markHtml(b, size) {
       '"/></svg></span></div>'
     );
   }
-  return '<div class="' + cls + '" style="background:' + b.color + '"><span class="glyph" style="color: #fff; font-weight: 800; font-size: 1.2rem;">' + esc(b.mark) + "</span></div>";
+  return '<div class="' + cls + '" style="background:' + (b.color || "#1c1914") + '"><span class="glyph">' + esc(b.mark || "") + "</span></div>";
 }
 
-// Turn "/marks/openai.png" into an external sprite symbol reference.
-// <use href="/sprite.svg#m-openai"> pulls the symbol from the single shared
-// sprite file, so the whole board costs one request instead of one per logo.
 export function markToSprite(markFile) {
   if (!markFile) return null;
   const id = String(markFile).replace(/^\/marks\//, "").replace(/\.[^.]+$/, "");
   return spritePath + "#m-" + id;
 }
 
-export const CSS = (await readFile(join(here, "house.css"), "utf8")).replace(/\n/g, "");
+export const CSS = (await readFile(join(here, "house.css"), "utf8") + await readFile(join(here, "design1.css"), "utf8")).replace(/\n/g, "");
 
-// The desk's own mark: a precision Swiss architectural emblem — an authoritative
-// geometric L on dark titanium with hairline grid guides and an International
-// Orange telemetry signal node. Inline SVG so it costs zero extra requests.
 export const DESK_MARK_SVG =
   '<span class="brand-mark" aria-hidden="true">' +
   '<svg viewBox="0 0 96 96" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -57,11 +60,6 @@ export const DESK_MARK_SVG =
   '<circle cx="72" cy="26" r="10" stroke="#ff5722" stroke-opacity="0.35" stroke-width="2"/>' +
   "</svg></span>";
 
-// Content-addressed assets. The compiled CSS and the mark sprite ship as
-// styles-<hash>.css and sprite-<hash>.svg. A returning browser can hold them
-// forever and still receives the new bytes the instant a deploy changes them,
-// because the HTML that points at them revalidates on every visit. The
-// defaults keep the site correct if a caller ever skips setAssets().
 export const CSS_NAME =
   "styles-" + createHash("sha256").update(CSS).digest("hex").slice(0, 12) + ".css";
 
@@ -81,10 +79,6 @@ export function jsonLdScript(obj) {
   return "<script type=\"application/ld+json\">" + JSON.stringify(obj).replace(/</g, "\\u003c") + "</script>";
 }
 
-// The one inline script on the site: board search, donate-address copy,
-// 1-click citation copy, and keyboard navigation (/ to search, Esc to clear).
-// Its SHA-256 hash is exported so _headers can ship a strict CSP that still
-// allows it. Do not add a second <script>. Copy handlers must live in here.
 export const SEARCH_SCRIPT =
   "(function(){" +
   "var addrs=[].slice.call(document.querySelectorAll('.support-addr'));" +
@@ -117,8 +111,10 @@ export const SEARCH_SCRIPT =
   "});" +
   "});" +
   "var q=document.getElementById('q');" +
-  "var rows=[].slice.call(document.querySelectorAll('.row[data-search]'));" +
+  "var board=document.getElementById('today');" +
+  "var rows=[].slice.call((board||document).querySelectorAll('.row[data-search]'));" +
   "var activeFilter = null;" +
+  "var kindFilter = null;" +
   "function apply(){" +
   "var n=q?(q.value||'').toLowerCase():'';" +
   "var vis=0;" +
@@ -126,12 +122,24 @@ export const SEARCH_SCRIPT =
   "var ok=true;" +
   "if(n&&(r.getAttribute('data-search')||'').indexOf(n)<0)ok=false;" +
   "if(activeFilter&&r.getAttribute('data-lab')!==activeFilter)ok=false;" +
-  "r.style.display=ok?'flex':'none';" +
+  "if(kindFilter&&r.getAttribute('data-kind')!==kindFilter)ok=false;" +
+  "r.style.display=ok?'':'none';" +
   "if(ok)vis++;" +
   "});" +
   "var c=document.getElementById('count');" +
-  "if(c)c.textContent=vis+' logged';" +
+  "if(c)c.textContent=vis+' LOGGED';" +
   "}" +
+  "[].forEach.call(document.querySelectorAll('.chip[data-kind]'),function(chip){" +
+  "chip.addEventListener('click',function(){" +
+  "var k=chip.getAttribute('data-kind');" +
+  "kindFilter=(kindFilter===k)?null:k;" +
+  "[].forEach.call(document.querySelectorAll('.chip[data-kind]'),function(c){" +
+  "if(kindFilter&&c.getAttribute('data-kind')===kindFilter)c.setAttribute('data-active','1');" +
+  "else c.removeAttribute('data-active');" +
+  "});" +
+  "apply();" +
+  "});" +
+  "});" +
   "[].forEach.call(document.querySelectorAll('.mbadge[data-lab]'),function(b){" +
   "b.style.cursor='pointer';" +
   "b.addEventListener('click',function(e){e.preventDefault();" +
@@ -151,12 +159,14 @@ export const SEARCH_SCRIPT =
   "var ms=d.getUTCMinutes().toString().padStart(2,'0');" +
   "var ss=d.getUTCSeconds().toString().padStart(2,'0');" +
   "var timeStr=hs+':'+ms+':'+ss+' UTC';" +
-  "[].forEach.call(document.querySelectorAll('.ticker-clock, .clock-utc'),function(c){" +
-  "if(c.classList.contains('clock-utc')) { c.textContent=timeStr; } else { c.textContent=timeStr; }" +
-  "});" +
+  "[].forEach.call(document.querySelectorAll('.clock-utc, .ticker-time'),function(c){c.textContent=timeStr;});" +
   "}" +
   "setInterval(updateClocks,1000);" +
   "updateClocks();" +
+  "document.addEventListener('keydown',function(e){" +
+  "if(e.key==='/'&&q&&document.activeElement!==q&&!/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();q.focus();}" +
+  "if(e.key==='Escape'&&q){q.value='';apply();q.blur();}" +
+  "});" +
   "if(window.trustedTypes&&trustedTypes.createPolicy){" +
   "try{trustedTypes.createPolicy('default',{createScriptURL:function(s){return s==='/sw.js'?s:'';}});}catch(e){}" +
   "}" +
@@ -176,9 +186,6 @@ const NAV = [
   ["/donate/", "Support"],
 ];
 
-// Nav links mark the current page with aria-current="page" so keyboard and
-// screen-reader users know where they are. `path` is the page's own canonical
-// path, so this costs no new state — the shell already receives it.
 function navHtml(path) {
   return NAV.map(([href, label]) => {
     const current = href === path ? ' aria-current="page"' : "";
@@ -186,9 +193,18 @@ function navHtml(path) {
   }).join("");
 }
 
-// The skip link is the first focusable element on every page: keyboard and
-// screen-reader users jump straight past the masthead to the board.
 const SKIP_LINK = '<a class="skip" href="#main">Skip to the board</a>';
+
+function tickerHtml(items) {
+  const rows = Array.isArray(items) ? items.filter((item) => item && item.headline && item.path) : [];
+  if (!rows.length) {
+    return '<span class="ticker-item">Official sources only</span><span class="ticker-sep">\u00b7</span><span class="ticker-item">Nothing invented</span>';
+  }
+  return rows.slice(0, 4).map((item) =>
+    '<a class="ticker-item" href="' + esc(item.path) + '"><span class="ticker-lab">' +
+    esc(item.lab || "Source") + '</span><span class="ticker-dot">\u00b7</span>' + esc(clip(item.headline, 78)) + '</a>'
+  ).join('<span class="ticker-sep">|</span>');
+}
 
 export function shell({
   title,
@@ -199,6 +215,7 @@ export function shell({
   ogType = "website",
   ogImage,
   robots,
+  ticker = [],
 }) {
   const url = SITE + path;
   const desc = clip(description, 158);
@@ -217,9 +234,6 @@ export function shell({
     "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\">",
     "<link rel=\"manifest\" href=\"/manifest.webmanifest\">",
     "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Lab Ledger Desk\" href=\"", SITE, "/rss.xml\">",
-    // The sprite and the fonts are the only resources above the fold on every
-    // page. Preloading them removes the last render-blocking round trips and
-    // is the single highest-value Core Web Vitals change available here.
     "<link rel=\"preload\" href=\"" + spritePath + "\" as=\"image\" type=\"image/svg+xml\" crossorigin>",
     "<link rel=\"preload\" href=\"/fonts/fraunces-600.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
     "<link rel=\"preload\" href=\"/fonts/source-sans-3-400.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
@@ -245,34 +259,22 @@ export function shell({
       "<a class=\"brand\" href=\"/\">" +
       DESK_MARK_SVG +
       "<span class=\"brand-text\">LAB LEDGER DESK</span></a>" +
-      "<div class=\"header-meta\">" +
       "<nav class=\"header-nav\">" + navHtml(path) +
       "<a href=\"" + esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Channel</a></nav>" +
-      "<div class=\"header-clock\" aria-hidden=\"true\">" +
-      "<span>LAB LEDGER DESK</span><span class=\"clock-sep\">|</span><span>" +
-      esc(new Date().toISOString().slice(0, 10)) +
-      "</span><span class=\"clock-sep\">|</span><span class=\"clock-utc\">UTC</span>" +
-      "</div></div></div></header>" +
-      "<div class=\"telemetry-bar\"><div class=\"ticker-stream\">" +
-      "<span class=\"ticker-time\">14:32:01 UTC</span><span class=\"ticker-sep\">|</span>" +
-      "<span class=\"ticker-item\">RESEARCH CONFIRMED <strong class=\"badge-ver\">[VERIFIED]</strong></span><span class=\"ticker-sep\">|</span>" +
-      "<span class=\"ticker-item\">AGI-0.9</span><span class=\"ticker-sep\">|</span>" +
-      "<span class=\"ticker-item\">NVIDIA CHIP SHIPMENT LOGGED</span><span class=\"ticker-sep\">|</span>" +
-      "<span class=\"ticker-item\">META AI PAPER PEER-REVIEWED</span><span class=\"ticker-sep\">|</span>" +
-      "<span class=\"ticker-item ticker-clock\">14:31:58 UTC</span>" +
-      "</div></div>" +
+      "<div class=\"header-clock\">" +
+      "<span class=\"clock-utc\">00:00:00 UTC</span>" +
+      "<span class=\"clock-date\">" + esc(new Date().toISOString().slice(0, 10)) + "</span>" +
+      "</div></div></header>" +
+      "<div class=\"telemetry-bar\"><div class=\"ticker-stream\">" + tickerHtml(ticker) + "</div></div>" +
       "<div class=\"wrap\">" +
       "<main id=\"main\">",
     Array.isArray(body) ? body.join("") : String(body || ""),
     "</main>",
     "<footer class=\"status-dock\"><div class=\"dock-inner\">" +
-    "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK [ACTIVE]</span></div>" +
-    "<div class=\"dock-right\">" +
-    "<p class=\"dock-desc\">Every brief starts at an official source. Nothing is rewritten from a rumor.</p>" +
-    "<div class=\"dock-links\"><a href=\"/method/\">Method</a> · <a href=\"/week/\">Week</a> · <a href=\"/learn/\">Guide</a> · <a href=\"/donate/\">Support</a> · <a href=\"" +
+    "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span></span></div>" +
+    "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"" +
     esc(CHANNEL) +
-    "\" rel=\"noreferrer noopener\">Telegram</a> · <a href=\"/rss.xml\">RSS</a>" +
-    "<span class=\"dock-more\">● MORE ●</span></div></div>" +
+    "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a></nav>" +
     "</div></footer></div>",
     "<script>" + SEARCH_SCRIPT + "</script>",
     "</body></html>",
@@ -283,34 +285,8 @@ export function rowHtml(b) {
   const search = [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel)]
     .join(" ")
     .toLowerCase();
-  const citeData = b.headline + " (" + b.lab + ", " + b.dateLabel + ") — " + SITE + b.path;
-
-  let statusText = "VERIFIED";
-  let statusSub = "Alignment";
-  let statusCls = "status-verified";
-  let metricLabel = "Data";
-  if (b.kind === "launch") {
-    statusText = "ACTIVE";
-    statusSub = "Parameters";
-    statusCls = "status-active";
-    metricLabel = "Model";
-  } else if (b.kind === "research") {
-    statusText = "VERIFIED";
-    statusSub = "Score 99.1%";
-    statusCls = "status-verified";
-    metricLabel = "Metric";
-  } else if (b.kind === "tool" || b.kind === "infra") {
-    statusText = "DEPLOYED";
-    statusSub = "Open Stack";
-    statusCls = "status-deployed";
-    metricLabel = "Units";
-  } else if (b.kind === "note") {
-    statusText = "LOGGED";
-    statusSub = "Disclosed";
-    statusCls = "status-logged";
-    metricLabel = "Latency";
-  }
-
+  const citeData = b.headline + " (" + b.lab + ", " + b.dateLabel + ") \u2014 " + SITE + b.path;
+  const statusText = kindLabel(b.kind).toUpperCase();
   return [
     "<article class=\"row ledger-row\" data-search=\"",
     esc(search),
@@ -323,7 +299,7 @@ export function rowHtml(b) {
     "\">",
     "<div class=\"ledger-col-logo\">",
     "<div class=\"ledger-mark-tile\">",
-    markHtml(b, "sm"),
+    markHtml(b, "sm", markToSprite(b.markFile)),
     "</div></div>",
     "<div class=\"ledger-col-main\">",
     "<div class=\"ledger-title-line\"><a class=\"headline\" href=\"",
@@ -357,17 +333,16 @@ export function rowHtml(b) {
     "</div>",
     "<div class=\"ledger-col-status\">",
     "<span class=\"col-lbl\">Status</span>",
-    "<span class=\"status-val " + statusCls + "\">" + statusText + "</span>",
-    "<span class=\"status-sub\">" + statusSub + "</span>",
+    "<span class=\"status-val status-" + esc(b.kind) + "\">" + esc(statusText) + "</span>",
     "</div>",
     "<div class=\"ledger-col-data\">",
-    "<span class=\"col-lbl\">" + metricLabel + "</span>",
-    "<span class=\"data-val\">Brief ",
+    "<span class=\"col-lbl\">Brief</span>",
+    "<span class=\"data-val\">",
     esc(b.briefNo),
     "</span>",
     "<button type=\"button\" class=\"btn-cite\" data-cite=\"",
     esc(citeData),
-    "\" aria-label=\"Copy citation reference\" title=\"Copy citation to clipboard\">[ 📋 Cite ]</button>",
+    "\" aria-label=\"Copy citation\" title=\"Copy citation\">Cite</button>",
     "</div></article>",
   ].join("");
 }
