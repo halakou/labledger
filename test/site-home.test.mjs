@@ -12,11 +12,15 @@ import { HOME_MAX, HOME_FAQ } from "../scripts/desk/site-home.mjs";
 // OUT and recreate both the root and the fonts directory, exactly the way
 // publishSite does.
 async function freshOut() {
-  const { OUT } = await import("../scripts/desk/core.mjs");
+  // getOut(), not a destructured OUT: the dynamic import hands back the value
+  // OUT held at first evaluation, which is dist-site if any earlier test in the
+  // same process already imported core.mjs before setOutForTests ran.
+  const { getOut } = await import("../scripts/desk/config.mjs");
+  const out = getOut();
   const fs = await import("node:fs/promises");
-  await fs.rm(OUT, { recursive: true, force: true });
-  await fs.mkdir(OUT + "/fonts", { recursive: true });
-  return { OUT, fs };
+  await fs.rm(out, { recursive: true, force: true });
+  await fs.mkdir(out + "/fonts", { recursive: true });
+  return { OUT: out, fs };
 }
 
 test("the homepage board is capped well below the full ledger", () => {

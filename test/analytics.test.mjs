@@ -9,7 +9,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { shell, setAnalyticsToken } from "../scripts/desk/render.mjs";
 import { writeLlms } from "../scripts/desk/site-home.mjs";
-import { OUT } from "../scripts/desk/core.mjs";
 import { getOut } from "../scripts/desk/config.mjs";
 
 test("without a CF_ANALYTICS_TOKEN the beacon is absent and the CSP stays strict", () => {
@@ -31,9 +30,9 @@ test("with a CF_ANALYTICS_TOKEN the beacon ships and the CSP admits it", async (
 
   // The CSP that ships must actually allow the script the page loads.
   await fs.rm(getOut(), { recursive: true, force: true });
-  await fs.mkdir(OUT, { recursive: true });
+  await fs.mkdir(getOut(), { recursive: true });
   await writeLlms([], []);
-  const headers = await fs.readFile(join(OUT, "_headers"), "utf8");
+  const headers = await fs.readFile(join(getOut(), "_headers"), "utf8");
   assert.ok(headers.includes("https://static.cloudflareinsights.com"), "the CSP admits the beacon host");
   assert.ok(/script-src 'self' 'sha256-[^']+' https:\/\/static\.cloudflareinsights\.com/.test(headers), "script-src lists the beacon");
 
