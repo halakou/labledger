@@ -13,6 +13,27 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const mod = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 
+// The suites share one process, and OUT is a module-level global: whichever
+// suite imports config.mjs first fixes it. analytics and site-home call
+// setOutForTests at module scope; this file sorts before both, so without the
+// call here it would inherit the real dist-site — which the checkout may not
+// have, and which a test must never write into anyway.
+const { setOutForTests } = await mod("scripts/desk/config.mjs");
+setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url + process.pid).toString("hex").slice(0, 12)));
+
+async function freshOut() {
+  const { getOut } = await mod("scripts/desk/config.mjs");
+  const out = getOut();
+  const fs = await import("node:fs/promises");
+  // Reuse the process's own OUT instead of calling setOutForTests() again
+  // inside a test: overwriting it mid-run leaks into the suites after this one
+  // (the terms suite would suddenly find itself writing into a directory with
+  // no fonts/ subtree).
+  await fs.rm(out, { recursive: true, force: true });
+  await fs.mkdir(out + "/fonts", { recursive: true });
+  return { OUT: out, fs };
+}
+
 // build-desk.mjs is a top-level script, not a module with exports — the logic
 // under test is duplicated here against the real helpers so the guard itself
 // stays under test. This mirrors the exact expressions in the script; if the

@@ -15,8 +15,14 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const mod = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 
+// Same reason as open-archive.test.mjs: OUT is a process-global and this file
+// sorts before the suites that set it, so it would otherwise write into the
+// checkout's real dist-site, which the CI checkout does not have.
+const { setOutForTests } = await mod("scripts/desk/config.mjs");
+setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url + process.pid).toString("hex").slice(0, 12)));
+
 async function freshOut() {
-  const { getOut, setOutForTests } = await mod("scripts/desk/config.mjs");
+  const { getOut } = await mod("scripts/desk/config.mjs");
   const out = getOut();
   const fs = await import("node:fs/promises");
   await fs.rm(out, { recursive: true, force: true });
