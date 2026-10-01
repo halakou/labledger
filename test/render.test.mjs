@@ -136,8 +136,11 @@ test("glass gallery CSS unlocks mbadge size over house.css 38px pin", async () =
   // design1 must clear the house 38px pin or glass 68px tiles clip inside the badge.
   assert.match(flat, /\.mbadge\{[^}]*width:auto;[^}]*height:auto;/);
   assert.match(flat, /\.mbadge\{[^}]*overflow:visible;/);
-  // Sprite rule must beat house .mbadge .mark.xs .mark-sprite{38px}.
-  assert.match(flat, /\.mbadge \.mark\.xs \.mark-sprite,\.mbadge \.mark-sprite\{width:46px;height:46px\}/);
+  // Sprite rule must beat house .mbadge .mark.xs .mark-sprite{38px} and fill the glass tile.
+  assert.match(flat, /\.mbadge \.mark\.xs \.mark-sprite,\.mbadge \.mark-sprite\{width:58px;height:58px;display:block;margin:0\}/);
+  // Every glass tile centers its mark/glyph (not top-left).
+  assert.match(flat, /\.mbadge \.mark\{[^}]*display:grid;[^}]*place-items:center;/);
+  assert.match(flat, /\.mbadge \.mark \.glyph\{[^}]*display:grid;[^}]*place-items:center;/);
   // Gloss overflow belongs on the tile, not the badge wrapper.
   assert.equal(/\.frontier-mark \.mark,\.ledger-mark-tile,\.mbadge,\.markrow \.mark\{/.test(flat), false);
   assert.match(flat, /\.frontier-mark \.mark,\.ledger-mark-tile,\.markrow \.mark\{/);
