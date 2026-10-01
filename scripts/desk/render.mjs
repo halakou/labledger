@@ -165,6 +165,14 @@ export const SEARCH_SCRIPT =
   "});" +
   "});" +
   "if(q){ q.addEventListener('input',apply); apply(); }" +
+  // Turn ?q=... into a real query: the form submits here via GET, so this is
+  // what makes /search/?q=... a shareable, linkable search result set rather
+  // than a blank board the reader has to retype into.
+  "if(q&&window.location&&window.location.search&&window.URLSearchParams){" +
+  "var qp=new URLSearchParams(window.location.search);" +
+  "var qv=qp.get('q')||'';" +
+  "if(qv){q.value=qv;apply();}" +
+  "}" +
   "function updateClocks(){" +
   "var d=new Date();" +
   "var hs=d.getUTCHours().toString().padStart(2,'0');" +
@@ -246,6 +254,11 @@ export function shell({
     "<meta name=\"color-scheme\" content=\"dark\">",
     "<link rel=\"canonical\" href=\"", esc(url), "\">",
     "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\">",
+    // iOS uses its own link type and will not fall back to the SVG. Without it
+    // the home-screen icon is a screenshot thumbnail; the square PNGs are
+    // already shipped, so this costs two extra lines of head.
+    "<link rel=\"apple-touch-icon\" sizes=\"192x192\" href=\"/icon-192.png\">",
+    "<link rel=\"apple-touch-icon\" sizes=\"512x512\" href=\"/icon-512.png\">",
     "<link rel=\"manifest\" href=\"/manifest.webmanifest\">",
     "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Lab Ledger Desk\" href=\"", SITE, "/rss.xml\">",
     // C11: the sprite is ~60KB of base64 marks, and it is only needed once the
@@ -295,7 +308,7 @@ export function shell({
     "</main>",
     "<footer class=\"status-dock\"><div class=\"dock-inner\">" +
     "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span> <span id=\"desk-live\" class=\"desk-live\">UNKNOWN</span></span></div>" +
-    "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"/terms/\">Terms</a><a href=\"" +
+    "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"/terms/\">Terms</a><a href=\"/privacy/\">Privacy</a><a href=\"" +
     esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a></nav>" +
     "</div></footer></div>" +
     "<nav class=\"mobile-dock\" aria-label=\"Mobile\">" + navHtml(path) + "</nav>",

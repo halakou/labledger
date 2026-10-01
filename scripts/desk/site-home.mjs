@@ -159,6 +159,7 @@ export async function writeLlms(briefs, openBriefs = []) {
       ...GUIDE_ENTRIES.map((g) => "- " + SITE + "/learn/" + g.slug + "/ \u2014 " + g.title),
       "- " + SITE + "/donate/ \u2014 support and cost ledger",
       "- " + SITE + "/terms/ \u2014 house policy and removal requests",
+      "- " + SITE + "/privacy/ \u2014 what the desk collects: nothing",
       ...LABS.map((l) => "- " + SITE + "/lab/" + l.id + "/ \u2014 " + l.label + " archive"),
       ...OPEN_PROJECTS.map((p) => "- " + SITE + "/lab/" + p.id + "/ \u2014 " + p.label + " archive"),
       ...TOPICS.map((t) => "- " + SITE + "/topic/" + t.id + "/ \u2014 " + t.label),
@@ -194,7 +195,7 @@ export async function writeLlms(briefs, openBriefs = []) {
     "_headers",
     [
       "/*",
-      "  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-" + SEARCH_SCRIPT_HASH + "'" + (analyticsToken() ? " " + ANALYTICS_HOST : "") + "; style-src 'self' 'unsafe-inline'; img-src 'self' data: " + (analyticsToken() ? ANALYTICS_HOST + " data:" : "") + "; font-src 'self'; manifest-src 'self'; connect-src 'self'" + (analyticsToken() ? " " + ANALYTICS_HOST : "") + "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; trusted-types default; require-trusted-types-for 'script'",
+      "  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-" + SEARCH_SCRIPT_HASH + "'" + (analyticsToken() ? " " + ANALYTICS_HOST : "") + "; style-src 'self' 'unsafe-inline'; img-src 'self' data: " + (analyticsToken() ? ANALYTICS_HOST + " data:" : "") + "; font-src 'self'; manifest-src 'self'; connect-src 'self'" + (analyticsToken() ? " " + ANALYTICS_HOST : "") + "; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; trusted-types default; require-trusted-types-for 'script'",
       "  X-Content-Type-Options: nosniff",
       "  Referrer-Policy: strict-origin-when-cross-origin",
       "  X-Frame-Options: DENY",
@@ -363,7 +364,7 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
         "<span id=\"count\" class=\"panel-badge\">" + String(shown.length) + " LOGGED</span>",
         "<div class=\"chips chips-kind\" data-group=\"kind\">" + kindChips(KINDS) + "</div>",
         "</div>",
-        "<form class=\"search-bar\" action=\"/\" method=\"get\" role=\"search\">",
+        "<form class=\"search-bar\" action=\"/search/\" method=\"get\" role=\"search\">",
         "<div class=\"search-tools\">",
         "<div class=\"search-box\"><label for=\"q\" class=\"sr-only\">Search the ledger</label><input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Search ledger\u2026\" autocomplete=\"off\" enterkeyhint=\"search\"><span class=\"search-kbd\" aria-hidden=\"true\">/</span></div>",
         markRow([...LABS, ...OPEN_PROJECTS]),
@@ -414,6 +415,52 @@ export async function writeOpenBoard({ openBriefs, today }) {
         "<p class=\"dek\">Official release notes from open-source AI infrastructure projects. Each entry links to the project's own release page. Nothing here is invented.</p></article>",
         "<section class=\"board\">",
         openBriefs.map(rowHtml).join(""),
+        "</section>",
+      ].join(""),
+    }),
+  );
+}
+
+// Real server-side search, as far as a static site can take it: every filed
+// brief is rendered here (the home board caps at 20), and the same inline
+// script the board already uses reads location.search for ?q= and filters on
+// load. The form action="/" was changed to point here, and the CSP now allows
+// form-action 'self' so the GET can actually submit.
+export async function writeSearch({ allBriefs, briefs, openBriefs = [], today }) {
+  const rows = [...allBriefs, ...openBriefs];
+  await write(
+    "search/index.html",
+    shell({
+      title: "Search — Lab Ledger Desk",
+      description: "Search every filed brief: headline, lab, kind, and topic tag. Named sources only.",
+      path: "/search/",
+      robots: "noindex",
+      jsonLd: jsonLdScript({
+        "@context": "https://schema.org",
+        "@type": "SearchResultsPage",
+        name: "Search the ledger",
+        url: SITE + "/search/",
+        dateModified: today,
+        publisher: { "@type": "NewsMediaOrganization", name: "Lab Ledger Desk", url: SITE + "/" },
+      }),
+      body: [
+        "<article class=\"method\"><p class=\"kicker\">Search</p><h1>Search the ledger</h1>",
+        "<p class=\"dek\">Every brief the desk has filed, filterable by text, kind, or topic. The query runs against the headline, the lab name, the kind, and the topic tags.</p></article>",
+        "<section class=\"board\" id=\"today\">",
+        "<div class=\"panel-hdr\">",
+        "<h2 class=\"panel-title\">All filed briefs</h2>",
+        "<span id=\"count\" class=\"panel-badge\">" + String(rows.length) + " LOGGED</span>",
+        "<div class=\"chips chips-kind\" data-group=\"kind\">" + kindChips(KINDS) + "</div>",
+        "</div>",
+        "<form class=\"search-bar\" action=\"/search/\" method=\"get\" role=\"search\">",
+        "<div class=\"search-tools\">",
+        "<div class=\"search-box\"><label for=\"q\" class=\"sr-only\">Search the ledger</label><input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Search ledger…" + "\" autocomplete=\"off\" enterkeyhint=\"search\"><span class=\"search-kbd\" aria-hidden=\"true\">/</span></div>",
+        "</div>",
+        "<div class=\"chips\" data-group=\"topic\">" + topicChips(TOPICS) + "</div>",
+        "</form>",
+        "<div class=\"ledger-feed\">",
+        rows.map(rowHtml).join("") || "<p class=\"empty\">Desk is waiting on the next official post.</p>",
+        "</div>",
         "</section>",
       ].join(""),
     }),
