@@ -7,10 +7,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { join, dirname } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
-const ROOT = "C:/Users/halak/Documents/Codex/Lab Ledger Desk/labledger";
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const mod = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 
 // build-desk.mjs is a top-level script, not a module with exports — the logic

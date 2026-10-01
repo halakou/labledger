@@ -6,10 +6,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { join, dirname } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
-const ROOT = "C:/Users/halak/Documents/Codex/Lab Ledger Desk/labledger";
+// Relative to this test file, not a hardcoded checkout path — CI clones to a
+// different directory on every runner, and a hardcoded path only ever works on
+// the laptop that wrote it.
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const mod = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 
 async function freshOut() {
