@@ -2,7 +2,7 @@ import test from "node:test";
 // Tests build into a throwaway OUT. The checkout's real dist-site holds long
 // paths the Windows test runner cannot always delete, so it never touches it.
 import { setOutForTests } from "../scripts/desk/config.mjs";
-setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url + process.pid).toString("hex").slice(0, 12)));
+setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(new URL(import.meta.url).pathname.split("/").pop() + "-" + process.pid).toString("hex")));
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { join } from "node:path";
@@ -26,7 +26,9 @@ test("with a CF_ANALYTICS_TOKEN the beacon ships and the CSP admits it", async (
   const html = shell({ title: "t", description: "d", path: "/", body: "" });
   assert.ok(html.includes("beacon.min.js"), "the beacon ships with a token");
   assert.ok(html.includes('data-cf-beacon='), "the beacon carries its config");
-  assert.ok(html.includes(token), "the beacon carries the token");
+  // The beacon config is JSON, so the token lands escaped — match the exact
+  // encoded form rather than testing a raw substring of the page.
+  assert.ok(html.includes('"token":"' + token + '"'), "the beacon carries the token");
 
   // The CSP that ships must actually allow the script the page loads.
   await fs.rm(getOut(), { recursive: true, force: true });

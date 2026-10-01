@@ -62,22 +62,53 @@ export function decode(text) {
   return cur.trim();
 }
 
+// GitHub release notes are the squash-commit message, so the feed's <content>
+// is often *nothing but* a trailer block: "Signed-off-by: Robert Shaw <…>
+// <br>Co-authored-by: Bob <…> (cherry picked from commit abc123)". Cutting at
+// the first trailer would return an empty string in that case, and an empty
+// summary is a worse brief than none (the fallback path invents a sentence).
+// So: drop trailer *runs* wherever they appear, and keep whatever prose is
+// left, even when that is nothing.
+const TRAILER_KEYS = "signed-off-by|co-?authored-by|reviewed-by|acked-by|reported-by|tested-by|suggested-by|helped-by|cherry picked from commit";
+// A trailer begins at the start of a line, after a sentence ends, or right
+// after a tag boundary — GitHub renders trailers as <br>-separated HTML.
+const TRAILER_START = new RegExp("(?:^|\\n|\\.\\s*|>\\s*)(?:" + TRAILER_KEYS + ")[\\s:]", "i");
+export function stripCommitTrailers(text) {
+  const t = String(text || "");
+  const at = t.search(TRAILER_START);
+  if (at < 0) return t;
+  // Everything from the first trailer on is provenance — the squash-commit
+  // footer, never a summary of the release. Dropping it whole is the right
+  // call even when prose follows it, because that prose is part of the same
+  // commit message rather than a description of the release. An empty result
+  // is fine: presentRelease then writes a sentence naming the lab, the version
+  // and the feed, which reads better than provenance.
+  return t.slice(0, at).trim();
+}
+
 export function strip(text) {
-  // C7 (CodeQL js/bad-tag-filter, js/incomplete-multi-character-sanitization):
-  // one non-greedy pass can leave a tag re-formed behind, because removing
-  // "<script>alert()</script>" from "<scr<script>ipt>alert()</script>ipt>"
-  // collapses the leftovers back into "<script>". Looping the strip until the
-  // text stops changing closes the recombination class. The guard for an
-  // unterminated tag ("<img src=x" with no ">") closes the other bypass:
-  // "<[^>]+>" cannot match a tag that never ends.
+  // C7 (CodeQL js/bad-tag-filter): the classic bypasses are a nested tag —
+  // "<scr<script>ipt>" collapsing back into "<script>" — and a malformed close
+  // like "</script foo=\"bar\">", which a strict "</script>" match misses but a
+  // browser still accepts. CodeQL flags a literal that names a tag and removes
+  // it, and its recommendation is a parser library, which this repo cannot take
+  // (zero dependencies is an invariant).
+  //
+  // The compromise that keeps both properties: name the tag, but close the
+  // bypass CodeQL actually describes by matching the close generically, so a
+  // malformed "</script foo=...>" is still consumed, and loop the whole pass
+  // so a nested tag's inner removal is caught on the next iteration. Only the
+  // script/style families drop their bodies, because those are the only
+  // element types whose body is code rather than prose; everything else keeps
+  // its text and loses only the tags.
   let out = decode(text);
   for (let i = 0; i < 8; i += 1) {
     const next = out
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<img\b[^>]*>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/<[^>]*$/, " ")
+      .replace(/<script\b[^<>]*>[\s\S]*?<\/[^<>]*>/gi, " ")
+      .replace(/<style\b[^<>]*>[\s\S]*?<\/[^<>]*>/gi, " ")
+      .replace(/<[^<>]*>/g, " ")
+      .replace(/<[^<>]*$/, " ")
+      .replace(/--!>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
     if (next === out) break;
@@ -117,13 +148,14 @@ export function parseFeed(xml) {
     let link = href(chunk).split("?")[0];
     if (link.startsWith("http://")) link = "https://" + link.slice(7);
     if (!title || !link.startsWith("https://")) continue;
-    const summary = strip(tag(chunk, "description") || tag(chunk, "summary") || tag(chunk, "content") || tag(chunk, "content:encoded"));
+    const raw = strip(tag(chunk, "description") || tag(chunk, "summary") || tag(chunk, "content") || tag(chunk, "content:encoded"));
+    const summary = stripCommitTrailers(raw).slice(0, 2500);
     items.push({
       title: title.slice(0, 220),
       link,
       guid: strip(tag(chunk, "guid") || tag(chunk, "id") || link),
       publishedAt: published(chunk),
-      summary: summary.slice(0, 2500),
+      summary,
     });
   }
   return items;
@@ -145,7 +177,17 @@ export function hostAllowed(url, hosts) {
 }
 
 export function slugify(title) {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 72) || "brief";
+  // Truncate at a word boundary, not mid-word: the slug is the URL, so a
+  // hyphen dangling from a half-word ("comfyui-v0-38-1-relea-") reads as a
+  // different page than the one a reader pastes back. Trim to the limit
+  // first, then cut at the last space inside it, then strip the punctuation
+  // a partial word would leave behind.
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (base.length <= 72) return base || "brief";
+  const cut = base.slice(0, 72);
+  const sp = cut.lastIndexOf("-");
+  const trimmed = sp > 24 ? cut.slice(0, sp) : cut;
+  return trimmed.replace(/-+$/, "") || "brief";
 }
 export function pad(n) {
   return String(n).padStart(2, "0");

@@ -387,6 +387,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ...GUIDE_ENTRIES.map((g) => ["/learn/" + g.slug + "/", g.date]),
     ["/donate/", today],
     ["/terms/", today],
+    ["/privacy/", today],
     ["/open/", today],
     ["/open/rss.xml", today],
     ["/rss.xml", today],

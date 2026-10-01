@@ -4,6 +4,7 @@ import {
   parseFeed,
   decode,
   strip,
+  stripCommitTrailers,
   esc,
   slugify,
   clip,
@@ -51,6 +52,23 @@ test("strip removes tags but keeps the text", () => {
   assert.equal(strip("  spaced   out  "), "spaced out");
 });
 
+test("strip closes the two bypasses CodeQL's bad-tag-filter names", () => {
+  // The nested-tag bypass: removing the inner pair re-forms the outer tag.
+  // "<scr<script>ipt>" -> inner "<script>" gone -> "scr" + "ipt>" -> "<script>"
+  // unless the loop repeats and catches the recombination.
+  assert.ok(!/<\s*script/i.test(strip("<scr<script>ipt>alert(1)</script>ipt>")), "a nested tag cannot re-form");
+  assert.ok(!/<\s*style/i.test(strip("<sty<style>le>x{}</style>le>")), "nor a nested style");
+  // The malformed-close bypass, straight out of the CodeQL query help: browsers
+  // accept "</scriptfoo=\"bar\">" as a script end tag, so a pattern that only
+  // matches a clean "</script>" leaves the script body behind. Matching the
+  // close generically as "</[^<>]*>" is what closes it.
+  assert.equal(strip("<script>alert(1)</scriptfoo=\"bar\">"), "", "a malformed close still ends the element");
+  // An unterminated tag has no ">" for a tag match to find.
+  assert.equal(strip("<img src=x onerror=alert(1)"), "", "an unterminated tag is cleared");
+  // Text between elements survives — this is a news desk, prose is the product.
+  assert.equal(strip("<p>one</p><p>two</p>"), "one two");
+});
+
 test("parseFeed reads RSS items and forces https links", () => {
   const xml =
     "<rss><channel><item><title>A launch</title>" +
@@ -93,6 +111,123 @@ test("slugify makes url-safe slugs and never returns empty", () => {
   assert.equal(slugify("یک عنوان فارسی"), "brief");
   const long = "a".repeat(200);
   assert.ok(slugify(long).length <= 72);
+});
+
+test("stripCommitTrailers removes signed-off-by and co-author provenance from briefs", () => {
+  // C-item 1: GitHub release notes are the squash-commit message, so the feed's
+  // <content> ends in a trailer block. It is provenance, not a summary, and it
+  // renders as a broken sentence in a 100-word brief.
+  const withTrailers = "Release v1.2.0 fixes the queue stall.\n\nSigned-off-by: Alice <alice@example.com>\nCo-authored-by: Bob <bob@example.com>";
+  assert.equal(
+    stripCommitTrailers(withTrailers),
+    "Release v1.2.0 fixes the queue stall",
+    "the whole trailing block is cut at the first trailer line"
+  );
+  const inline = "Adds a retry. Signed-off-by: Alice <alice@example.com> Then a note.";
+  const got = stripCommitTrailers(inline);
+  assert.ok(!/signed-off/i.test(got), "no signed-off-by anywhere in the result");
+  assert.ok(got.includes("Adds a retry"), "the body before it survives, terminator included");
+  assert.equal(stripCommitTrailers(""), "", "empty input stays empty");
+  assert.equal(
+    stripCommitTrailers("Nothing provenance-like here."),
+    "Nothing provenance-like here.",
+    "plain text is untouched"
+  );
+});
+
+test("stripCommitTrailers returns empty for a pure trailer block, so the fallback can write the brief", () => {
+  // A real GitHub release note is often nothing but the squash-commit trailer
+  // run. Cutting at the first trailer yields "" here, which is the intent:
+  // presentRelease sees a thin release and writes a sentence naming the lab,
+  // the version and the feed — better than provenance rendered as prose.
+  const onlyTrailers = "Signed-off-by: Robert Shaw <a href=\"mailto:robshaw@redhat.com\">robshaw@redhat.com</a><br>\nCo-authored-by: Claude Opus 5.5 noreply@anthropic.com (cherry picked from commit abc123)";
+  assert.equal(stripCommitTrailers(onlyTrailers), "", "a pure trailer block has no prose to keep");
+});
+
+test("stripCommitTrailers handles raw GitHub HTML: <br> separators, mailto anchors, cherry-pick lines", () => {
+  // The feed's <content> is HTML-encoded; parseFeed's strip() removes the tags
+  // before this runs, but the function must not misfire on the raw shape either,
+  // because the same helper is what the word-count guard in build-desk.mjs leans
+  // on. The <br> between trailers is the real-world separator; a mailto anchor
+  // puts a literal ">" right before a trailer keyword, which is the case the
+  // tag-boundary alternative exists for.
+  const html = "<p>Fixes the queue stall.</p><br>\nSigned-off-by: Alice &lt;a href=\"mailto:alice@example.com\"&gt;alice@example.com&lt;/a&gt;<br>Co-authored-by: Bob noreply@bots.github";
+  const got = stripCommitTrailers(html);
+  assert.ok(/Fixes the queue stall/.test(got), "the release note survives");
+  assert.ok(!/signed-off/i.test(got), "no signed-off-by");
+  assert.ok(!/co-?authored/i.test(got), "no co-authored-by");
+  assert.ok(!/cherry picked/i.test(got), "no cherry-pick line");
+});
+
+test("stripCommitTrailers does not cut a sentence that merely mentions signing off", () => {
+  // A maintainer saying "the patch was signed off by the reviewer" is prose,
+  // not provenance. The keyword list requires the hyphenated "signed-off-by"
+  // form, so plain prose mentioning signing survives untouched.
+  const prose = "The patch was signed off by the maintainer after two rounds of review.";
+  assert.equal(
+    stripCommitTrailers(prose),
+    prose,
+    "prose mentioning signing off is not a trailer"
+  );
+});
+
+test("stripCommitTrailers drops prose after the first trailer — locked decision", () => {
+  // LOCKED: drop-from-first-trailer, not preserve. Anything after the first
+  // trailer keyword is part of the same squash-commit message, not a summary of
+  // the release: "Then a note." there is continuation of the commit body, never
+  // a description a reader came for. If this test fails, the policy changed and
+  // every other test in this file that depends on it must be reviewed.
+  const withTail = "Adds a retry. Signed-off-by: Alice <alice@example.com> Then a note about the queue.";
+  const got = stripCommitTrailers(withTail);
+  assert.ok(got.startsWith("Adds a retry"), "the sentence before the trailer survives");
+  assert.ok(!/Then a note/.test(got), "prose after the first trailer is dropped, not preserved");
+  assert.ok(!/signed-off/i.test(got), "and the trailer itself is gone");
+});
+
+test("slugify truncates at a word boundary, not mid-word", () => {
+  // C-item 2: a URL that cuts a word in half is a different address than the
+  // one a reader pastes back. The slug must end on a hyphen between words,
+  // never on a dangling fragment.
+  const out = slugify("ComfyUI releases version 0.3.8.1 with a long tail of details");
+  assert.ok(out.length <= 72, "stays inside the limit");
+  assert.ok(/^[a-z0-9-]+$/.test(out), "slug-safe characters only");
+  assert.ok(!out.endsWith("-"), "no trailing hyphen");
+  // The clearest failure mode of a mid-word cut is a fragment that ends
+  // inside a word: "comfyui-v0-38-1-relea". Splitting back on the hyphens,
+  // every chunk must be a whole word/token that appeared in the title.
+  const chunks = out.split("-").filter(Boolean);
+  for (const c of chunks) {
+    assert.ok(
+      ["comfyui", "releases", "version", "0", "3", "8", "1", "with", "a", "long", "tail", "of", "details"].includes(c),
+      "chunk is a whole word from the title, not a fragment: " + c
+    );
+  }
+});
+
+test("slugify does not leave a half-word at the cut on a real 82-character title", () => {
+  // A real title from the Anthropic feed: the naive slice(0, 72) produced
+  // "...kernel-expertise-to-appl", cutting "Apple" in half. The fix lands on
+  // the last full word inside the budget instead.
+  const out = slugify("From CUDA to MLX: How K-Search Brings Decades of Kernel Expertise to Apple Silicon");
+  assert.ok(out.length <= 72, "stays inside the limit");
+  assert.ok(!out.endsWith("-"), "no trailing hyphen");
+  // Every hyphen-separated chunk is a whole token from the title, never a
+  // fragment like "appl".
+  const allowed = new Set(["from", "cuda", "to", "mlx", "how", "k", "search", "brings", "decades", "of", "kernel", "expertise", "apple", "silicon"]);
+  const chunks = out.split("-").filter(Boolean);
+  for (const c of chunks) {
+    assert.ok(allowed.has(c), "no half-word fragment at the cut: " + c);
+  }
+});
+
+test("slugify still truncates a single very long word rather than exceeding the limit", () => {
+  // A title with one very long word and no spaces has no word boundary to land
+  // on, so the cap wins: the slug is the first 72 characters and that is the
+  // correct behaviour — returning the whole word would make a URL longer than
+  // the budget every site page is written against.
+  const out = slugify("supercalifragilisticexpialidociousreleaseannouncement");
+  assert.ok(out.length <= 72, "a word longer than the limit is still truncated");
+  assert.equal(out, "supercalifragilisticexpialidociousreleaseannouncement".slice(0, out.length));
 });
 
 test("clip cuts at a word boundary and adds an ellipsis", () => {

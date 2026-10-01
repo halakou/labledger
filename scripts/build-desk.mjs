@@ -218,17 +218,28 @@ if (openByGuid.size) {
 // newest-first across all open projects, at most PER_OPEN per project
 const openPool = [];
 for (const { proj, items } of openPacks) {
-  for (const item of items.slice(0, PER_OPEN)) {
+  // The refresh loop below must see every entry the feed returned, not just the
+  // first PER_OPEN: a brief filed before the commit-trailer strip landed is
+  // still wrong no matter how deep in the feed it sits, and slicing here would
+  // leave the older ones stuck on a Signed-off-by summary forever.
+  for (const item of items) {
     const guid = item.guid || item.link;
     if (openByGuid.has(guid)) {
       const prev = openByGuid.get(guid);
       if (item.title && item.title !== prev.headline) prev.headline = item.title.slice(0, 220);
       const prevWords = String(prev.what || "").split(/\s+/).filter(Boolean).length;
-      if (!item.thinRelease || prevWords < 12) {
+      // An entry filed before the commit-trailer strip landed keeps a what/
+      // that is nothing but provenance ("Signed-off-by: … Co-authored-by: …").
+      // It has enough words to look substantial, so the thin-release guard
+      // above protects it from ever being replaced. Detect that state directly
+      // and let the clean summary through.
+      const dirty = /signed-off-by|co-?authored-by|reviewed-by|cherry picked from commit/i.test(prev.what || prev.dek || "");
+      if (dirty || !item.thinRelease || prevWords < 12) {
         const dateLabel = prev.dateLabel;
         const kind = classifyKind(item.title, item.summary);
         const topics = classifyTopics(item.title, item.summary);
-        prev.dek = clipSentence(item.summary, 168) || prev.dek;
+        const next = clipSentence(item.summary, 168) || "";
+        prev.dek = dirty && !next ? "" : next || prev.dek;
         prev.what = composeWhat(item.summary, proj.label, item.title, dateLabel);
         prev.why = composeWhy(proj.label, dateLabel, kind, topics);
         prev.kind = kind;
@@ -236,6 +247,7 @@ for (const { proj, items } of openPacks) {
       }
       continue;
     }
+    if (openPool.filter((b) => b.labId === proj.id).length >= PER_OPEN) continue;
     const fakePack = { lab: { ...proj, label: proj.label } };
     const brief = makeBrief(fakePack, item, openNextId);
     brief.lab = proj.label;
