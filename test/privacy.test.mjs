@@ -19,7 +19,7 @@ const mod = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 // sorts before the suites that set it, so it would otherwise write into the
 // checkout's real dist-site, which the CI checkout does not have.
 const { setOutForTests } = await mod("scripts/desk/config.mjs");
-setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url + process.pid).toString("hex").slice(0, 12)));
+setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(new URL(import.meta.url).pathname.split("/").pop() + "-" + process.pid).toString("hex")));
 
 async function freshOut() {
   const { getOut } = await mod("scripts/desk/config.mjs");

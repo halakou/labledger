@@ -4,7 +4,7 @@ import test from "node:test";
 import { setOutForTests, getOut } from "../scripts/desk/config.mjs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url + process.pid).toString("hex").slice(0, 12)));
+setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(new URL(import.meta.url).pathname.split("/").pop() + "-" + process.pid).toString("hex")));
 import assert from "node:assert/strict";
 import { HOME_MAX, HOME_FAQ } from "../scripts/desk/site-home.mjs";
 

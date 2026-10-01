@@ -19,7 +19,7 @@ const mod = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 // call here it would inherit the real dist-site — which the checkout may not
 // have, and which a test must never write into anyway.
 const { setOutForTests } = await mod("scripts/desk/config.mjs");
-setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url + process.pid).toString("hex").slice(0, 12)));
+setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(new URL(import.meta.url).pathname.split("/").pop() + "-" + process.pid).toString("hex")));
 
 async function freshOut() {
   const { getOut } = await mod("scripts/desk/config.mjs");
