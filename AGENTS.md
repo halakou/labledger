@@ -172,11 +172,14 @@ If `ageMs` is large and `dispatch` is not `dispatched`, the pipeline is stuck.
 ## Secrets (names only — values live in GitHub + Cloudflare, never in code)
 
 `CLOUDFLARE_API_TOKEN`, `DISPATCH_TOKEN`, `TELEGRAM_BOT_TOKEN`,
-`TELEGRAM_CHAT_ID`, `TELEGRAM_CHANNEL_URL`, `TELEGRAM_WEBHOOK_URL`,
-`TELEGRAM_ALERT_CHAT_ID`. The alert id is a private chat. Outage messages
-go there, not to the public channel. Do not point it at `@labledgerdesk`.
-Worker secrets are pushed by `deploy-worker.yml` on any `cloudflare/**` change.
-`INGEST_SECRET` is unused and should not be recreated.
+`TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_URL`, `TELEGRAM_ALERT_CHAT_ID`.
+C6: `TELEGRAM_CHANNEL_URL` is not required — posting uses `TELEGRAM_CHAT_ID`
+only (handle or numeric) with a public fallback. C12: do not set
+`CF_ANALYTICS_TOKEN`; analytics stay off (no beacon). The alert id is a
+private chat. Outage messages go there, not to the public channel. Do not
+point it at `@labledgerdesk`. Worker secrets are pushed by
+`deploy-worker.yml` on any `cloudflare/**` change. `INGEST_SECRET` is
+unused and should not be recreated.
 
 ## Known small debts
 

@@ -62,15 +62,10 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # C6: TELEGRAM_CHANNEL_URL is not a set secret. tg.mjs resolves the
-          # channel from TELEGRAM_CHAT_ID and falls back to the public channel,
-          # so passing an empty value here is the same as not passing it. Keep
-          # the name wired so the day a channel secret is added, nothing else
-          # has to change; leaving it silently absent was the original bug.
-          TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
-          # C12: Cloudflare Web Analytics token. Free, no cookie, and the CSP
-          # only widens for it when this is set. Leave the secret unset to keep
-          # analytics off — the build handles an empty token.
+          # C6: automation uses TELEGRAM_CHAT_ID only. Do not pass
+          # TELEGRAM_CHANNEL_URL — it is not required and is unused in code.
+          # C12: keep analytics OFF — do not set CF_ANALYTICS_TOKEN. No
+          # beacon ships when the token is absent; leave the secret unset.
           CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/build-desk.mjs
@@ -109,7 +104,6 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
           TELEGRAM_WEBHOOK_URL: ${{ secrets.TELEGRAM_WEBHOOK_URL }}
           DESK_WORKER_URL: https://labledger-desk.halakou.workers.dev
           DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
@@ -120,7 +114,6 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/post-donate-announce.mjs
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
