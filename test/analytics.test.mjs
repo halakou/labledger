@@ -2,7 +2,7 @@ import test from "node:test";
 // Tests build into a throwaway OUT. The checkout's real dist-site holds long
 // paths the Windows test runner cannot always delete, so it never touches it.
 import { setOutForTests } from "../scripts/desk/config.mjs";
-setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url).toString("hex").slice(0, 8)));
+setOutForTests(join(tmpdir(), "desk-test-out-" + Buffer.from(import.meta.url + process.pid).toString("hex").slice(0, 12)));
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { join } from "node:path";
