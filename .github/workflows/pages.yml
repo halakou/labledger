@@ -62,7 +62,16 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # C6: TELEGRAM_CHANNEL_URL is not a set secret. tg.mjs resolves the
+          # channel from TELEGRAM_CHAT_ID and falls back to the public channel,
+          # so passing an empty value here is the same as not passing it. Keep
+          # the name wired so the day a channel secret is added, nothing else
+          # has to change; leaving it silently absent was the original bug.
           TELEGRAM_CHANNEL_URL: ${{ secrets.TELEGRAM_CHANNEL_URL }}
+          # C12: Cloudflare Web Analytics token. Free, no cookie, and the CSP
+          # only widens for it when this is set. Leave the secret unset to keep
+          # analytics off — the build handles an empty token.
+          CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/build-desk.mjs
       - name: Refuse a build that is not safe to publish
@@ -76,17 +85,26 @@ jobs:
           test -f dist-site/.well-known/security.txt
           ! grep -q "onclick=" dist-site/donate/index.html
       - name: Publish public site
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          wranglerVersion: "4.135.0"
-          command: deploy --config cloudflare/labledgerdesk.toml
-      - name: Publish pages.dev
+        # C8: Pages is the canonical public origin (labledgerdesk.pages.dev is
+        # the SITE_URL every canonical tag, the UA and the watchdog rely on),
+        # and the Worker static-assets deploy is its mirror. Both are published
+        # from this same dist-site directory on every run. Removing the Pages
+        # step would freeze the public hostname the moment this workflow run
+        # shipped, so it stays.
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
           command: pages deploy dist-site --project-name=labledgerdesk --branch=main --commit-dirty=true
+      - name: Mirror the site to Worker static assets
+        # C8: the second target is a mirror, not a second source of truth —
+        # same directory, same run. It is the origin the watchdog worker talks
+        # to, and it keeps serving if the Pages project is ever interrupted.
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4.135.0"
+          command: deploy --config cloudflare/labledgerdesk.toml
       - name: Post to Telegram after pages exist
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

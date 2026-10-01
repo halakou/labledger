@@ -147,7 +147,7 @@ for (const { pack, item } of fresh) {
       prev.headline = item.title.slice(0, 220);
       prev.dek = clip(item.summary, 158);
       prev.what = composeWhat(item.summary, pack.lab.label, item.title, dateLabel);
-      prev.why = composeWhy(pack.lab.label, dateLabel, kind, topics, item.summary);
+      prev.why = composeWhy(pack.lab.label, dateLabel, kind, topics);
       prev.kind = kind;
       prev.topics = topics;
       prev.via = item.via || prev.via;
@@ -230,7 +230,7 @@ for (const { proj, items } of openPacks) {
         const topics = classifyTopics(item.title, item.summary);
         prev.dek = clipSentence(item.summary, 168) || prev.dek;
         prev.what = composeWhat(item.summary, proj.label, item.title, dateLabel);
-        prev.why = composeWhy(proj.label, dateLabel, kind, topics, item.summary);
+        prev.why = composeWhy(proj.label, dateLabel, kind, topics);
         prev.kind = kind;
         prev.topics = topics;
       }

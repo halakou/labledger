@@ -7,6 +7,7 @@ import { writeMarkSprite } from "./sprite.mjs";
 import { writeHome, writeLlms, writeOpenBoard, writeStatic } from "./site-home.mjs";
 import { writeOpenArchives, writeOpenRss } from "./open-archives.mjs";
 import { writeDonate } from "./donate.mjs";
+import { writeTerms } from "./terms.mjs";
 import { writeDigest } from "./site-digest.mjs";
 import { writeLearn } from "./learn.mjs";
 
@@ -26,6 +27,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeOpenArchives({ allOpen, today });
   await writeOpenRss(openBriefs);
   await writeDonate({ today, briefsCount: allBriefs.length, openCount: openBriefs.length, labsCount: LABS.length + OPEN_PROJECTS.length });
+  await writeTerms({ today });
   const guideCount = await writeLearn();
   const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
   await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });

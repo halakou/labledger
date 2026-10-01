@@ -15,6 +15,20 @@ import { write } from "./net.mjs";
 import { jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
 import { GUIDE_ENTRIES } from "./learn.mjs";
 
+// C19: the JSON-LD author url for a brief. A GitHub release's source URL is
+// already the project's own page (https://github.com/<org>/<repo>...), so
+// point at it directly; the old code reduced every github.com source to the
+// bare site root. Anything else keeps the publisher's host root, which is the
+// canonical home page for a lab.
+function authorUrl(source, sourceHost) {
+  if (!sourceHost) return String(source || SITE);
+  if (sourceHost === "github.com") {
+    const m = String(source || "").match(/^https:\/\/github\.com\/[^/]+\/[^/]+/i);
+    if (m) return m[0];
+  }
+  return "https://" + sourceHost + "/";
+}
+
 // Inline SVG activity chart for a lab page: one bar per week, built purely
 // from the briefs' own dates. No JS, no external assets, no data duplicated —
 // it renders the same for every visitor and costs nothing at runtime.
@@ -254,7 +268,11 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           articleSection: b.lab,
           keywords: [kindLabel(b.kind), ...(b.topics || []).map(topicLabel)].join(", "),
           image: [ogImg],
-          author: { "@type": "Organization", name: b.lab, url: sourceHost ? "https://" + sourceHost + "/" : b.source },
+          // C19: the author url used to fall back to the source host root, which
+          // for a GitHub release is "https://github.com/" — the site root, not
+          // the project. Prefer the repo page when the source itself is a repo
+          // page, and only then fall back to the host root.
+          author: { "@type": "Organization", name: b.lab, url: authorUrl(b.source, sourceHost) },
           publisher: {
             "@type": "NewsMediaOrganization",
             name: "Lab Ledger Desk",
@@ -368,6 +386,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/learn/", today],
     ...GUIDE_ENTRIES.map((g) => ["/learn/" + g.slug + "/", g.date]),
     ["/donate/", today],
+    ["/terms/", today],
     ["/open/", today],
     ["/open/rss.xml", today],
     ["/rss.xml", today],

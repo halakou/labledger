@@ -419,9 +419,20 @@ function sourceViewBox(raw, inner) {
 // from the *first <svg element after any declarations* to the last </svg>, then
 // additionally drop any nested <svg> elements left in the body.
 function extractSvgInner(raw) {
-  // Strip the XML prolog and DOCTYPE (a stray <!DOCTYPE inside an XML body is
-  // an illegal character and makes the browser reject the whole sprite).
-  let body = raw.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!DOCTYPE[\s\S]*?>/gi, "").replace(/<!--[\s\S]*?-->/g, "");
+  // C7 (CodeQL js/incomplete-multi-character-sanitization): the prolog, the
+  // DOCTYPE and the comments are removed with non-greedy single passes, so a
+  // crafted document can leave fragments that collapse back into a construct
+  // once the pieces land next to each other. Loop until the body stops
+  // changing, which closes the recombination class.
+  let body = raw;
+  for (let i = 0; i < 8; i += 1) {
+    const next = body
+      .replace(/<\?xml[\s\S]*?\?>/g, "")
+      .replace(/<!DOCTYPE[\s\S]*?>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "");
+    if (next === body) break;
+    body = next;
+  }
   // The root element starts at the first "<svg" followed by ">" or whitespace.
   const startTag = body.search(/<svg[\s>]/i);
   if (startTag < 0) return { inner: "", viewBox: null };
@@ -478,18 +489,27 @@ function pathViewBox(inner, raw) {
 // up with no contrasting tile and invisible ink in dark mode. Move each class
 // fill onto its element as a fill attribute and drop the <style> block.
 function inlineStyleFills(inner) {
+  // C7 (js/incomplete-multi-character-sanitization): a single non-greedy pass
+  // can leave a style fragment that re-forms once the pieces land together.
+  // Loop the removal until the body stops changing, then loop the class-rule
+  // extraction the same way so a nested <style> cannot hide rules from it.
+  let body = inner;
+  for (let i = 0; i < 8; i += 1) {
+    const next = body.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ");
+    if (next === body) break;
+    body = next;
+  }
   const block = inner.match(/<style\b[^>]*>([\s\S]*?)<\/style>/i);
-  if (!block) return inner;
+  if (!block) return body;
   const rules = new Map();
   for (const r of block[1].matchAll(/\.([A-Za-z0-9_-]+)\s*\{([^}]*)\}/g)) {
     const fill = r[2].match(/fill\s*:\s*(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\s*(?:;|$|\s)/);
     if (fill) rules.set(r[1], fill[1]);
   }
-  const out = inner.replace(/<style\b[^>]*>[\s\S]*?<\/style>/i, "");
-  if (!rules.size) return out;
+  if (!rules.size) return body;
   // Walk element tags so a fill is only added where the element does not already
   // carry one — a duplicate fill attribute would make the document invalid XML.
-  return out.replace(/<([A-Za-z][\w:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g, (tag, name, attrs) => {
+  return body.replace(/<([A-Za-z][\w:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g, (tag, name, attrs) => {
     const cls = attrs.match(/class="([^"]*)"/);
     if (!cls) return tag;
     let fill = null;

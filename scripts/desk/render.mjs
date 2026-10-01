@@ -67,6 +67,14 @@ export const DESK_MARK_SVG =
 export const CSS_NAME =
   "styles-" + createHash("sha256").update(CSS).digest("hex").slice(0, 12) + ".css";
 
+export let ANALYTICS_TOKEN = String(process.env.CF_ANALYTICS_TOKEN || "").trim();
+export const ANALYTICS_HOST = "https://static.cloudflareinsights.com";
+// C12: the beacon is opt-in via the CF_ANALYTICS_TOKEN env var, but a build or
+// a test needs to be able to set it after import too. ESM named exports are
+// live bindings, so a caller that imports ANALYTICS_TOKEN sees this change.
+export function setAnalyticsToken(token) {
+  ANALYTICS_TOKEN = String(token || "").trim();
+}
 let spritePath = "/sprite.svg";
 let cssPath = "/" + CSS_NAME;
 
@@ -179,11 +187,12 @@ export const SEARCH_SCRIPT =
   "}" +
   "var live=document.getElementById('desk-live');" +
   "if(live){" +
+  "live.textContent='UNKNOWN';" +
   "fetch('/desk-status.json').then(function(r){return r.json();}).then(function(d){" +
-  "if(!d||!d.builtAt)return;" +
+  "if(!d||!d.builtAt){live.textContent='STALE?';return;}" +
   "var mins=Math.max(0,Math.round((Date.now()-Date.parse(d.builtAt))/60000));" +
   "live.textContent=mins<2?'LIVE':mins+' MIN';" +
-  "}).catch(function(){});" +
+  "}).catch(function(){live.textContent='OFFLINE';});" +
   "}" +
   "})();";
 export const SEARCH_SCRIPT_HASH = createHash("sha256")
@@ -239,10 +248,16 @@ export function shell({
     "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\">",
     "<link rel=\"manifest\" href=\"/manifest.webmanifest\">",
     "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Lab Ledger Desk\" href=\"", SITE, "/rss.xml\">",
-    "<link rel=\"preload\" href=\"" + spritePath + "\" as=\"image\" type=\"image/svg+xml\" crossorigin>",
+    // C11: the sprite is ~60KB of base64 marks, and it is only needed once the
+    // body's <use> references paint — never on the critical first render.
+    // preload made it block-style-blocking on every navigation, so fetch it
+    // with low priority and let the browser cache it for later pages instead.
+    "<link rel=\"preload\" href=\"" + spritePath + "\" as=\"image\" type=\"image/svg+xml\" crossorigin fetchpriority=\"low\">",
+    // C11: only the two faces the first paint actually needs are preloaded.
+    // The 600 weight of Source Sans is used for bold runs further down the
+    // page; it loads on demand from the same immutable /fonts/ cache entry.
     "<link rel=\"preload\" href=\"/fonts/fraunces-600.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
     "<link rel=\"preload\" href=\"/fonts/source-sans-3-400.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
-    "<link rel=\"preload\" href=\"/fonts/source-sans-3-600.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>",
     "<link rel=\"stylesheet\" href=\"" + cssPath + "\">",
     "<meta property=\"og:site_name\" content=\"Lab Ledger Desk\">",
     "<meta property=\"og:type\" content=\"", esc(ogType), "\">",
@@ -259,6 +274,11 @@ export function shell({
     "<meta name=\"twitter:image\" content=\"", esc(absImage), "\">",
     "<meta name=\"twitter:image:alt\" content=\"", esc(title), "\">",
     extra,
+    // C12: Cloudflare Web Analytics, the free beacon that needs no script-src
+    // entry beyond itself and no cookie. Served only when the site has a
+    // public analytics token; without one this is an empty string and the CSP
+    // stays as strict as before.
+    (ANALYTICS_TOKEN ? "<script defer async src=\"https://static.cloudflareinsights.com/beacon.min.js\" data-cf-beacon='{\"token\":\"" + ANALYTICS_TOKEN + "\",\"spa\":false}'></script>" : ""),
     "</head><body>" + SKIP_LINK + VECTOR_MARKS +
       "<header class=\"desk-header\"><div class=\"header-inner\">" +
       "<a class=\"brand\" href=\"/\">" + DESK_MARK_SVG +
@@ -274,8 +294,8 @@ export function shell({
     Array.isArray(body) ? body.join("") : String(body || ""),
     "</main>",
     "<footer class=\"status-dock\"><div class=\"dock-inner\">" +
-    "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span> <span id=\"desk-live\" class=\"desk-live\">LIVE</span></span></div>" +
-    "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"" +
+    "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span> <span id=\"desk-live\" class=\"desk-live\">UNKNOWN</span></span></div>" +
+    "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"/terms/\">Terms</a><a href=\"" +
     esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a></nav>" +
     "</div></footer></div>" +
     "<nav class=\"mobile-dock\" aria-label=\"Mobile\">" + navHtml(path) + "</nav>",

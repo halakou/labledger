@@ -63,13 +63,27 @@ export function decode(text) {
 }
 
 export function strip(text) {
-  return decode(text)
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<img\b[^>]*>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // C7 (CodeQL js/bad-tag-filter, js/incomplete-multi-character-sanitization):
+  // one non-greedy pass can leave a tag re-formed behind, because removing
+  // "<script>alert()</script>" from "<scr<script>ipt>alert()</script>ipt>"
+  // collapses the leftovers back into "<script>". Looping the strip until the
+  // text stops changing closes the recombination class. The guard for an
+  // unterminated tag ("<img src=x" with no ">") closes the other bypass:
+  // "<[^>]+>" cannot match a tag that never ends.
+  let out = decode(text);
+  for (let i = 0; i < 8; i += 1) {
+    const next = out
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<img\b[^>]*>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/<[^>]*$/, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (next === out) break;
+    out = next;
+  }
+  return out;
 }
 
 export function tag(chunk, name) {
@@ -243,20 +257,18 @@ export function composeWhat(summary, lab, headline, dateLabel) {
   return clipSentence(body, 320);
 }
 
-export function composeWhy(lab, dateLabel, kind, topics, summary) {
+// C3: the board's "Why it matters" line is not a place for invented analysis.
+// The old composeWhy rotated five near-identical restatements of lab/date/kind
+// ("Filed as…", "…posted…") which read machine-generated and carried no "why".
+// What the desk actually knows from the allow-listed source is (a) the lab,
+// (b) the date, (c) the filing kind, and (d) the topics the desk itself
+// tagged the brief with. Each of those is stated once, plainly. Nothing is
+// inferred, no claim is expanded beyond the source's own words — the
+// substantive "what" lives in composeWhy's sibling composeWhat.
+export function composeWhy(lab, dateLabel, kind, topics) {
   const label = kind === "launch" ? "a launch filing" : kind === "research" ? "a research filing" : "a public note";
-  const topicBit = topics.length ? " Tagged " + topics.map(topicLabel).join(" / ") + "." : "";
-  const seed = String(lab || "") + "|" + String(dateLabel || "") + "|" + String(kind || "");
-  let n = 0;
-  for (let i = 0; i < seed.length; i += 1) n = (n + seed.charCodeAt(i) * (i + 1)) % 5;
-  const lines = [
-    "Filed as " + label + " from " + lab + ", " + dateLabel + ".",
-    lab + " posted " + label + " on " + dateLabel + ".",
-    "This is " + label + " from " + lab + " dated " + dateLabel + ".",
-    "Desk record: " + label + " by " + lab + " (" + dateLabel + ").",
-    lab + " \u00b7 " + dateLabel + " \u00b7 " + label + ".",
-  ];
-  return lines[n] + topicBit;
+  const topicBit = topics.length ? " The desk tags this brief " + topics.map((t) => topicLabel(t)).join(" / ") + "." : "";
+  return "Filed as " + label + " from " + lab + ", " + dateLabel + "." + topicBit;
 }
 
 const VERSION_TITLE = /^v?\d+\.\d+[\w.+-]*$/i;

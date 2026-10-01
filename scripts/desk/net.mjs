@@ -27,31 +27,89 @@ import {
 } from "./core.mjs";
 import { OPEN_BY_ID } from "./config.mjs";
 
+// C13: two attempts with an exponential backoff. One retry covers the common
+// case (a connection reset mid-fetch, a 429 from a publisher's CDN) without
+// doubling the wall time of a healthy build, where every feed succeeds on the
+// first try and the loop exits before a delay.
+const FETCH_ATTEMPTS = 2;
+const FETCH_BACKOFF_MS = 800;
+
 export async function fetchHttps(url, accept, hosts) {
+  // C13: a single transient hiccup — a hung connection, a 429, a 5xx — made a
+  // whole feed vanish from the board until the next build. Retry the
+  // retryable ones with an exponential backoff, and never retry an
+  // allow-list rejection (that is a policy decision, not a network blip).
+  let lastErr;
+  for (let attempt = 0; attempt < FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetchOnce(url, accept, hosts);
+    } catch (err) {
+      lastErr = err;
+      if (!err.retryable || attempt === FETCH_ATTEMPTS - 1) throw err;
+      const ms = FETCH_BACKOFF_MS * 2 ** attempt;
+      runLog.push("retry " + url + " in " + ms + "ms (" + (err.message || err) + ")");
+      await new Promise((r) => setTimeout(r, ms));
+    }
+  }
+  throw lastErr;
+}
+
+function retryableError(message, status) {
+  const err = new Error(message);
+  // Only rate-limiting and server trouble are worth a retry. A 4xx (other than
+  // 429) is a real answer from the publisher and will answer the same way again.
+  err.retryable = status === 429 || (status >= 500 && status <= 599);
+  return err;
+}
+
+async function fetchOnce(url, accept, hosts) {
   // The allow-list is the only security boundary on intake. Fonts are vendored
   // in assets/fonts and copied by ensureFonts(); they never travel this path.
-  if (!hostAllowed(url, hosts)) throw new Error("off allowlist " + url);
-  const res = await fetch(url, {
-    headers: { "user-agent": UA, accept },
-    redirect: "manual",
-    signal: AbortSignal.timeout(12000),
-  });
+  if (!hostAllowed(url, hosts)) {
+    const err = new Error("off allowlist " + url);
+    err.retryable = false;
+    throw err;
+  }
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: { "user-agent": UA, accept },
+      redirect: "manual",
+      signal: AbortSignal.timeout(12000),
+    });
+  } catch (e) {
+    // A dropped connection, a DNS hiccup, or a timeout — transient by nature.
+    const err = retryableError(url + " " + (e?.message || "network error"));
+    err.retryable = true;
+    throw err;
+  }
   if (res.status >= 300 && res.status < 400) {
     const loc = res.headers.get("location") || "";
     const hop = new URL(loc, url);
     if (hop.protocol !== "https:") throw new Error("bad redirect");
     const nextHost = hop.hostname.replace(/^www\./, "");
     const originHost = hostOf(url);
-    if (!hosts.includes(nextHost) && nextHost !== originHost) throw new Error("redirect off allowlist");
-    const again = await fetch(hop.toString(), {
-      headers: { "user-agent": UA, accept },
-      redirect: "manual",
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!again.ok) throw new Error(url + " " + again.status);
+    if (!hosts.includes(nextHost) && nextHost !== originHost) {
+      const err = new Error("redirect off allowlist");
+      err.retryable = false;
+      throw err;
+    }
+    let again;
+    try {
+      again = await fetch(hop.toString(), {
+        headers: { "user-agent": UA, accept },
+        redirect: "manual",
+        signal: AbortSignal.timeout(12000),
+      });
+    } catch (e) {
+      const err = retryableError(url + " " + (e?.message || "network error"));
+      err.retryable = true;
+      throw err;
+    }
+    if (!again.ok) throw retryableError(url + " " + again.status, again.status);
     return { res: again, url: hop.toString() };
   }
-  if (!res.ok) throw new Error(url + " " + res.status);
+  if (!res.ok) throw retryableError(url + " " + res.status, res.status);
   return { res, url };
 }
 
@@ -246,7 +304,7 @@ export function makeBrief(pack, item, ledgerId) {
   const topics = classifyTopics(headline, summary);
   const dek = clipSentence(summary, 168) || clip(pack.lab.label + " published \u201c" + headline + ".\u201d", 158);
   const what = composeWhat(summary, pack.lab.label, headline, dateLabel);
-  const why = composeWhy(pack.lab.label, dateLabel, kind, topics, summary);
+  const why = composeWhy(pack.lab.label, dateLabel, kind, topics);
   return {
     lab: pack.lab.label,
     labId: pack.lab.id,
