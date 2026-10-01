@@ -11,7 +11,8 @@ import { dirname, join } from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { MARK_DIR, OUT } from "./core.mjs";
+import { MARK_DIR } from "./core.mjs";
+import { getOut } from "./config.mjs";
 import { isHouseGlyph } from "./fetch-mark.mjs";
 import { setAssets } from "./render.mjs";
 
@@ -749,13 +750,13 @@ export async function writeMarkSprite(markIds) {
   parts.push(...usable);
   parts.push("</svg>");
   const body = parts.join("");
-  await mkdir(OUT, { recursive: true });
+  await mkdir(getOut(), { recursive: true });
   // Content-addressed name: the hash IS the cache key. The HTML that
   // references it revalidates on every visit, so a deploy that changes any
   // logo is visible immediately, while a returning browser that already has
   // these exact bytes never refetches them.
   const name = "sprite-" + createHash("sha256").update(body).digest("hex").slice(0, 12) + ".svg";
-  await writeFile(join(OUT, name), body);
+  await writeFile(join(getOut(), name), body);
   const publicPath = "/" + name;
   setAssets({ sprite: publicPath });
   return publicPath;

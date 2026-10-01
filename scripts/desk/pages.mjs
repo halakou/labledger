@@ -1,6 +1,6 @@
 import { mkdir, rm } from "node:fs/promises";
-import { CHANNEL, LABS, OUT, runLog } from "./core.mjs";
-import { OPEN_PROJECTS } from "./config.mjs";
+import { CHANNEL, LABS, runLog } from "./core.mjs";
+import { OPEN_PROJECTS, getOut } from "./config.mjs";
 import { writeArchives } from "./archives.mjs";
 import { writeOgCards } from "./ogcard.mjs";
 import { writeMarkSprite } from "./sprite.mjs";
@@ -12,10 +12,10 @@ import { writeDigest } from "./site-digest.mjs";
 import { writeLearn } from "./learn.mjs";
 
 export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap }) {
-  await rm(OUT, { recursive: true, force: true });
-  await mkdir(OUT, { recursive: true });
-  await mkdir(OUT + "/fonts", { recursive: true });
-  await mkdir(OUT + "/marks", { recursive: true });
+  await rm(getOut(), { recursive: true, force: true });
+  await mkdir(getOut(), { recursive: true });
+  await mkdir(getOut() + "/fonts", { recursive: true });
+  await mkdir(getOut() + "/marks", { recursive: true });
   const ogOk = await writeStatic(fontNames);
   // The sprite must be written after OUT is cleared, and it reads the fetched
   // marks, so build it here rather than in build-desk.mjs.

@@ -1,4 +1,4 @@
-import { CHANNEL, OUT, SITE, esc, runLog } from "./core.mjs";
+import { CHANNEL, SITE, esc, runLog } from "./core.mjs";
 import { write } from "./net.mjs";
 import { jsonLdScript, shell } from "./render.mjs";
 

@@ -6,7 +6,6 @@ import {
   LAB_BY_ID,
   MARK_MAX,
   OG_CANDIDATES,
-  OUT,
   PER_FEED,
   UA,
   classifyKind,
@@ -25,7 +24,7 @@ import {
   timeDatetime,
   ymd,
 } from "./core.mjs";
-import { OPEN_BY_ID } from "./config.mjs";
+import { OPEN_BY_ID, getOut } from "./config.mjs";
 
 // C13: two attempts with an exponential backoff. One retry covers the common
 // case (a connection reset mid-fetch, a 429 from a publisher's CDN) without
@@ -277,7 +276,7 @@ export async function ensureFonts() {
 }
 
 export async function write(path, content) {
-  const full = join(OUT, path);
+  const full = join(getOut(), path);
   await mkdir(dirname(full), { recursive: true });
   await writeFile(full, content);
 }
@@ -286,7 +285,7 @@ export async function copyOg() {
   for (const p of OG_CANDIDATES) {
     try {
       await access(p);
-      await copyFile(p, join(OUT, "og.jpg"));
+      await copyFile(p, join(getOut(), "og.jpg"));
       return true;
     } catch {}
   }

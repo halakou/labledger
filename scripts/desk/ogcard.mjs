@@ -1,7 +1,8 @@
 import { deflateSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { MARK_DIR, OUT, kindLabel } from "./core.mjs";
+import { MARK_DIR, kindLabel } from "./core.mjs";
+import { getOut } from "./config.mjs";
 import { blitContain, decodeMark } from "./raster.mjs";
 
 const W = 1200;
@@ -206,7 +207,7 @@ export async function writeOgCard(brief) {
   drawText(rgb, "LAB LEDGER DESK", 116, 560, 3, MUTED);
   fillRect(rgb, 56, 600, 180, 6, r, g, b);
   const rel = "og" + brief.path.replace(/\/$/, "") + ".png";
-  const full = join(OUT, rel);
+  const full = join(getOut(), rel);
   await mkdir(dirname(full), { recursive: true });
   await writeFile(full, pngBuffer(rgb));
   return "/" + rel;

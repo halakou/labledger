@@ -6,13 +6,12 @@ import {
   FONT_DIR,
   KINDS,
   LABS,
-  OUT,
   SITE,
   TOPICS,
   clip,
   esc,
 } from "./core.mjs";
-import { OPEN_PROJECTS } from "./config.mjs";
+import { OPEN_PROJECTS, getOut } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
 import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml, shell,
   SEARCH_SCRIPT_HASH,
@@ -50,7 +49,7 @@ export async function writeStatic(fontNames) {
   await write(CSS_NAME, CSS);
   for (const name of fontNames) {
     const src = join(FONT_DIR, name);
-    if (await exists(src)) await copyFile(src, join(OUT, "fonts", name));
+    if (await exists(src)) await copyFile(src, join(getOut(), "fonts", name));
   }
   // C18: the manifest needs real square PNGs at 192 and 512, not a 1200x630
   // social image stretched into a rounded icon. They are generated in the repo
@@ -58,7 +57,7 @@ export async function writeStatic(fontNames) {
   const repoAssets = join(here(), "..", "..", "assets");
   for (const name of ["icon-192.png", "icon-512.png"]) {
     const iconSrc = join(repoAssets, name);
-    if (await exists(iconSrc)) await copyFile(iconSrc, join(OUT, name));
+    if (await exists(iconSrc)) await copyFile(iconSrc, join(getOut(), name));
   }
   await write(
     "favicon.svg",
