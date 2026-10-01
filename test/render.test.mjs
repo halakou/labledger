@@ -129,3 +129,16 @@ test("the critical first paint does not preload the heavy sprite or the second s
   assert.ok(/fetchpriority="low"/.test(sprite), "the sprite is low priority");
   assert.ok(/source-sans-3-400/.test(html), "the body weight is still preloaded");
 });
+
+test("glass gallery CSS unlocks mbadge size over house.css 38px pin", async () => {
+  const { CSS } = await import("../scripts/desk/render.mjs");
+  const flat = CSS.replace(/\r/g, "");
+  // design1 must clear the house 38px pin or glass 68px tiles clip inside the badge.
+  assert.match(flat, /\.mbadge\{[^}]*width:auto;[^}]*height:auto;/);
+  assert.match(flat, /\.mbadge\{[^}]*overflow:visible;/);
+  // Sprite rule must beat house .mbadge .mark.xs .mark-sprite{38px}.
+  assert.match(flat, /\.mbadge \.mark\.xs \.mark-sprite,\.mbadge \.mark-sprite\{width:46px;height:46px\}/);
+  // Gloss overflow belongs on the tile, not the badge wrapper.
+  assert.equal(/\.frontier-mark \.mark,\.ledger-mark-tile,\.mbadge,\.markrow \.mark\{/.test(flat), false);
+  assert.match(flat, /\.frontier-mark \.mark,\.ledger-mark-tile,\.markrow \.mark\{/);
+});
