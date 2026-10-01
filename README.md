@@ -101,12 +101,10 @@ explicit decision.
   interrupted.
 - **Worker `labledger-desk`** (`cloudflare/wrangler.toml`) — the watchdog, KV
   `DESK`, the Telegram bot.
-- **D1 `labledger`** (uuid `396168a9-a3c2-469b-9ead-df86570f3b04`) — created
-  early, never bound, zero tables. It is a reserve, not a dependency: no code
-  reads it and no `wrangler.toml` references it. To actually remove it, run
-  `wrangler d1 delete labledger --config cloudflare/wrangler.toml` and confirm
-  the prompt — it is not deleted here because deleting state is a one-way door.
-  Do not create a binding to it in the meantime.
+- **D1 `labledger`** — removed (C9). The experimental unbound database
+  (`396168a9-a3c2-469b-9ead-df86570f3b04`) was never bound to any Worker and
+  is deleted. Do not recreate it unless a future feature explicitly needs D1
+  and lands a binding + migration in-repo.
 - **`INGEST_SECRET`** — unused worker secret, deliberately not recreated.
 
 The shared free tier carries all of it. If a quota ever binds, the first place
@@ -115,23 +113,11 @@ than "free forever" for exactly that reason (C4).
 
 ## Custom domain
 
-The desk is served from `labledgerdesk.pages.dev`, a platform domain. Attaching
-a custom domain is free in Cloudflare but requires owning one, which this
-project does not, so nothing is attached. The path if that changes is short and
-costs nothing beyond the domain itself:
-
-1. Point the domain at Cloudflare (add the zone, or the existing nameservers,
-   and wait for DNS to resolve).
-2. In the Cloudflare dashboard: **Workers & Pages → labledgerdesk → Custom
-   domains → Set up a custom domain**. HTTPS is issued automatically.
-3. Set `SITE_URL` in the three `env:` blocks of `pages.yml`, in
-   `cloudflare/wrangler.toml` `[vars]`, and in the `config.mjs` default.
-   Canonical URLs, OG tags, the sitemap and RSS all derive from it — see
-   "Change the domain" in `AGENTS.md`.
-4. Rebuild once. Redirect the old `pages.dev` host last, after the new origin
-   serves the same paths — the Worker dispatch and the Telegram links both
-   point at `SITE_URL`, so a redirect set before the change strands the
-   watchdog until the next build.
+C10: **stay on `labledgerdesk.pages.dev`.** Do not buy `labledger.com` or any
+other paid domain for this project. The platform hostname is the canonical
+`SITE_URL`. Attaching a custom domain later would still be free in Cloudflare
+once a domain is owned, but purchasing one is explicitly out of scope — keep
+pages.dev.
 
 ## What is in the repo
 

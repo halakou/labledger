@@ -411,9 +411,9 @@ export function handleFrom(raw) {
   return "";
 }
 
+// C6: channel URL from TELEGRAM_CHAT_ID handle or hard-coded fallback.
+// TELEGRAM_CHANNEL_URL is unused.
 export function channelUrl() {
-  const explicit = handleFrom(process.env.TELEGRAM_CHANNEL_URL || "");
-  if (explicit) return "https://t.me/" + explicit;
   const fromChat = handleFrom(process.env.TELEGRAM_CHAT_ID || "");
   if (fromChat) return "https://t.me/" + fromChat;
   return "https://t.me/labledgerdesk";

@@ -20,8 +20,9 @@ export function handleFrom(raw) {
   return "";
 }
 
-// Resolve the chat id the bot posts to: an explicit handle wins, then an
-// explicit numeric id, then the channel url, then the public fallback.
+// C6: resolve chat from TELEGRAM_CHAT_ID only (handle or numeric), then
+// the public fallback. TELEGRAM_CHANNEL_URL is unused (optional channel
+// arg remains for unit tests of handle parsing).
 export function chatIdOf({ chat = "", channel = "" } = {}) {
   const c = String(chat || "").trim();
   const h = handleFrom(c);
@@ -33,7 +34,7 @@ export function chatIdOf({ chat = "", channel = "" } = {}) {
 }
 
 export function chatIdFromEnv(env) {
-  return chatIdOf({ chat: env.TELEGRAM_CHAT_ID, channel: env.TELEGRAM_CHANNEL_URL });
+  return chatIdOf({ chat: env.TELEGRAM_CHAT_ID });
 }
 
 export function channelUrlOf({ chat = "", channel = "" } = {}) {
@@ -45,7 +46,7 @@ export function channelUrlOf({ chat = "", channel = "" } = {}) {
 }
 
 export function channelUrlFromEnv(env) {
-  return channelUrlOf({ chat: env.TELEGRAM_CHAT_ID, channel: env.TELEGRAM_CHANNEL_URL });
+  return channelUrlOf({ chat: env.TELEGRAM_CHAT_ID });
 }
 
 // Never log a numeric chat id; it is a private identifier.
