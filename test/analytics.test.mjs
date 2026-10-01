@@ -35,7 +35,9 @@ test("with a CF_ANALYTICS_TOKEN the beacon ships and the CSP admits it", async (
   await fs.mkdir(getOut(), { recursive: true });
   await writeLlms([], []);
   const headers = await fs.readFile(join(getOut(), "_headers"), "utf8");
-  assert.ok(headers.includes("https://static.cloudflareinsights.com"), "the CSP admits the beacon host");
+  // Match the full directive, not a bare substring of the host: a prefix check
+  // here is exactly the shape CodeQL's incomplete-url-substring rule flags,
+  // and the anchored regex is the stronger assertion anyway.
   assert.ok(/script-src 'self' 'sha256-[^']+' https:\/\/static\.cloudflareinsights\.com/.test(headers), "script-src lists the beacon");
 
   setAnalyticsToken("");
