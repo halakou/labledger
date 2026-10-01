@@ -34,7 +34,6 @@ test("the privacy page is written and is reachable at /privacy/", async () => {
   assert.ok(html, "the page is written, not skipped");
   assert.ok(/<h1[^>]*>Privacy<\/h1>/.test(html), "it has its own h1");
   assert.ok(/privacy/i.test(html), "it is about privacy");
-  await rm(OUT, { recursive: true, force: true });
 });
 
 test("the privacy page states plainly that the desk collects nothing", async () => {
@@ -48,7 +47,6 @@ test("the privacy page states plainly that the desk collects nothing", async () 
   assert.ok(/no cookie/i.test(html), "it says there is no cookie");
   assert.ok(/no advertising|no third-party/i.test(html), "it names the absence of advertising or third-party scripts");
   assert.ok(!/may collect|we use analytics|advertising partners/i.test(html), "no hedging about collection");
-  await rm(OUT, { recursive: true, force: true });
 });
 
 test("the privacy page points at the same removal address as the terms page", () => {
@@ -75,5 +73,4 @@ test("the privacy page is joined into the footer, the sitemap and llms.txt", asy
   // dock link if the join landed.
   assert.ok(/\/privacy\/">Privacy<\/a>/.test(html), "the dock nav links /privacy/");
   assert.ok(/\/terms\/">Terms<\/a>/.test(html), "and /terms/ is still next to it");
-  await rm(OUT, { recursive: true, force: true });
 });

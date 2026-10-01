@@ -69,9 +69,15 @@ test("the /open/ board builder renders what it is given — cleanup happens upst
   // renders dirty (proving the renderer is not silently fixing anything) and a
   // clean input renders clean (proving the page itself carries no trailer of
   // its own).
-  const out = await mkdtemp(join(tmpdir(), "desk-open-dirty-"));
-  const setOut = (await mod("scripts/desk/config.mjs")).setOutForTests;
-  setOut(out);
+  // Reuse the process's own OUT via getOut() instead of mkdtemp + setOut():
+  // node --test runs every suite in one process, so setOutForTests() here would
+  // leak into the suites that run after this one — the terms suite would find
+  // itself writing into a directory with no fonts/ subtree.
+  const { getOut } = await mod("scripts/desk/config.mjs");
+  const out = getOut();
+  const fs = await import("node:fs/promises");
+  await fs.rm(out, { recursive: true, force: true });
+  await fs.mkdir(out + "/fonts", { recursive: true });
   const { writeOpenBoard } = await mod("scripts/desk/site-home.mjs");
   const dirty = {
     headline: "v0.31.0rc1: [CI/Build] Skip the snapshot runtime",
@@ -97,11 +103,10 @@ test("the /open/ board builder renders what it is given — cleanup happens upst
     publishedAt: "2026-09-25T00:00:00.000Z",
   };
   await writeOpenBoard({ openBriefs: [dirty], today: "2026-10-01" });
-  const dirtyHtml = await readFile(join(out, "open/index.html"), "utf8");
+  const dirtyHtml = await fs.readFile(join(out, "open/index.html"), "utf8");
   assert.ok(/signed-off-by/i.test(dirtyHtml), "the renderer passes a dirty what/ through as-is — the strip must happen upstream");
   await writeOpenBoard({ openBriefs: [clean], today: "2026-10-01" });
-  const cleanHtml = await readFile(join(out, "open/index.html"), "utf8");
+  const cleanHtml = await fs.readFile(join(out, "open/index.html"), "utf8");
   assert.ok(!/signed-off-by/i.test(cleanHtml), "a clean brief renders a clean page");
   assert.ok(/762 commits/.test(cleanHtml), "the clean release note is rendered");
-  await rm(out, { recursive: true, force: true });
 });
