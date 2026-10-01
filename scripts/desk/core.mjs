@@ -87,21 +87,28 @@ export function stripCommitTrailers(text) {
 }
 
 export function strip(text) {
-  // C7 (CodeQL js/bad-tag-filter): the classic bypass is a nested tag —
-  // "<scr<script>ipt>" collapses back into "<script>" once the inner pair is
-  // removed. The CodeQL-accepted shape is a greedy match from an anchored
-  // start ("<" at the beginning of a tag) through the *last* close, so there
-  // is no leftover fragment left to recombine; the loop then repeats the whole
-  // pass until the text is stable. The trailing `[^>]*$` guard removes an
-  // unterminated tag ("<img src=x") that a `[^>]+>` match cannot see.
+  // C7 (CodeQL js/bad-tag-filter): the classic bypasses are a nested tag —
+  // "<scr<script>ipt>" collapsing back into "<script>" — and a malformed close
+  // like "</script foo=\"bar\">", which a strict "</script>" match misses but a
+  // browser still accepts. CodeQL flags a literal that names a tag and removes
+  // it, and its recommendation is a parser library, which this repo cannot take
+  // (zero dependencies is an invariant).
+  //
+  // The compromise that keeps both properties: name the tag, but close the
+  // bypass CodeQL actually describes by matching the close generically, so a
+  // malformed "</script foo=...>" is still consumed, and loop the whole pass
+  // so a nested tag's inner removal is caught on the next iteration. Only the
+  // script/style families drop their bodies, because those are the only
+  // element types whose body is code rather than prose; everything else keeps
+  // its text and loses only the tags.
   let out = decode(text);
   for (let i = 0; i < 8; i += 1) {
     const next = out
-      .replace(/<script\b[\s\S]*<\/script>/gi, " ")
-      .replace(/<style\b[\s\S]*<\/style>/gi, " ")
-      .replace(/<img\b[^>]*>/gi, " ")
+      .replace(/<script\b[^<>]*>[\s\S]*?<\/[^<>]*>/gi, " ")
+      .replace(/<style\b[^<>]*>[\s\S]*?<\/[^<>]*>/gi, " ")
       .replace(/<[^<>]*>/g, " ")
-      .replace(/<[^>]*$/, " ")
+      .replace(/<[^<>]*$/, " ")
+      .replace(/--!>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
     if (next === out) break;

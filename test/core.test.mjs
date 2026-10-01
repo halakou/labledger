@@ -52,6 +52,23 @@ test("strip removes tags but keeps the text", () => {
   assert.equal(strip("  spaced   out  "), "spaced out");
 });
 
+test("strip closes the two bypasses CodeQL's bad-tag-filter names", () => {
+  // The nested-tag bypass: removing the inner pair re-forms the outer tag.
+  // "<scr<script>ipt>" -> inner "<script>" gone -> "scr" + "ipt>" -> "<script>"
+  // unless the loop repeats and catches the recombination.
+  assert.ok(!/<\s*script/i.test(strip("<scr<script>ipt>alert(1)</script>ipt>")), "a nested tag cannot re-form");
+  assert.ok(!/<\s*style/i.test(strip("<sty<style>le>x{}</style>le>")), "nor a nested style");
+  // The malformed-close bypass, straight out of the CodeQL query help: browsers
+  // accept "</scriptfoo=\"bar\">" as a script end tag, so a pattern that only
+  // matches a clean "</script>" leaves the script body behind. Matching the
+  // close generically as "</[^<>]*>" is what closes it.
+  assert.equal(strip("<script>alert(1)</scriptfoo=\"bar\">"), "", "a malformed close still ends the element");
+  // An unterminated tag has no ">" for a tag match to find.
+  assert.equal(strip("<img src=x onerror=alert(1)"), "", "an unterminated tag is cleared");
+  // Text between elements survives — this is a news desk, prose is the product.
+  assert.equal(strip("<p>one</p><p>two</p>"), "one two");
+});
+
 test("parseFeed reads RSS items and forces https links", () => {
   const xml =
     "<rss><channel><item><title>A launch</title>" +
