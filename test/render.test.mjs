@@ -115,3 +115,17 @@ test("shell ships a mobile dock and a live badge hook", () => {
   assert.ok(html.includes('id="desk-live"'));
   assert.ok(SEARCH_SCRIPT.includes("/desk-status.json"));
 });
+
+test("the critical first paint does not preload the heavy sprite or the second sans weight", () => {
+  // C11: the sprite is ~60KB of base64 marks and the 600 Source Sans face is
+  // only used by bold runs below the fold. Neither belongs in the head's
+  // preload set, which is what makes the first render block on them.
+  const html = shell({ title: "t", description: "d", path: "/", body: "" });
+  const preloads = html.match(/<link rel="preload"[^>]*>/g) || [];
+  const sources = preloads.map((p) => (p.match(/href="([^"]+)"/) || [])[1]);
+  assert.ok(!sources.some((s) => /source-sans-3-600/.test(s || "")), "the 600 weight is not preloaded");
+  const sprite = preloads.find((p) => /as="image"/.test(p));
+  assert.ok(sprite, "the sprite is still declared");
+  assert.ok(/fetchpriority="low"/.test(sprite), "the sprite is low priority");
+  assert.ok(/source-sans-3-400/.test(html), "the body weight is still preloaded");
+});

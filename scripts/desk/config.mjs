@@ -1,7 +1,16 @@
 import { join } from "node:path";
 
 export const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
-export const OUT = "dist-site";
+// Tests build into a scratch directory because a Windows checkout holds a
+// long dist-site path the test runner cannot always remove. The real build
+// leaves this unset and writes dist-site, exactly as before. OUT is a let, so
+// setOutForTests can move it and every importer sees the new value (ESM live
+// bindings) without touching process.env after the module graph has loaded.
+export let OUT = process.env.DESK_OUT_DIR || "dist-site";
+export const getOut = () => OUT;
+export const setOutForTests = (dir) => {
+  OUT = dir;
+};
 export const AMP = "\x26";
 export const POSTED_FILE = ".desk-posted.json";
 export const QUEUE_FILE = ".desk-queue.json";

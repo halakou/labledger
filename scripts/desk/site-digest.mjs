@@ -28,6 +28,10 @@ export const METHOD_SECTIONS = [
     p: "Launch, Research, and Note are content types. LLM, Hardware, Medical, Safety, Open models, Agents, Science, and Enterprise are topic tags. They are keyword matches against the official title and summary. They are not extra reporting.",
   },
   {
+    h: "Language",
+    p: "The desk publishes in English only. Every brief, tag, and page is written in English and the document language is declared as English, so screen readers and search engines never guess. There is no Persian or right-to-left edition yet; if one arrives it will be a separate route with its own language declaration, not a toggle.",
+  },
+  {
     h: "Weekly digest",
     p: "The week page lists this week\u2019s filed briefs. There is no sign-up form and no mailbox. Follow RSS or Telegram if you want the same record without opening the site every day.",
   },

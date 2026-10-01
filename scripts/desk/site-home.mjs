@@ -1,24 +1,34 @@
 import { copyFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   CHANNEL,
   FONT_DIR,
   KINDS,
   LABS,
-  OUT,
   SITE,
   TOPICS,
   clip,
   esc,
 } from "./core.mjs";
-import { OPEN_PROJECTS } from "./config.mjs";
+import { OPEN_PROJECTS, getOut } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
 import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml, shell,
   SEARCH_SCRIPT_HASH,
+  ANALYTICS_HOST,
+  ANALYTICS_TOKEN,
 } from "./render.mjs";
+// C12: read the token through this getter rather than copying it at import
+// time, so a token set later in the process (a test, a one-off build) still
+// reaches the CSP. render.mjs holds the live binding.
+const analyticsToken = () => ANALYTICS_TOKEN;
 import { GUIDE_ENTRIES } from "./learn.mjs";
 
 export const HOME_MAX = 20;
+
+// This module lives at scripts/desk/, so the repo's own assets/ dir is two
+// levels up. Used for the PWA icons, which are committed rather than fetched.
+const here = () => dirname(fileURLToPath(import.meta.url));
 
 export const HOME_FAQ = [
   {
@@ -39,7 +49,15 @@ export async function writeStatic(fontNames) {
   await write(CSS_NAME, CSS);
   for (const name of fontNames) {
     const src = join(FONT_DIR, name);
-    if (await exists(src)) await copyFile(src, join(OUT, "fonts", name));
+    if (await exists(src)) await copyFile(src, join(getOut(), "fonts", name));
+  }
+  // C18: the manifest needs real square PNGs at 192 and 512, not a 1200x630
+  // social image stretched into a rounded icon. They are generated in the repo
+  // (see scripts/make-icons.mjs) so nothing is downloaded at build time.
+  const repoAssets = join(here(), "..", "..", "assets");
+  for (const name of ["icon-192.png", "icon-512.png"]) {
+    const iconSrc = join(repoAssets, name);
+    if (await exists(iconSrc)) await copyFile(iconSrc, join(getOut(), name));
   }
   await write(
     "favicon.svg",
@@ -70,8 +88,11 @@ export async function writeStatic(fontNames) {
       background_color: "#08090a",
       theme_color: "#08090a",
       icons: [
+        // C18: the two square PNGs a PWA install prompt actually asks for.
+        { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         { src: "/favicon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-        { src: "/og.jpg", sizes: "1200x630", type: "image/jpeg", purpose: "any" },
       ],
     }),
   );
@@ -137,6 +158,7 @@ export async function writeLlms(briefs, openBriefs = []) {
       "- " + SITE + "/learn/ \u2014 field guide: original AI explainers",
       ...GUIDE_ENTRIES.map((g) => "- " + SITE + "/learn/" + g.slug + "/ \u2014 " + g.title),
       "- " + SITE + "/donate/ \u2014 support and cost ledger",
+      "- " + SITE + "/terms/ \u2014 house policy and removal requests",
       ...LABS.map((l) => "- " + SITE + "/lab/" + l.id + "/ \u2014 " + l.label + " archive"),
       ...OPEN_PROJECTS.map((p) => "- " + SITE + "/lab/" + p.id + "/ \u2014 " + p.label + " archive"),
       ...TOPICS.map((t) => "- " + SITE + "/topic/" + t.id + "/ \u2014 " + t.label),
@@ -172,7 +194,7 @@ export async function writeLlms(briefs, openBriefs = []) {
     "_headers",
     [
       "/*",
-      "  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-" + SEARCH_SCRIPT_HASH + "'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; manifest-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; trusted-types default; require-trusted-types-for 'script'",
+      "  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-" + SEARCH_SCRIPT_HASH + "'" + (analyticsToken() ? " " + ANALYTICS_HOST : "") + "; style-src 'self' 'unsafe-inline'; img-src 'self' data: " + (analyticsToken() ? ANALYTICS_HOST + " data:" : "") + "; font-src 'self'; manifest-src 'self'; connect-src 'self'" + (analyticsToken() ? " " + ANALYTICS_HOST : "") + "; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; trusted-types default; require-trusted-types-for 'script'",
       "  X-Content-Type-Options: nosniff",
       "  Referrer-Policy: strict-origin-when-cross-origin",
       "  X-Frame-Options: DENY",
@@ -182,6 +204,14 @@ export async function writeLlms(briefs, openBriefs = []) {
       "  Cross-Origin-Opener-Policy: same-origin",
       "  Cross-Origin-Embedder-Policy: require-corp",
       "  Cross-Origin-Resource-Policy: same-origin",
+      // C24: Cloudflare Pages answers every response with
+      // Access-Control-Allow-Origin: * by default, including the static assets
+      // here. Nothing on the desk is read cross-origin — the CSP has no
+      // foreign origin in any directive — so an open ACAO only widens the
+      // audience of the assets for no benefit. An explicit same-origin value
+      // overrides the platform default instead of leaving it to platform
+      // behaviour. Cloudflare honours an ACAO set in _headers over its own.
+      "  Access-Control-Allow-Origin: same-origin",
       "  Cache-Control: public, max-age=0, must-revalidate, stale-while-revalidate=86400",
       "",
       "/og.jpg",
@@ -329,13 +359,13 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
         "</aside>",
         "<section class=\"ledger-col\" id=\"today\">",
         "<div class=\"panel-hdr\">",
-        "<h2 class=\"panel-title\">Activity ledger</h2>",
+        "<h1 class=\"board-h1\">Lab Ledger Desk</h1>",
         "<span id=\"count\" class=\"panel-badge\">" + String(shown.length) + " LOGGED</span>",
         "<div class=\"chips chips-kind\" data-group=\"kind\">" + kindChips(KINDS) + "</div>",
         "</div>",
         "<form class=\"search-bar\" action=\"/\" method=\"get\" role=\"search\">",
         "<div class=\"search-tools\">",
-        "<div class=\"search-box\"><input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Search ledger\u2026\" autocomplete=\"off\" enterkeyhint=\"search\"><span class=\"search-kbd\" aria-hidden=\"true\">/</span></div>",
+        "<div class=\"search-box\"><label for=\"q\" class=\"sr-only\">Search the ledger</label><input id=\"q\" name=\"q\" type=\"search\" placeholder=\"Search ledger\u2026\" autocomplete=\"off\" enterkeyhint=\"search\"><span class=\"search-kbd\" aria-hidden=\"true\">/</span></div>",
         markRow([...LABS, ...OPEN_PROJECTS]),
         "</div>",
         "<div class=\"chips\" data-group=\"topic\">" + topicChips(TOPICS) + "</div>",

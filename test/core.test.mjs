@@ -157,10 +157,29 @@ test("composeWhat keeps the source's own sentence", () => {
 });
 
 test("composeWhy states the filing kind without restating the summary", () => {
-  const why = composeWhy("OpenAI", "2026-09-26", "launch", ["llm"], "summary text");
+  const why = composeWhy("OpenAI", "2026-09-26", "launch", ["llm"]);
   assert.ok(why.includes("launch"));
   assert.ok(why.includes("OpenAI"));
-  assert.ok(!why.includes("summary text"));
+});
+
+test("composeWhy is the same plain record for every brief, so it never reads machine-generated", () => {
+  // C3: the old five-shape rotation produced five near-identical restatements
+  // of lab/date/kind and no actual "why". One plain sentence, always the same
+  // shape, is honest about what the desk knows — and never invented a claim.
+  const a = composeWhy("OpenAI", "2026-09-26", "launch", ["llm"]);
+  const b = composeWhy("Anthropic", "2026-09-27", "research", []);
+  assert.ok(a.includes("launch"));
+  assert.ok(a.includes("OpenAI"));
+  assert.ok(b.includes("research"));
+  assert.ok(b.includes("Anthropic"));
+  assert.equal(a.includes("secret invented claim"), false);
+  assert.equal(b.includes("secret invented claim"), false);
+  // The shape is stable; only the facts it names change.
+  assert.equal(a.startsWith("Filed as a launch filing from OpenAI, 2026-09-26."), true);
+  assert.equal(b.startsWith("Filed as a research filing from Anthropic, 2026-09-27."), true);
+  // Topics are attributed to the desk's own tagging, never to the source.
+  assert.ok(a.includes("The desk tags this brief"));
+  assert.equal(b.includes("tags this brief"), false);
 });
 
 test("factsFor does not write a doubled article before names that already start with The", () => {
@@ -203,14 +222,8 @@ test("presentRelease keeps real release notes", () => {
   assert.equal(out.summary, notes);
 });
 
-test("composeWhy rotates factual lines and never invents a claim", () => {
-  const a = composeWhy("OpenAI", "2026-09-26", "launch", ["llm"], "secret invented claim");
-  const b = composeWhy("Anthropic", "2026-09-27", "research", [], "secret invented claim");
-  assert.ok(a.includes("launch"));
-  assert.ok(a.includes("OpenAI"));
-  assert.ok(b.includes("research"));
-  assert.ok(b.includes("Anthropic"));
-  assert.ok(!a.includes("secret invented claim"));
-  assert.ok(!b.includes("secret invented claim"));
-  assert.notEqual(a.split(".")[0], b.split(".")[0]);
+test("composeWhy names the filing kind a note, not a launch or research claim", () => {
+  const why = composeWhy("Mistral", "2026-09-28", "note", ["open"]);
+  assert.ok(why.includes("public note"));
+  assert.ok(why.includes("Open models"), "topics render as labels, not as raw ids");
 });

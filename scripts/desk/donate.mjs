@@ -1,4 +1,4 @@
-import { CHANNEL, OUT, SITE, esc, runLog } from "./core.mjs";
+import { CHANNEL, SITE, esc, runLog } from "./core.mjs";
 import { write } from "./net.mjs";
 import { jsonLdScript, shell } from "./render.mjs";
 
@@ -6,9 +6,12 @@ import { jsonLdScript, shell } from "./render.mjs";
 // Published openly so support is grounded in real numbers, not guilt.
 //
 // The desk is fully automated — that is the point, and it is why the
-// infrastructure lines are all zero. The line that is NOT zero is the human
-// work behind it: curating the source list, fixing the mistakes, and refusing
-// the shortcut. This page says that plainly instead of implying a newsroom.
+// infrastructure lines read zero *today, inside the free-tier allowance*.
+// The line that is never zero is the human work behind it: curating the
+// source list, fixing the mistakes, and refusing the shortcut. This page
+// says that plainly instead of implying a newsroom. C4: the allowance has
+// a ceiling, so the page never promises infrastructure is unconditionally
+// free — only that no money has been billed so far.
 const WAYS = [
   {
     title: "Send a correction",
@@ -48,10 +51,10 @@ const RAILS = [
 export async function writeDonate({ today, briefsCount = 0, openCount = 0, labsCount = 0 }) {
   // Built here, not hardcoded, so the ledger can never drift from the truth.
   const COSTS = [
-    { label: "Cloudflare Pages bandwidth", note: "served free, within the free tier", amount: "0" },
-    { label: "GitHub Actions minutes", note: "free tier covers every run", amount: "0" },
-    { label: "Worker + KV heartbeat", note: "free tier, one cron per 5 minutes", amount: "0" },
-    { label: "News intake", note: labsCount + " official feeds and release pages, no wire service", amount: "0" },
+    { label: "Cloudflare Pages bandwidth", note: "no bill so far — served within the free-tier allowance", amount: "$0" },
+    { label: "GitHub Actions minutes", note: "no bill so far — still inside the free Actions allowance", amount: "$0" },
+    { label: "Worker + KV heartbeat", note: "no bill so far — one free cron every 5 minutes, watched against the allowance", amount: "$0" },
+    { label: "News intake", note: labsCount + " official feeds and release pages, no wire service", amount: "$0" },
     { label: "Keeping it honest", note: "curating sources, fixing mistakes, refusing the shortcut — the only line that costs time", amount: "time" },
   ];
   await write(
@@ -83,7 +86,7 @@ export async function writeDonate({ today, briefsCount = 0, openCount = 0, labsC
             "<tr><td>" + c.label + "</td><td>" + c.note + "</td><td>" + c.amount + "</td></tr>",
         ).join(""),
         "</tbody></table>",
-        "<p class=\"dek\">The infrastructure is zero — the desk rebuilds itself about every fifteen minutes and costs nothing to keep alive. What is not zero is the judgement behind it: which sources deserve a seat, which headline is a launch and which is a footnote, and which brief needs fixing at 2am because a lab edited its own announcement.</p>",
+        "<p class=\"dek\">The infrastructure bill is zero — the desk rebuilds itself about every fifteen minutes and has never cost a cent. Every line above is a free-tier allowance, not a promise that the allowances are unlimited: the build stays inside them deliberately, and if one ever runs out, this table will be the first place it shows up. What is not zero is the judgement behind it: which sources deserve a seat, which headline is a launch and which is a footnote, and which brief needs fixing at 2am because a lab edited its own announcement.</p>",
 
         "<h2>How to help</h2>",
         "<p class=\"dek\">Three ways, ranked by how much they actually keep the desk alive:</p>",

@@ -1,7 +1,8 @@
 # Lab Ledger Desk
 
 A fully automated AI news desk that reads only official sources, files dated
-briefs, and never invents anything. Zero cost, zero dependencies, zero human
+briefs, and never invents anything. Runs entirely inside the free tiers it is
+built on, with no bill so far, zero dependencies, and zero human
 runtime — it keeps running if every laptop on earth disappears.
 
 **Live site:** https://labledgerdesk.pages.dev · **Telegram:** https://t.me/labledgerdesk
@@ -39,6 +40,35 @@ Cloudflare Worker (cron */5)     staleness watchdog
    └─ GET /desk-status.json → if older than 12 min, dispatch pages.yml
 ```
 
+## Ops runbook — the clock is not the cadence
+
+GitHub throttles free scheduled workflows to roughly **hourly** in practice, so
+the `clock.yml` cron (`4,14,24,34,44,54`) is deliberately *not* what keeps the
+desk fresh. The real cadence (~15 min) is carried by the Worker watchdog, which
+re-dispatches `pages.yml` through the GitHub API when it sees a stale build.
+The clock exists as a second, independent trigger — it costs nothing and it
+means a GitHub scheduler that goes quiet does not silence the desk.
+
+**Check freshness, do not raise the cron.** If the site looks stale, the fix is
+never "make the cron denser"; it is to find out why the watchdog did not fire.
+Order:
+
+1. `curl -s https://labledgerdesk.pages.dev/desk-status.json` — is `builtAt`
+   recent? That is the build clock, not the publish clock.
+2. `curl -s https://labledger-desk.halakou.workers.dev/health` — read `ageMs`
+   and `dispatch`. If `ageMs` is large and `dispatch` is not `dispatched`, the
+   watchdog itself is stuck (Worker cron, or the GitHub API call it makes).
+3. `gh run list --limit 5` — are the runs red? A failing build with a green
+   watchdog still produces a stale site; the watchdog only re-dispatches, it
+   cannot make a broken build succeed.
+
+**Alert path.** Outage messages go to `TELEGRAM_ALERT_CHAT_ID` (a private chat),
+never to the public channel. The address is a secret; the route is
+`cloudflare/src/index.js` → the same Telegram bot, different chat. Verify the
+route works by sending a test message from the Worker's own code path, not by
+echoing the chat id. If the alert ever lands in `@labledgerdesk`, the wrong
+secret name is in play — check `TELEGRAM_ALERT_CHAT_ID` vs `TELEGRAM_CHAT_ID`.
+
 Two independent schedulers on two free tiers. If GitHub's scheduler goes
 quiet — which it does, routinely — the Worker notices and re-dispatches. A
 publish that dies on the network is retried on the next cycle, so one red run
@@ -55,6 +85,53 @@ does not leave the site stale.
   filed on `/open/`, separate from the news board.
 
 A host that is not in that registry is never fetched.
+
+## Cloudflare resources, and what is deliberately unused
+
+The account carries more than this project needs, so the state of each resource
+is written down rather than re-discovered. Nothing here is deleted without an
+explicit decision.
+
+- **Pages project `labledgerdesk`** → `labledgerdesk.pages.dev` — the canonical
+  public origin. This is the hostname `SITE_URL` points at, so it is the one
+  every canonical tag, the UA string and the watchdog depend on (C8).
+- **Worker `labledgerdesk`** (assets, `cloudflare/labledgerdesk.toml`) — a mirror
+  of the same `dist-site`, deployed in the same CI run. It is the origin the
+  watchdog worker talks to, and it keeps serving if the Pages project is ever
+  interrupted.
+- **Worker `labledger-desk`** (`cloudflare/wrangler.toml`) — the watchdog, KV
+  `DESK`, the Telegram bot.
+- **D1 `labledger`** (uuid `396168a9-a3c2-469b-9ead-df86570f3b04`) — created
+  early, never bound, zero tables. It is a reserve, not a dependency: no code
+  reads it and no `wrangler.toml` references it. To actually remove it, run
+  `wrangler d1 delete labledger --config cloudflare/wrangler.toml` and confirm
+  the prompt — it is not deleted here because deleting state is a one-way door.
+  Do not create a binding to it in the meantime.
+- **`INGEST_SECRET`** — unused worker secret, deliberately not recreated.
+
+The shared free tier carries all of it. If a quota ever binds, the first place
+it will show up is the `donate/` cost table, which says "no bill so far" rather
+than "free forever" for exactly that reason (C4).
+
+## Custom domain
+
+The desk is served from `labledgerdesk.pages.dev`, a platform domain. Attaching
+a custom domain is free in Cloudflare but requires owning one, which this
+project does not, so nothing is attached. The path if that changes is short and
+costs nothing beyond the domain itself:
+
+1. Point the domain at Cloudflare (add the zone, or the existing nameservers,
+   and wait for DNS to resolve).
+2. In the Cloudflare dashboard: **Workers & Pages → labledgerdesk → Custom
+   domains → Set up a custom domain**. HTTPS is issued automatically.
+3. Set `SITE_URL` in the three `env:` blocks of `pages.yml`, in
+   `cloudflare/wrangler.toml` `[vars]`, and in the `config.mjs` default.
+   Canonical URLs, OG tags, the sitemap and RSS all derive from it — see
+   "Change the domain" in `AGENTS.md`.
+4. Rebuild once. Redirect the old `pages.dev` host last, after the new origin
+   serves the same paths — the Worker dispatch and the Telegram links both
+   point at `SITE_URL`, so a redirect set before the change strands the
+   watchdog until the next build.
 
 ## What is in the repo
 
@@ -102,6 +179,15 @@ cloudflare/                   the watchdog Worker + static-asset config
 - **No client-side state, no forms, no auth, no cookies.** Static HTML, CSS,
   one search script, pre-generated images.
 - **Every rendered field is escaped.** Pinned by tests in `test/`.
+- **Every workflow action is SHA-pinned.** No `uses:` line references a moving
+  tag — each is a 40-hex commit SHA with the version in a trailing comment, so
+  a compromised action release cannot silently reach the pipeline. The wrangler
+  tarball itself is additionally hash-verified before install in
+  `deploy-worker.yml`. GitHub's repo-level *require SHA pinning* toggle is not
+  available on this plan, so the property is held by the repo instead: verify
+  with
+  `grep -rh "uses:" .github/workflows | grep -v "@[0-9a-f]\{40\}"` — any output
+  is a regression.
 - See [SECURITY.md](SECURITY.md) for how to report a vulnerability.
 
 ## Testing

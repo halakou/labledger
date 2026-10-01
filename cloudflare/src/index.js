@@ -242,7 +242,14 @@ export default {
       }
       return Response.json({ ok: true, last, service: "labledger-desk", staleAfterMs: STALE_MS }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY" } });
     }
-    if (url.pathname === "/posted" && (request.method === "POST" || request.method === "GET")) {
+    if (url.pathname === "/posted") {
+      // C22: the route used to fall through to the catch-all 200 for HEAD and
+      // OPTIONS, which answered as if an unauthenticated probe had reached a
+      // protected resource. Only the two methods the mirror actually uses are
+      // served; anything else is a 405 so a probe learns nothing about state.
+      if (request.method !== "POST" && request.method !== "GET") {
+        return new Response("method not allowed", { status: 405, headers: { Allow: "GET, POST" } });
+      }
       // GitHub Actions mirrors the posted ledger here after each successful run,
       // so a lost Actions cache cannot re-post every brief ever filed.
       const token = String(env.DISPATCH_TOKEN || "").trim();
