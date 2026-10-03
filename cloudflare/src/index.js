@@ -290,7 +290,7 @@ async function openaiChat(url, key, model, prompt) {
         { role: "user", content: prompt.user },
       ],
     }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(180000),
   });
   if (!res.ok) throw new Error("http-" + res.status);
   const data = await res.json();
@@ -309,7 +309,7 @@ async function geminiChat(key, model, prompt) {
       contents: [{ role: "user", parts: [{ text: prompt.user }] }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 1200, responseMimeType: "application/json" },
     }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(180000),
   });
   if (!res.ok) throw new Error("http-" + res.status);
   const data = await res.json();

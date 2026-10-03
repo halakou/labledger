@@ -349,7 +349,7 @@ async function chatCompletions(url, key, model, prompt, fetchImpl) {
         { role: "user", content: prompt.user },
       ],
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(180000),
   });
   if (!res.ok) throw new Error("http-" + res.status);
   const data = await res.json();
@@ -371,7 +371,7 @@ async function gemini(key, model, prompt, fetchImpl) {
       contents: [{ role: "user", parts: [{ text: prompt.user }] }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 1200, responseMimeType: "application/json" },
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(180000),
   });
   if (!res.ok) throw new Error("http-" + res.status);
   const data = await res.json();
@@ -389,7 +389,7 @@ async function workerCall(env, prompt, fetchImpl) {
       Authorization: "Bearer " + String(env.DISPATCH_TOKEN).trim(),
     },
     body: JSON.stringify({ post: prompt.fields, targetWords: prompt.targetWords }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(180000),
   });
   const data = await res.json().catch(() => null);
   if (!res.ok || data?.ok === false) throw new Error(data?.reason || "http-" + res.status);

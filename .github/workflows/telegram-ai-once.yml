@@ -1,0 +1,65 @@
+name: telegram-ai-once
+
+# Manual one-item Telegram publish for AI rewrite smoke tests.
+# Does not rebuild the site. Prefer --guid so the channel is not flooded.
+on:
+  workflow_dispatch:
+    inputs:
+      guid:
+        description: Exact desk item guid to publish once
+        required: true
+      allow_reposted:
+        description: Allow sending again if already in posted ledger (duplicates)
+        type: boolean
+        default: false
+      target_words:
+        description: DESK_AI_TARGET_WORDS override (optional)
+        required: false
+        default: "120"
+
+jobs:
+  once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .desk-posted.json
+            .desk-archive.json
+            .desk-queue.json
+            .desk-open.json
+            .desk-assets
+          key: desk-state-${{ github.run_id }}
+          restore-keys: |
+            desk-state-
+            desk-posted-
+      - name: Ensure queue/archive exist for guid lookup
+        run: |
+          test -f .desk-queue.json || echo '{"briefs":[]}' > .desk-queue.json
+          test -f .desk-archive.json || echo '{"briefs":[]}' > .desk-archive.json
+          test -f .desk-posted.json || echo '{}' > .desk-posted.json
+      - name: Publish one Telegram post
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_WEBHOOK_URL: ${{ secrets.TELEGRAM_WEBHOOK_URL }}
+          DESK_WORKER_URL: https://labledger-desk.halakou.workers.dev
+          DESK_AI_WORKER_URL: https://labledger-desk.halakou.workers.dev
+          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+          ATRIA_API_KEY: ${{ secrets.ATRIA_API_KEY }}
+          DESK_AI_TELEGRAM: "1"
+          DESK_AI_TARGET_WORDS: ${{ github.event.inputs.target_words }}
+          SITE_URL: https://labledgerdesk.pages.dev
+        run: |
+          args=(--guid="${{ github.event.inputs.guid }}")
+          if [ "${{ github.event.inputs.allow_reposted }}" = "true" ]; then
+            args+=(--allow-reposted)
+          fi
+          node scripts/telegram-desk.mjs "${args[@]}"

@@ -106,7 +106,10 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_WEBHOOK_URL: ${{ secrets.TELEGRAM_WEBHOOK_URL }}
           DESK_WORKER_URL: https://labledger-desk.halakou.workers.dev
+          DESK_AI_WORKER_URL: https://labledger-desk.halakou.workers.dev
           DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+          ATRIA_API_KEY: ${{ secrets.ATRIA_API_KEY }}
+          DESK_AI_TELEGRAM: ${{ vars.DESK_AI_TELEGRAM }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: node scripts/telegram-desk.mjs
       - name: Announce the cost ledger once

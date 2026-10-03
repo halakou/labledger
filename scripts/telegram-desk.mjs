@@ -274,6 +274,21 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function argValue(name) {
+  const prefix = "--" + name + "=";
+  const hit = process.argv.find((a) => a.startsWith(prefix));
+  return hit ? hit.slice(prefix.length) : "";
+}
+
+function poolPosts(file) {
+  if (!file || typeof file !== "object") return [];
+  const out = [];
+  for (const key of ["briefs", "open", "items"]) {
+    if (Array.isArray(file[key])) out.push(...file[key]);
+  }
+  return out;
+}
+
 const token = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
 const chat = chatIdFromEnv(process.env);
 const channel = channelUrlFromEnv(process.env);
@@ -328,26 +343,50 @@ if (!Object.keys(posted).length) {
     console.log("posted recover FAILED:", err?.message || err);
   }
 }
-const briefs = [...(Array.isArray(queue.briefs) ? queue.briefs : []), ...(Array.isArray(queue.open) ? queue.open : [])];
 const postedCount = Object.keys(posted).length;
-const unposted = briefs.filter((b) => b.guid && b.headline && b.path && !posted[b.guid]);
-const now = Date.now();
-const fresh = unposted.filter((b) => {
-  const t = Date.parse(b.publishedAt || "");
-  return Number.isFinite(t) && now - t <= FRESH_MS;
-});
-const rest = unposted.filter((b) => !fresh.includes(b));
-// Quiet hours were removed: the desk's contract is that a brief reaches the
-// channel at the same moment it reaches the site. Holding overnight releases
-// "for the morning" only works if the audience is in one timezone — it is
-// not, and it made the channel look stale next to the board.
-const hourUTC = new Date().getUTCHours();
-const quiet = false;
-const cap = fresh.length ? 5 : rest.length ? (postedCount === 0 ? 6 : 3) : 2;
-const toSend = (fresh.length ? fresh : rest).slice(0, cap);
+const guidOnly = argValue("guid");
+let toSend = [];
+let unposted = [];
+let fresh = [];
+let hourUTC = new Date().getUTCHours();
+let quiet = false;
+let cap = 0;
+if (guidOnly) {
+  const archive = await loadJson(".desk-archive.json", { briefs: [] });
+  const briefs = [...poolPosts(queue), ...poolPosts(archive)];
+  const hit = briefs.find((b) => b && b.guid === guidOnly);
+  if (!hit?.headline || !hit?.path) {
+    console.log("telegram guid not found or incomplete:", guidOnly);
+    process.exit(1);
+  }
+  if (posted[hit.guid] && !process.argv.includes("--allow-reposted")) {
+    console.log("telegram guid already posted:", guidOnly, posted[hit.guid]);
+    console.log("pass --allow-reposted to send again (will duplicate in channel)");
+    process.exit(1);
+  }
+  toSend = [hit];
+  console.log("telegram single-guid mode:", guidOnly, hit.path);
+} else {
+  const briefs = [...(Array.isArray(queue.briefs) ? queue.briefs : []), ...(Array.isArray(queue.open) ? queue.open : [])];
+  unposted = briefs.filter((b) => b.guid && b.headline && b.path && !posted[b.guid]);
+  const now = Date.now();
+  fresh = unposted.filter((b) => {
+    const t = Date.parse(b.publishedAt || "");
+    return Number.isFinite(t) && now - t <= FRESH_MS;
+  });
+  const rest = unposted.filter((b) => !fresh.includes(b));
+  // Quiet hours were removed: the desk's contract is that a brief reaches the
+  // channel at the same moment it reaches the site. Holding overnight releases
+  // "for the morning" only works if the audience is in one timezone — it is
+  // not, and it made the channel look stale next to the board.
+  hourUTC = new Date().getUTCHours();
+  quiet = false;
+  cap = fresh.length ? 5 : rest.length ? (postedCount === 0 ? 6 : 3) : 2;
+  toSend = (fresh.length ? fresh : rest).slice(0, cap);
+}
 console.log(
   "telegram sync unposted:",
-  unposted.length,
+  guidOnly ? (posted[guidOnly] ? 0 : 1) : unposted.length,
   "fresh:",
   fresh.length,
   "queueing:",
@@ -359,7 +398,7 @@ console.log(
   "quiet:",
   quiet,
   "cap:",
-  cap,
+  guidOnly ? 1 : cap,
 );
 
 let sent = 0;
