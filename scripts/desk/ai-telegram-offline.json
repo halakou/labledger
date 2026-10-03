@@ -1,0 +1,25 @@
+{
+  "post": {
+    "guid": "fixture:offline",
+    "headline": "Example Lab ships Example Model",
+    "dek": "Example Lab said Example Model is available to waitlisted customers.",
+    "lab": "Example Lab",
+    "publishedAt": "2026-10-01T12:00:00.000Z",
+    "kind": "launch",
+    "topics": [
+      "models"
+    ],
+    "source": "https://example.com/example-model",
+    "path": "/b/2026/10/01/example-model/"
+  },
+  "ai": {
+    "status": "ok",
+    "headline": "Example Lab ships Example Model",
+    "tags": [
+      "models"
+    ],
+    "emoji": "",
+    "flags": [],
+    "text": "Example Lab said Example Model is available to waitlisted customers.\n\n- Example Lab named Example Model.\n- Example Model is available to waitlisted customers.\n\nExample Model is available to waitlisted customers."
+  }
+}

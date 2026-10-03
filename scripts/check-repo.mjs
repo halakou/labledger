@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const ALLOWED_TOP = new Set([".github", "assets", "cloudflare", "scripts", "test"]);
+const ALLOWED_TOP = new Set([".github", "assets", "cloudflare", "docs", "scripts", "test"]);
 const ALLOWED_ROOT_FILES = new Set([
   ".gitignore",
   ".editorconfig",
