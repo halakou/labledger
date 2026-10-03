@@ -86,7 +86,7 @@ jobs:
         # from this same dist-site directory on every run. Removing the Pages
         # step would freeze the public hostname the moment this workflow run
         # shipped, so it stays.
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
@@ -95,7 +95,7 @@ jobs:
         # C8: the second target is a mirror, not a second source of truth —
         # same directory, same run. It is the origin the watchdog worker talks
         # to, and it keeps serving if the Pages project is ever interrupted.
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4.135.0"
