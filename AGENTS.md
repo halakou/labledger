@@ -70,9 +70,11 @@ scripts/desk/fetch-mark.mjs  fetch + normalize one source logo
 scripts/desk/seed-marks.mjs  one-shot helper for missing fallback marks
 assets/fonts/              Fraunces and Source Sans 3, vendored. ensureFonts copies these. It does not call Google.
 scripts/telegram-desk.mjs  queue -> channel, posted-ledger KV mirror
+scripts/desk/ai-telegram.mjs  optional channel rewrite, default off (DESK_AI_TELEGRAM)
+scripts/ai-telegram-dry-run.mjs  print short post vs AI text; never sends
 scripts/post-donate-announce.mjs  one channel announcement
 scripts/cleanup-channel-posts.mjs  delete dupes (manual, workflow_dispatch)
-cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands
+cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands + optional /ai/rewrite
 .github/workflows/         clock, pages, deploy-worker, cleanup-channel, desk(retired)
 ```
 
@@ -99,6 +101,9 @@ cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands
    (labs, companies, and the five press desks), the Anthropic `/news` listing,
    or an `OPEN_PROJECTS` GitHub release. Classification is keyword tagging,
    never a verdict. Never paraphrase a source into a claim it did not make.
+   The optional Telegram rewrite (`DESK_AI_TELEGRAM`, default off) may only
+   restate fields already on the item. Thin copy must come back `incomplete`
+   and the sender must keep the short post. See `docs/ai-telegram.md`.
 5. **Free tier, forever.** GitHub Actions free, Cloudflare Pages/Workers/KV
    free tiers. If a feature needs a paid plan, it does not ship.
 6. **Old URLs stay.** The archive never deletes, only slices to 500.

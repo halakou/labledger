@@ -2,13 +2,13 @@ import { access, readFile, writeFile } from "node:fs/promises";
 import {
   chatIdFromEnv,
   channelUrlFromEnv,
-  clipDek,
-  escHtml,
+  composeChannelPost,
   hookSecret,
   loadJson,
   postedLedgerFromResponse,
   redactChat,
 } from "./desk/tg.mjs";
+import { aiEnabled, channelBodyFor, dryRunEnabled, rewriteBrief, TEXT_OVER_PHOTO } from "./desk/ai-telegram.mjs";
 
 const SITE = (process.env.SITE_URL || "https://labledgerdesk.pages.dev").replace(/\/$/, "");
 const POSTED_FILE = ".desk-posted.json";
@@ -20,7 +20,6 @@ const DESCRIPTION =
 const BOT_SHORT = "Official AI-lab briefs. Named sources only.";
 const BOT_ABOUT =
   "Lab Ledger Desk files official announcements from named AI labs. One brief per move, about 100 words, with the primary source on the page. Follow the channel @labledgerdesk. Direct messages are not a news tip line.";
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const FRESH_MS = 25 * 60 * 1000;
 const COMMANDS = [
   { command: "start", description: "Open the board" },
@@ -28,36 +27,6 @@ const COMMANDS = [
   { command: "method", description: "How the desk files" },
   { command: "channel", description: "Follow the desk" },
 ];
-const KIND = {
-  launch: { label: "Launch", mark: "▸" },
-  research: { label: "Research", mark: "◆" },
-  note: { label: "Note", mark: "·" },
-};
-
-function formatDate(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
-}
-
-function kindOf(post) {
-  const raw = String(post.kind || post.kindLabel || "").toLowerCase();
-  if (raw.startsWith("launch")) return KIND.launch;
-  if (raw.startsWith("research")) return KIND.research;
-  return KIND.note;
-}
-
-function sourceUrl(post) {
-  const src = String(post.source || "").trim();
-  if (!src.startsWith("https://")) return "";
-  try {
-    const u = new URL(src);
-    if (u.protocol !== "https:") return "";
-    return u.toString();
-  } catch {
-    return "";
-  }
-}
 
 function ogFile(post) {
   const p = String(post.path || "").replace(/\/$/, "");
@@ -76,37 +45,32 @@ async function fileExists(path) {
 }
 
 function composeMessage(post) {
-  const url = SITE + post.path;
-  const lab = escHtml(post.lab || "Desk");
-  const date = formatDate(post.publishedAt);
-  const headline = escHtml(post.headline || "");
-  const dek = clipDek(post.dek || "", 220);
-  const k = kindOf(post);
-  const kicker =
-    escHtml(k.mark + " " + k.label) +
-    "  ·  <b>" +
-    lab +
-    "</b>" +
-    (date ? "  ·  " + escHtml(date) : "");
-  const lines = [kicker, "", "<b>" + headline + "</b>"];
-  if (dek) lines.push("", "<blockquote>" + escHtml(dek) + "</blockquote>");
-  lines.push("", "<i>Filed from the official source. The brief stays on the page.</i>");
-  const buttons = [[{ text: "Read the brief", url }]];
-  const src = sourceUrl(post);
-  if (src) buttons[0].push({ text: "Official source", url: src });
-  return {
-    text: lines.join("\n"),
-    url,
-    payload: {
-      parse_mode: "HTML",
-      link_preview_options: {
-        url,
-        prefer_large_media: true,
-        show_above_text: true,
-      },
-      reply_markup: { inline_keyboard: buttons },
-    },
-  };
+  return composeChannelPost(post, SITE);
+}
+
+async function resolveMessage(post) {
+  const fallback = composeMessage(post);
+  if (!aiEnabled(process.env)) return { msg: fallback, via: "compose" };
+  try {
+    const result = await rewriteBrief(post, process.env, { site: SITE });
+    const picked = channelBodyFor(result, fallback.text);
+    if (picked.via === "ai" && result.message) {
+      console.log(
+        "telegram ai ok",
+        result.provider || "",
+        "chars",
+        result.message.text.length,
+        "preferText",
+        result.message.text.length > TEXT_OVER_PHOTO,
+        post.path,
+      );
+      return { msg: result.message, via: "ai" };
+    }
+    console.log("telegram ai fallback", result.status, result.reason || "", post.path);
+  } catch (err) {
+    console.log("telegram ai fallback error", err?.message || err, post.path);
+  }
+  return { msg: fallback, via: "compose" };
 }
 
 async function tg(token, method, body, retries = 3) {
@@ -158,9 +122,10 @@ async function tgPhoto(token, chat, filePath, msg, retries = 2) {
 }
 
 async function sendPost(token, chat, post) {
-  const msg = composeMessage(post);
+  const { msg } = await resolveMessage(post);
   const photo = ogFile(post);
-  if (await fileExists(photo)) {
+  // A 300-word rewrite does not fit a 1024-char photo caption.
+  if (msg.text.length <= TEXT_OVER_PHOTO && (await fileExists(photo))) {
     try {
       const data = await tgPhoto(token, chat, photo, msg);
       if (data?.ok && data.result?.message_id) return { data, how: "photo" };
@@ -316,17 +281,22 @@ console.log("telegram token set:", Boolean(token));
 console.log("telegram chat:", redactChat(chat));
 console.log("telegram channel url:", channel);
 
-if (!token) {
+const dry = dryRunEnabled(process.env);
+if (!token && !dry) {
   console.log("telegram skipped: TELEGRAM_BOT_TOKEN missing");
   process.exit(0);
 }
 
+if (dry) {
+  console.log("DESK_AI_DRY_RUN: not calling Telegram");
+} else {
 const info = await diagnose(token, chat);
 if (info?.ok) {
   await setupChannel(token, chat, info);
   await setupBot(token, info);
 } else {
   console.log("telegram diagnose failed, skipping setup");
+}
 }
 
 const queue = await loadJson(QUEUE_FILE, { briefs: [] });
@@ -394,6 +364,18 @@ console.log(
 
 let sent = 0;
 let failed = 0;
+if (dry) {
+  for (const post of toSend) {
+    if (!post?.headline || !post?.path) continue;
+    const { msg, via } = await resolveMessage(post);
+    console.log("--- dry-run", via, post.path, "chars", msg.text.length);
+    console.log(msg.text);
+    console.log("---");
+  }
+  console.log("telegram dry-run done", toSend.length, "aiEnabled", aiEnabled(process.env));
+  process.exit(0);
+}
+
 for (const post of toSend) {
   if (!post?.headline || !post?.path) continue;
   if (posted[post.guid]) continue;
