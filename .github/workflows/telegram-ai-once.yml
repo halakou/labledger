@@ -1,4 +1,4 @@
-name: telegram-ai-once
+﻿name: telegram-ai-once
 
 # Manual one-item Telegram publish for AI rewrite smoke tests.
 # Does not rebuild the site. Prefer --guid so the channel is not flooded.
@@ -62,6 +62,7 @@ jobs:
           DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
           ATRIA_API_KEY: ${{ secrets.ATRIA_API_KEY }}
           DESK_AI_TELEGRAM: "1"
+          DESK_ALLOW_REPOSTED: "${{ github.event.inputs.allow_reposted }}"
           DESK_AI_TARGET_WORDS: ${{ github.event.inputs.target_words }}
           SITE_URL: https://labledgerdesk.pages.dev
         run: |
@@ -69,4 +70,6 @@ jobs:
           if [ "${{ github.event.inputs.allow_reposted }}" = "true" ]; then
             args+=(--allow-reposted)
           fi
-          node scripts/telegram-desk.mjs "${args[@]}"
+          echo argv-preview: "${args[*]}"
+          node scripts/telegram-desk.mjs --fixture=scripts/desk/ai-telegram-live-fixture.json "${args[@]}"
+

@@ -1,4 +1,4 @@
-import { access, readFile, writeFile } from "node:fs/promises";
+﻿import { access, readFile, writeFile } from "node:fs/promises";
 import {
   chatIdFromEnv,
   channelUrlFromEnv,
@@ -358,7 +358,7 @@ if (fixturePath) {
     console.log("telegram fixture incomplete:", fixturePath);
     process.exit(1);
   }
-  if (posted[hit.guid] && !process.argv.includes("--allow-reposted")) {
+  if (posted[hit.guid] && (!process.argv.includes("--allow-reposted") && !/^(1|true)$/i.test(String(process.env.DESK_ALLOW_REPOSTED || "")))) {
     console.log("telegram fixture already posted:", hit.guid, posted[hit.guid]);
     console.log("pass --allow-reposted to send again (will duplicate in channel)");
     process.exit(1);
@@ -373,7 +373,7 @@ if (fixturePath) {
     console.log("telegram guid not found or incomplete:", guidOnly);
     process.exit(1);
   }
-  if (posted[hit.guid] && !process.argv.includes("--allow-reposted")) {
+  if (posted[hit.guid] && (!process.argv.includes("--allow-reposted") && !/^(1|true)$/i.test(String(process.env.DESK_ALLOW_REPOSTED || "")))) {
     console.log("telegram guid already posted:", guidOnly, posted[hit.guid]);
     console.log("pass --allow-reposted to send again (will duplicate in channel)");
     process.exit(1);
@@ -391,7 +391,7 @@ if (fixturePath) {
   const rest = unposted.filter((b) => !fresh.includes(b));
   // Quiet hours were removed: the desk's contract is that a brief reaches the
   // channel at the same moment it reaches the site. Holding overnight releases
-  // "for the morning" only works if the audience is in one timezone — it is
+  // "for the morning" only works if the audience is in one timezone â€” it is
   // not, and it made the channel look stale next to the board.
   hourUTC = new Date().getUTCHours();
   quiet = false;
@@ -469,3 +469,4 @@ try {
 
 console.log("telegram done sent", sent, "failed", failed, "cache", Object.keys(posted).length);
 if (failed && !sent) process.exit(1);
+
