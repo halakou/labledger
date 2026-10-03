@@ -429,9 +429,10 @@ if (dry) {
   process.exit(0);
 }
 
+const allowReposted = process.argv.includes("--allow-reposted");
 for (const post of toSend) {
   if (!post?.headline || !post?.path) continue;
-  if (posted[post.guid]) continue;
+  if (posted[post.guid] && !allowReposted) continue;
   const { data, how } = await sendPost(token, chat, post);
   const mid = data?.result?.message_id;
   if (data?.ok && mid) {
