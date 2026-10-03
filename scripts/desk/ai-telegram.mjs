@@ -95,6 +95,23 @@ export function buildPrompt(post, { targetWords } = {}) {
   return { system: SYSTEM, user, targetWords: words, fields };
 }
 
+function asStringList(value, kind) {
+  if (value == null || value === "") return [];
+  let arr = value;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (!t) return [];
+    if (t.startsWith("[") && t.endsWith("]")) {
+      try { arr = JSON.parse(t); } catch { arr = t.split(/[,;|]/); }
+    } else {
+      arr = t.split(/[,;|\n]/);
+    }
+  }
+  if (!Array.isArray(arr)) throw new Error(kind === "tags" ? "bad-tags" : "bad-flags");
+  const max = kind === "tags" ? 8 : 12;
+  return arr.map((t) => String(t).trim()).filter(Boolean).slice(0, max);
+}
+
 export function parseAiJson(raw) {
   const data = typeof raw === "object" && raw ? raw : JSON.parse(unwrapJson(raw));
   if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("invalid-shape");
@@ -105,10 +122,8 @@ export function parseAiJson(raw) {
   if (headline.length > 300) throw new Error("headline-long");
   if (text.length > 12000) throw new Error("text-long");
   if (status === "ok" && (!headline || !text)) throw new Error("missing-fields");
-  if (data.tags != null && !Array.isArray(data.tags)) throw new Error("bad-tags");
-  if (data.flags != null && !Array.isArray(data.flags)) throw new Error("bad-flags");
-  const tags = (Array.isArray(data.tags) ? data.tags : []).map((t) => String(t).trim()).filter(Boolean).slice(0, 8);
-  const flags = (Array.isArray(data.flags) ? data.flags : []).map((t) => String(t).trim()).filter(Boolean).slice(0, 12);
+  const tags = asStringList(data.tags, "tags");
+  const flags = asStringList(data.flags, "flags");
   let emojiSource = "";
   if (Array.isArray(data.emoji)) emojiSource = data.emoji.join("");
   else emojiSource = String(data.emoji || "");
