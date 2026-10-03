@@ -345,13 +345,27 @@ if (!Object.keys(posted).length) {
 }
 const postedCount = Object.keys(posted).length;
 const guidOnly = argValue("guid");
+const fixturePath = argValue("fixture");
 let toSend = [];
 let unposted = [];
 let fresh = [];
 let hourUTC = new Date().getUTCHours();
 let quiet = false;
 let cap = 0;
-if (guidOnly) {
+if (fixturePath) {
+  const hit = await loadJson(fixturePath, null);
+  if (!hit?.headline || !hit?.path || !hit?.guid) {
+    console.log("telegram fixture incomplete:", fixturePath);
+    process.exit(1);
+  }
+  if (posted[hit.guid] && !process.argv.includes("--allow-reposted")) {
+    console.log("telegram fixture already posted:", hit.guid, posted[hit.guid]);
+    console.log("pass --allow-reposted to send again (will duplicate in channel)");
+    process.exit(1);
+  }
+  toSend = [hit];
+  console.log("telegram fixture mode:", fixturePath, hit.path);
+} else if (guidOnly) {
   const archive = await loadJson(".desk-archive.json", { briefs: [] });
   const briefs = [...poolPosts(queue), ...poolPosts(archive)];
   const hit = briefs.find((b) => b && b.guid === guidOnly);

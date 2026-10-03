@@ -7,7 +7,8 @@ on:
     inputs:
       guid:
         description: Exact desk item guid to publish once
-        required: true
+        required: false
+        default: "https://techcrunch.com/?p=3172830"
       allow_reposted:
         description: Allow sending again if already in posted ledger (duplicates)
         type: boolean
@@ -45,6 +46,12 @@ jobs:
           test -f .desk-queue.json || echo '{"briefs":[]}' > .desk-queue.json
           test -f .desk-archive.json || echo '{"briefs":[]}' > .desk-archive.json
           test -f .desk-posted.json || echo '{}' > .desk-posted.json
+      - name: Seed queue from fixture when cache misses guid
+        run: |
+          FIXTURE="scripts/desk/ai-telegram-live-fixture.json"
+          if [ -f "$FIXTURE" ]; then
+            node scripts/desk/seed-queue-from-fixture.mjs "$FIXTURE"
+          fi
       - name: Publish one Telegram post
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
