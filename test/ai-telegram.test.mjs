@@ -58,7 +58,10 @@ test("parseAiJson accepts fenced JSON and trims emoji to two", () => {
 
 test("parseAiJson rejects a bad status and a non-array tags field", () => {
   assert.throws(() => parseAiJson('{"status":"maybe","headline":"a","text":"b","tags":[],"flags":[],"emoji":""}'), /bad-status/);
-  assert.throws(() => parseAiJson(okRaw({ tags: "models" })), /bad-tags/);
+  assert.throws(() => parseAiJson(okRaw({ tags: { name: "models" } })), /bad-tags/);
+  const coerced = parseAiJson(okRaw({ tags: "models", flags: "thin-dek" }));
+  assert.deepEqual(coerced.tags, ["models"]);
+  assert.deepEqual(coerced.flags, ["thin-dek"]);
 });
 
 test("format stays inside two emoji and keeps the brief buttons", () => {
