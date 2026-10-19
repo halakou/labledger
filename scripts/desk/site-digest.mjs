@@ -5,7 +5,7 @@ import { jsonLdScript, rowHtml, shell } from "./render.mjs";
 export const METHOD_SECTIONS = [
   {
     h: "What this is",
-    p: "Lab Ledger Desk is a public register of official AI announcements from named labs, research groups, and the press that covers them. Each page is a brief of about 100 words: what moved, why it matters, and the primary source. Labels such as Launch, Research, and Note are keyword tags, not a human editor\u2019s verdict.",
+    p: "Lab Ledger Desk is a public register of official AI announcements from named labs, research groups, and the press that covers them. Each page is a brief that can run several hundred words when the official source provides the text: what moved, why it matters, and the primary source. Labels such as Launch, Research, and Note are keyword tags, not a human editor\u2019s verdict.",
   },
   {
     h: "What this is not",
@@ -13,7 +13,7 @@ export const METHOD_SECTIONS = [
   },
   {
     h: "How a brief is made",
-    p: "About every fifteen minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article\u2019s own og:title and og:description. If that description is Anthropic\u2019s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary \u2014 DeepMind often does \u2014 the desk fills the summary from that same host\u2019s meta description. Duplicates are dropped by guid. A fixed template is filled to about 100 words. Telegram carries the same brief only after the page exists.",
+    p: "About every fifteen minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article\u2019s own og:title and og:description. If that description is Anthropic\u2019s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary \u2014 DeepMind often does \u2014 the desk fills the summary from that same host\u2019s meta description. Duplicates are dropped by guid. The brief carries as much of the official summary as fits (up to about 1800 characters). Telegram carries the same brief only after the page exists.",
   },
   {
     h: "Archive",
@@ -63,7 +63,7 @@ export async function writeDigest({ allBriefs, briefs, today }) {
   await write(
     "method/index.html",
     shell({
-      title: "Method — Lab Ledger Desk",
+      title: "Method \u2014 Lab Ledger Desk",
       description:
         "How Lab Ledger Desk reads official lab RSS and Anthropic's official news listing, files a brief, keeps old URLs, and mirrors to Telegram after the page exists.",
       path: "/method/",
@@ -75,7 +75,7 @@ export async function writeDigest({ allBriefs, briefs, today }) {
         "<table><thead><tr><th>Lab</th><th>Method</th><th>Host</th></tr></thead><tbody>",
         LABS.map((l) => {
           const method = l.listing && !l.feed ? "Official listing" : l.feed ? "Official RSS" : "Not fetched";
-          const host = l.hosts[0] || "—";
+          const host = l.hosts[0] || "\u2014";
           return (
             "<tr><td><a href=\"/lab/" +
             l.id +
@@ -128,13 +128,13 @@ export async function writeDigest({ allBriefs, briefs, today }) {
   await write(
     "week/index.html",
     shell({
-      title: "Week of " + weekRange + " — Lab Ledger Desk",
-      description: "This week’s official AI-lab briefs, grouped by day. No email list — RSS and Telegram carry the same record.",
+      title: "Week of " + weekRange + " \u2014 Lab Ledger Desk",
+      description: "This week\u2019s official AI-lab briefs, grouped by day. No email list \u2014 RSS and Telegram carry the same record.",
       path: "/week/",
       extra: jsonLdScript({
         "@context": "https://schema.org",
         "@type": "CollectionPage",
-        name: "Weekly digest — Lab Ledger Desk",
+        name: "Weekly digest \u2014 Lab Ledger Desk",
         url: SITE + "/week/",
         dateModified: today,
       }),
@@ -163,11 +163,11 @@ export async function writeDigest({ allBriefs, briefs, today }) {
   await write(
     "404.html",
     shell({
-      title: "Not found — Lab Ledger Desk",
+      title: "Not found \u2014 Lab Ledger Desk",
       description: "This brief is not on the ledger.",
       path: "/404.html",
       robots: "noindex, follow",
-      body: "<article class=\"method\"><p class=\"kicker\">404</p><h1>This brief is not on the ledger.</h1><p class=\"dek\">The desk only files official lab posts it has already read.</p><p><a class=\"back\" href=\"/\">← Back to the board</a></p></article>",
+      body: "<article class=\"method\"><p class=\"kicker\">404</p><h1>This brief is not on the ledger.</h1><p class=\"dek\">The desk only files official lab posts it has already read.</p><p><a class=\"back\" href=\"/\">\u2190 Back to the board</a></p></article>",
     }),
   );
   return weekBriefs.length;

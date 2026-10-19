@@ -15,11 +15,6 @@ import { write } from "./net.mjs";
 import { jsonLdScript, markHtml, markToSprite, rowHtml, shell } from "./render.mjs";
 import { GUIDE_ENTRIES } from "./learn.mjs";
 
-// C19: the JSON-LD author url for a brief. A GitHub release's source URL is
-// already the project's own page (https://github.com/<org>/<repo>...), so
-// point at it directly; the old code reduced every github.com source to the
-// bare site root. Anything else keeps the publisher's host root, which is the
-// canonical home page for a lab.
 function authorUrl(source, sourceHost) {
   if (!sourceHost) return String(source || SITE);
   if (sourceHost === "github.com") {
@@ -29,20 +24,13 @@ function authorUrl(source, sourceHost) {
   return "https://" + sourceHost + "/";
 }
 
-// Inline SVG activity chart for a lab page: one bar per week, built purely
-// from the briefs' own dates. No JS, no external assets, no data duplicated —
-// it renders the same for every visitor and costs nothing at runtime.
 function activityChart(rows, label) {
   if (rows.length < 2) return "";
-  // Bucket briefs into ISO weeks (YYYY-Www). Using the ISO week keeps the
-  // axis honest across month boundaries.
   const buckets = new Map();
   for (const b of rows) {
     const key = isoWeek(b.year, b.month, b.day);
     buckets.set(key, (buckets.get(key) || 0) + 1);
   }
-  // Show the last 12 weeks even when the lab was quiet — empty weeks are
-  // informative, and a single bar would not be a chart.
   const allKeys = [...buckets.keys()].sort();
   const window = 12;
   const last = allKeys[allKeys.length - 1];
@@ -54,7 +42,6 @@ function activityChart(rows, label) {
   const gap = Math.max(1, Math.floor((W - 8 - barW * keys.length) / Math.max(1, keys.length - 1)));
   const total = rows.length;
   const span = keys.length;
-  // <title> inside each bar makes the chart screen-reader friendly.
   const bars = keys
     .map((k, i) => {
       const v = buckets.get(k) || 0;
@@ -74,12 +61,11 @@ function activityChart(rows, label) {
     '" width="100%" height="' + H + '" role="img" aria-label="' + esc(label) +
     " activity: " + total + " brief" + (total === 1 ? "" : "s") + " over the last " + span +
     ' weeks">' + bars + "</svg>" +
-    '<p class="activity-cap">' + total + " filed · " + active +
+    '<p class="activity-cap">' + total + " filed \u00b7 " + active +
     " active week" + (active === 1 ? "" : "s") + " in the last " + window + "</p></div>"
   );
 }
 
-// The `window` ISO weeks ending at `last`, inclusive, oldest first.
 function weekRange(last, window) {
   const out = [];
   const [yStr, wStr] = last.split("-W");
@@ -101,7 +87,6 @@ function weekRange(last, window) {
   return out;
 }
 
-// Number of ISO weeks in a year (52 or 53).
 function weeksInYear(y) {
   const d = new Date(Date.UTC(y, 11, 28));
   const day = (d.getUTCDay() + 6) % 7;
@@ -112,11 +97,10 @@ function weeksInYear(y) {
   return Math.round((d - first) / (7 * 24 * 60 * 60 * 1000)) + 1;
 }
 
-// ISO week number for a date given as numeric parts.
 function isoWeek(y, m, d) {
   const date = new Date(Date.UTC(y, m - 1, d));
-  const day = (date.getUTCDay() + 6) % 7; // Monday = 0
-  date.setUTCDate(date.getUTCDate() - day + 3); // Thursday of this week
+  const day = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - day + 3);
   const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
   const firstDay = (firstThursday.getUTCDay() + 6) % 7;
   firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDay + 3);
@@ -132,7 +116,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     await write(
       "lab/" + lab.id + "/index.html",
       shell({
-        title: lab.label + " — Lab Ledger Desk",
+        title: lab.label + " \u2014 Lab Ledger Desk",
         description: "Official " + lab.label + " announcements filed by Lab Ledger Desk.",
         path: "/lab/" + lab.id + "/",
         body: [
@@ -157,7 +141,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     await write(
       "topic/" + topic.id + "/index.html",
       shell({
-        title: topic.label + " — Lab Ledger Desk",
+        title: topic.label + " \u2014 Lab Ledger Desk",
         description: "Official AI-lab briefs tagged " + topic.label + " from allow-listed sources.",
         path: "/topic/" + topic.id + "/",
         extra: jsonLdScript({
@@ -165,7 +149,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "@graph": [
             {
               "@type": "CollectionPage",
-              name: topic.label + " — Lab Ledger Desk",
+              name: topic.label + " \u2014 Lab Ledger Desk",
               url: SITE + "/topic/" + topic.id + "/",
               dateModified: today,
               about: topic.label,
@@ -194,7 +178,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "</h1>",
           "<p class=\"dek\">Every filed brief tagged ",
           esc(topic.label),
-          " — from every lab on the desk. Keyword tag from the official title and summary.</p></article>",
+          " \u2014 from every lab on the desk. Keyword tag from the official title and summary.</p></article>",
           "<section class=\"board\">",
           rows.map(rowHtml).join("") || "<p class=\"empty\">No filed brief currently tagged " + esc(topic.label) + ".</p>",
           "</section>",
@@ -208,7 +192,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     await write(
       "kind/" + kind.id + "/index.html",
       shell({
-        title: kind.label + " — Lab Ledger Desk",
+        title: kind.label + " \u2014 Lab Ledger Desk",
         description: "Official AI-lab briefs labelled " + kind.label + ".",
         path: "/kind/" + kind.id + "/",
         extra: jsonLdScript({
@@ -216,7 +200,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "@graph": [
             {
               "@type": "CollectionPage",
-              name: kind.label + " — Lab Ledger Desk",
+              name: kind.label + " \u2014 Lab Ledger Desk",
               url: SITE + "/kind/" + kind.id + "/",
               dateModified: today,
               publisher: {
@@ -241,7 +225,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "<article class=\"method\"><p class=\"kicker\">Type</p><h1>",
           esc(kind.label),
           "</h1>",
-          "<p class=\"dek\">Launch, Research, or Note — a keyword label on the official claim, across every lab.</p></article>",
+          "<p class=\"dek\">Launch, Research, or Note \u2014 a keyword label on the official claim, across every lab.</p></article>",
           "<section class=\"board\">",
           rows.map(rowHtml).join("") || "<p class=\"empty\">No filed brief currently labelled " + esc(kind.label) + ".</p>",
           "</section>",
@@ -262,16 +246,13 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "@type": "NewsArticle",
           headline: b.headline,
           description: b.dek,
+          articleBody: b.what,
           datePublished: b.publishedAt,
           dateModified: b.publishedAt,
           mainEntityOfPage: articleUrl,
           articleSection: b.lab,
           keywords: [kindLabel(b.kind), ...(b.topics || []).map(topicLabel)].join(", "),
           image: [ogImg],
-          // C19: the author url used to fall back to the source host root, which
-          // for a GitHub release is "https://github.com/" — the site root, not
-          // the project. Prefer the repo page when the source itself is a repo
-          // page, and only then fall back to the host root.
           author: { "@type": "Organization", name: b.lab, url: authorUrl(b.source, sourceHost) },
           publisher: {
             "@type": "NewsMediaOrganization",
@@ -308,7 +289,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
       ],
     };
     await write("b/" + b.year + "/" + b.month + "/" + b.day + "/" + b.slug + "/index.html", shell({
-      title: b.headline + " — Lab Ledger Desk",
+      title: b.headline + " \u2014 Lab Ledger Desk",
       description: b.dek,
       path: b.path,
       ogType: "article",
@@ -330,11 +311,11 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
         esc(b.labId),
         "/\">",
         esc(b.lab),
-        "</a> · <a href=\"/kind/",
+        "</a> \u00b7 <a href=\"/kind/",
         esc(b.kind),
         "/\">",
         esc(kindLabel(b.kind)),
-        "</a> · <time datetime=\"",
+        "</a> \u00b7 <time datetime=\"",
         esc(b.year + "-" + b.month + "-" + b.day),
         "\">",
         esc(b.dateLabel),
@@ -400,9 +381,6 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ...allBriefs.map((b) => [b.path, b.dateLabel]),
     ...allOpen.map((b) => [b.path, b.dateLabel]),
   ];
-  // Dedupe by path: a brief can appear in both the lab ledger and the
-  // open-release ledger under the same /b/YYYY/M/D/slug/ URL, and a
-  // duplicated <loc> makes the whole sitemap invalid for Google.
   const seenPaths = new Set();
   const unique = urls.filter(([u]) => {
     if (seenPaths.has(u)) return false;

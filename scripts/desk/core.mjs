@@ -62,45 +62,16 @@ export function decode(text) {
   return cur.trim();
 }
 
-// GitHub release notes are the squash-commit message, so the feed's <content>
-// is often *nothing but* a trailer block: "Signed-off-by: Robert Shaw <…>
-// <br>Co-authored-by: Bob <…> (cherry picked from commit abc123)". Cutting at
-// the first trailer would return an empty string in that case, and an empty
-// summary is a worse brief than none (the fallback path invents a sentence).
-// So: drop trailer *runs* wherever they appear, and keep whatever prose is
-// left, even when that is nothing.
 const TRAILER_KEYS = "signed-off-by|co-?authored-by|reviewed-by|acked-by|reported-by|tested-by|suggested-by|helped-by|cherry picked from commit";
-// A trailer begins at the start of a line, after a sentence ends, or right
-// after a tag boundary — GitHub renders trailers as <br>-separated HTML.
 const TRAILER_START = new RegExp("(?:^|\\n|\\.\\s*|>\\s*)(?:" + TRAILER_KEYS + ")[\\s:]", "i");
 export function stripCommitTrailers(text) {
   const t = String(text || "");
   const at = t.search(TRAILER_START);
   if (at < 0) return t;
-  // Everything from the first trailer on is provenance — the squash-commit
-  // footer, never a summary of the release. Dropping it whole is the right
-  // call even when prose follows it, because that prose is part of the same
-  // commit message rather than a description of the release. An empty result
-  // is fine: presentRelease then writes a sentence naming the lab, the version
-  // and the feed, which reads better than provenance.
   return t.slice(0, at).trim();
 }
 
 export function strip(text) {
-  // C7 (CodeQL js/bad-tag-filter): the classic bypasses are a nested tag —
-  // "<scr<script>ipt>" collapsing back into "<script>" — and a malformed close
-  // like "</script foo=\"bar\">", which a strict "</script>" match misses but a
-  // browser still accepts. CodeQL flags a literal that names a tag and removes
-  // it, and its recommendation is a parser library, which this repo cannot take
-  // (zero dependencies is an invariant).
-  //
-  // The compromise that keeps both properties: name the tag, but close the
-  // bypass CodeQL actually describes by matching the close generically, so a
-  // malformed "</script foo=...>" is still consumed, and loop the whole pass
-  // so a nested tag's inner removal is caught on the next iteration. Only the
-  // script/style families drop their bodies, because those are the only
-  // element types whose body is code rather than prose; everything else keeps
-  // its text and loses only the tags.
   let out = decode(text);
   for (let i = 0; i < 8; i += 1) {
     const next = out
@@ -177,11 +148,6 @@ export function hostAllowed(url, hosts) {
 }
 
 export function slugify(title) {
-  // Truncate at a word boundary, not mid-word: the slug is the URL, so a
-  // hyphen dangling from a half-word ("comfyui-v0-38-1-relea-") reads as a
-  // different page than the one a reader pastes back. Trim to the limit
-  // first, then cut at the last space inside it, then strip the punctuation
-  // a partial word would leave behind.
   const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   if (base.length <= 72) return base || "brief";
   const cut = base.slice(0, 72);
@@ -221,7 +187,7 @@ export function clipSentence(text, max) {
     const sp = cut.lastIndexOf(" ");
     return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[,:;\u2013-]+$/, "") + "\u2026";
   }
-  return out.length < t.length ? out + " …" : out;
+  return out.length < t.length ? out + " \u2026" : out;
 }
 
 export function wordCount(text) {
@@ -234,7 +200,7 @@ export function clipWords(text, max) {
   const acc = [];
   for (const w of words) {
     acc.push(w);
-    if (acc.length >= max - 8 && /[.!?]"?$/.test(w)) break;
+    if (acc.length >= max - 8 && /[.!?]”?$/.test(w)) break;
     if (acc.length >= max) break;
   }
   let out = acc.join(" ");
@@ -296,17 +262,9 @@ export function topicLabel(id) {
 export function composeWhat(summary, lab, headline, dateLabel) {
   let body = String(summary || "").replace(/\s+/g, " ").trim();
   if (!body) return lab + " published \u201c" + headline + "\u201d on " + dateLabel + ".";
-  return clipSentence(body, 320);
+  return clipSentence(body, 1800);
 }
 
-// C3: the board's "Why it matters" line is not a place for invented analysis.
-// The old composeWhy rotated five near-identical restatements of lab/date/kind
-// ("Filed as…", "…posted…") which read machine-generated and carried no "why".
-// What the desk actually knows from the allow-listed source is (a) the lab,
-// (b) the date, (c) the filing kind, and (d) the topics the desk itself
-// tagged the brief with. Each of those is stated once, plainly. Nothing is
-// inferred, no claim is expanded beyond the source's own words — the
-// substantive "what" lives in composeWhy's sibling composeWhat.
 export function composeWhy(lab, dateLabel, kind, topics) {
   const label = kind === "launch" ? "a launch filing" : kind === "research" ? "a research filing" : "a public note";
   const topicBit = topics.length ? " The desk tags this brief " + topics.map((t) => topicLabel(t)).join(" / ") + "." : "";
