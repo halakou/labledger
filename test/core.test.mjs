@@ -610,6 +610,45 @@ test("titlesAreDuplicates does not treat a ranking as a negation", () => {
   );
 });
 
+test("titlesAreDuplicates vetoes contraction negations too (round-3 defect D)", () => {
+  // \bn't\b can never match inside a contraction (no word boundary between
+  // "s" and "n" in "doesn't"), so the old regex let every contraction
+  // negation merge with its opposite. Both apostrophe forms are pinned:
+  // feeds carry the typographic ’ (U+2019) as often as the straight '.
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang doesn’t resign as CEO of NVIDIA", "The Verge", "Jensen Huang resigns as CEO of NVIDIA", "TechCrunch"),
+    false,
+    "curly doesn't resign vs resigns are opposite outcomes"
+  );
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang doesn't resign as CEO of NVIDIA", "The Verge", "Jensen Huang resigns as CEO of NVIDIA", "TechCrunch"),
+    false,
+    "straight doesn't resign vs resigns are opposite outcomes"
+  );
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang won’t stay as NVIDIA CEO", "The Verge", "Jensen Huang stays as NVIDIA CEO", "TechCrunch"),
+    false,
+    "won't stay vs stays are opposite outcomes"
+  );
+  assert.equal(
+    titlesAreDuplicates("OpenAI can’t launch GPT-6 today", "The Verge", "OpenAI launches GPT-6 today", "TechCrunch"),
+    false,
+    "can't launch vs launches are opposite outcomes"
+  );
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang cannot stay as NVIDIA CEO", "The Verge", "Jensen Huang stays as NVIDIA CEO", "TechCrunch"),
+    false,
+    "cannot stay vs stays are opposite outcomes"
+  );
+  // The guard fires and says why.
+  const sim = titleSimilarity("Jensen Huang doesn’t resign as CEO of NVIDIA", "The Verge", "Jensen Huang resigns as CEO of NVIDIA", "TechCrunch");
+  assert.equal(sim.outcomeConflict, true, "the contraction trips the outcome guard");
+  assert.equal(sim.duplicate, false);
+  // Control: "No. 1" is still a ranking, not a negation.
+  const rank = titleSimilarity("No. 1 AI model GPT-6 launches", "TechCrunch", "GPT-6 launches", "OpenAI");
+  assert.equal(rank.outcomeConflict, false, "'No. 1' still does not veto");
+});
+
 test("titlesAreDuplicates vetoes differing tiers", () => {
   // The PR's own must-not-cluster example: without the tier veto this
   // merges on the bigram branch (Jaccard 2/3 >= 0.6).

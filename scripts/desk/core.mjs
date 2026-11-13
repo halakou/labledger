@@ -508,8 +508,14 @@ const OUTCOME_STAY = new Set(["stay", "remain", "continu", "renew", "extend"]);
 const OUTCOME_LEAVE = new Set(["resign", "step", "depart", "leav", "quit", "exit", "resignation", "departure"]);
 const OUTCOME_NEGATIVE = new Set(["delay", "cancel", "kill", "recall", "halt", "paus", "postpon", "cancellation", "postponement"]);
 // "no" followed by ". 1" is a ranking ("No. 1 AI model"), not a negation,
-// so that shape is excluded from the negation check.
-const NEGATION_RE = /\b(?:not|never|n't)\b|\bno\b(?!\.\s*\d)/i;
+// so that shape is excluded from the negation check. The "n't" branch has
+// no leading \b: there is no word boundary between "s" and "n" in
+// "doesn't", so \bn't\b can never match a contraction — that was the
+// round-2 defect that let "doesn't resign" merge with "resigns". The
+// character class covers both apostrophes: feeds carry the typographic
+// ’ (U+2019) as often as the straight ', and the Manager's reproduction
+// cases used ’.
+const NEGATION_RE = /(?:n['’]t|\bnot\b|\bnever\b|\bcannot\b|\bno\b(?!\.\s*\d))/i;
 
 function tokenInGroup(tokens, group) {
   // A hyphenated token counts if any of its parts is in the group:
