@@ -12,6 +12,7 @@ import {
   classifyTopics,
   clip,
   clipSentence,
+  clusterBriefs,
   composeWhat,
   composeWhy,
   hostAllowed,
@@ -179,14 +180,39 @@ await writeFile(
   }),
 );
 
+// P0-1: the board shows one row per story, not one row per filing. Briefs
+// filed within 48h whose titles are near-duplicates (same story from several
+// labs) collapse into their newest brief's row; the others are listed on
+// that row as "also filed by …" with links to their own /b/ pages.
+//
+// The collapse happens here, AFTER the archive write above, and only
+// in memory: every brief stays in the archive with its own /b/ page (old
+// URLs stay — invariant 6), and alsoFiled is never persisted to
+// .desk-archive.json; the next build recomputes it from the archive.
+// Because the Telegram queue and feed.json are both built from `briefs`
+// below, a duplicate filing also takes no separate Telegram slot and no
+// separate feed slot — the channel never posts the same story twice.
+const today = new Date().toISOString().slice(0, 10);
+const clusterPrimaries = clusterBriefs(allBriefs).map(({ primary, also }) => {
+  if (also.length) {
+    primary.alsoFiled = also.map((b) => ({
+      lab: b.lab,
+      labId: b.labId,
+      path: b.path,
+      headline: b.headline,
+      dateLabel: b.dateLabel,
+    }));
+  }
+  return primary;
+});
+
 // The board leads with today's briefs, then backfills the most recent earlier
 // ones so a quiet morning still shows a full board. The desk date is the date
 // the build ran, so "today" means "filed since the last desk day started".
-const today = new Date().toISOString().slice(0, 10);
-const byToday = allBriefs.filter((b) => b.dateLabel === today);
+const byToday = clusterPrimaries.filter((b) => b.dateLabel === today);
 const briefs = [
   ...byToday,
-  ...allBriefs.filter((b) => b.dateLabel !== today).slice(0, Math.max(0, MAX_BRIEFS - byToday.length)),
+  ...clusterPrimaries.filter((b) => b.dateLabel !== today).slice(0, Math.max(0, MAX_BRIEFS - byToday.length)),
 ];
 
 // --- Open releases rail -------------------------------------------------

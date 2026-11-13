@@ -332,7 +332,14 @@ export function rowHtml(b) {
     "<span class=\"pill-kind pill-", esc(b.kind), "\">", esc(kindLabel(b.kind).toUpperCase()), "</span>",
     "<a class=\"lab-link\" href=\"/lab/", esc(b.labId), "/\">", esc(b.lab), "</a>",
     (b.topics || []).map((t) => "<a class=\"pill-topic\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t).toUpperCase()) + "</a>").join(""),
-    "</div><div class=\"dek\">", esc(b.dek), "</div></div>",
+    "</div><div class=\"dek\">", esc(b.dek), "</div>",
+    // P0-1: same story filed by more than one lab within 48h — one board
+    // row, with the other filings linked here, not as separate rows. Each
+    // link goes to that filing's own /b/ page, which still exists.
+    (Array.isArray(b.alsoFiled) && b.alsoFiled.length
+      ? "<div class=\"also-filed\">Also filed by " + b.alsoFiled.map((f) => "<a href=\"" + esc(f.path) + "\">" + esc(f.lab) + "</a>").join(" · ") + "</div>"
+      : ""),
+    "</div>",
     "<div class=\"ledger-col-status\"><span class=\"col-lbl\">Status</span><span class=\"status-val status-" + esc(b.kind) + "\">" + esc(statusText) + "</span></div>",
     "<div class=\"ledger-col-data\"><span class=\"col-lbl\">Brief</span><span class=\"data-val\">", esc(b.briefNo), "</span>",
     "<button type=\"button\" class=\"btn-cite\" data-cite=\"", esc(citeData), "\" aria-label=\"Copy citation\" title=\"Copy citation\">Cite</button>",

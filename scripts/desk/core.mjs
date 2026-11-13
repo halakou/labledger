@@ -1,4 +1,4 @@
-import { AMP, KINDS, TOPICS } from "./config.mjs";
+import { AMP, KINDS, LABS, TOPICS } from "./config.mjs";
 export {
   AMP,
   ARCHIVE_FILE,
@@ -284,6 +284,210 @@ export function classifyTopics(title, summary) {
     if (found.length >= 2) break;
   }
   return found;
+}
+
+// P0-1: duplicate-story clustering, no AI.
+//
+// The desk files the same story from several labs (a launch covered by the
+// lab itself, a press desk and a wire the same day). A second board row for
+// the same story is noise, not news — but the second filing must not be
+// deleted either: it keeps its archive entry and its /b/ page, and the
+// primary row links to it as "also filed by …".
+//
+// The similarity is pure Node, no embeddings, no model:
+//   1. normalise the title — lowercase, drop the source name (any LABS label
+//      word: "OpenAI launches …" and "Introducing …" from OpenAI must meet),
+//      drop stopwords and generic framing verbs, light-stem what is left;
+//   2. keyword overlap — Jaccard over the stemmed token sets, plus a shared
+//      bigram (two adjacent content tokens in the same order), which is what
+//      catches "Jensen Huang steps down" vs "Jensen Huang resigns";
+//   3. a digit guard — tokens carrying a digit (versions, model numbers,
+//      chip names) must not conflict: "v0.34.3" vs "v0.34.4" and
+//      "Claude Opus 5" vs "Claude Opus 5.1" are different releases, however
+//      similar the rest of the title looks.
+//
+// A shared bigram alone is not enough: two different pieces about the same
+// person ("Jensen Huang resigns" vs "Jensen Huang unveils a new chip", or
+// two same-day opinion pieces that only share the name "Jensen Huang")
+// would merge on that bigram. So a bigram match also needs real shared
+// substance — at least 3 shared tokens, or Jaccard >= 0.6, or one title's
+// tokens being a subset of the other's (a short announcement title against
+// a long descriptive one, e.g. "Introducing ChatGPT Wallet" vs the
+// TechCrunch/Verge wallet stories). A bare high Jaccard (>= 0.67) clusters
+// on its own, which covers word-order shuffles with no shared bigram.
+//
+// Known limit, stated honestly: this cannot tell "Gemini 4" vs
+// "Gemini 4 Hydrogen" (same launch, filed under two titles — cluster) from
+// "iPhone 17" vs "iPhone 17 Pro" (two tiers — must not cluster). The
+// mitigation is that clustering only ever hides a board row: the duplicate
+// keeps its own /b/ page, linked from the primary row, so a reader is one
+// click away from it. If that trade-off ever proves wrong, the fix is a
+// stricter threshold or an explicit block-list, not a model.
+export const CLUSTER_WINDOW_MS = 48 * 60 * 60 * 1000;
+const CLUSTER_JACCARD_MIN = 0.67;
+const CLUSTER_BIGRAM_JACCARD_MIN = 0.6;
+const CLUSTER_BIGRAM_SHARED_MIN = 3;
+
+const CLUSTER_STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "of", "to", "for", "with", "on", "in", "at",
+  "by", "from", "as", "is", "are", "was", "were", "its", "it", "this", "that",
+  "these", "those", "be", "been", "has", "have", "had", "will", "would",
+  "can", "could", "not", "no", "vs", "per", "via",
+]);
+
+// Framing verbs, as stems (see stemToken): the word a desk uses to announce
+// something, not the thing itself. "Introducing X" and "X launches" are the
+// same filing. Directional or outcome verbs (fall/rise/win/lose) are NOT
+// here — "X resigns" vs "X stays" must stay distinguishable.
+const CLUSTER_GENERIC_VERBS = new Set([
+  "introduc", "launch", "releas", "announc", "unveil", "ship", "debut",
+  "present", "publish", "post", "share", "bring", "avail", "resign", "step",
+  "leav", "depart", "join", "appoint", "name",
+]);
+
+// Temporal filler, as stems.
+const CLUSTER_FILLER = new Set(["now", "today", "here", "new", "first", "next", "latest", "just"]);
+
+// Every word of every LABS label, lowercased: the source name, wherever it
+// appears in a title. "NVIDIA" is a lab and a subject at once; dropping it
+// from both sides is what lets two filings of the same NVIDIA story meet.
+const SOURCE_TOKENS = new Set(
+  LABS.flatMap((lab) => String(lab.label || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)),
+);
+
+export function stemToken(token) {
+  const t = String(token || "");
+  if (/\d/.test(t) || t.length < 4) return t;
+  for (const suffix of ["ing", "ed", "es", "s"]) {
+    if (t.endsWith(suffix) && t.length - suffix.length >= 3) return t.slice(0, -suffix.length);
+  }
+  return t;
+}
+
+// Ordered, deduplicated content tokens of a title: version/model tokens
+// ("v0.34.3", "gpt-5", "4") kept whole, source names, stopwords, framing
+// verbs and filler dropped, the rest light-stemmed.
+export function titleKeywords(title) {
+  const raw = String(title || "").toLowerCase();
+  const tokens = raw.match(/(v?\d+(?:\.\d+)+)|([a-z0-9]+(?:-[a-z0-9]+)*)/g) || [];
+  const out = [];
+  const seen = new Set();
+  for (const token of tokens) {
+    if (SOURCE_TOKENS.has(token)) continue;
+    if (/\d/.test(token)) {
+      if (!seen.has(token)) { seen.add(token); out.push(token); }
+      continue;
+    }
+    if (token.length < 2 || CLUSTER_STOPWORDS.has(token)) continue;
+    const stem = stemToken(token);
+    if (CLUSTER_GENERIC_VERBS.has(stem) || CLUSTER_FILLER.has(stem)) continue;
+    if (!seen.has(stem)) { seen.add(stem); out.push(stem); }
+  }
+  return out;
+}
+
+function digitTokens(tokens) {
+  return new Set(tokens.filter((t) => /\d/.test(t)));
+}
+
+function jaccard(a, b) {
+  const setA = new Set(a);
+  const setB = new Set(b);
+  if (!setA.size && !setB.size) return 0;
+  let shared = 0;
+  for (const t of setA) if (setB.has(t)) shared += 1;
+  return shared / (setA.size + setB.size - shared);
+}
+
+function sharedCount(a, b) {
+  const setB = new Set(b);
+  let shared = 0;
+  for (const t of new Set(a)) if (setB.has(t)) shared += 1;
+  return shared;
+}
+
+function isSubset(a, b) {
+  if (!a.length || !b.length) return false;
+  const setA = new Set(a);
+  const setB = new Set(b);
+  return a.every((t) => setB.has(t)) || b.every((t) => setA.has(t));
+}
+
+function hasSharedBigram(a, b) {
+  if (a.length < 2 || b.length < 2) return false;
+  const bigrams = new Set();
+  for (let i = 0; i + 1 < b.length; i += 1) bigrams.add(b[i] + " " + b[i + 1]);
+  for (let i = 0; i + 1 < a.length; i += 1) {
+    if (bigrams.has(a[i] + " " + a[i + 1])) return true;
+  }
+  return false;
+}
+
+// { jaccard, sharedBigram, shared, subset, digitConflict, duplicate } for
+// two titles. Digit tokens must agree: if both titles carry digit tokens
+// and the sets differ, the filings are different releases, whatever the
+// overlap says. Otherwise: a high Jaccard clusters on its own; a shared
+// bigram clusters only with real shared substance (see the P0-1 comment
+// above), so two different pieces that merely name the same person stay
+// separate rows.
+export function titleSimilarity(aTitle, bTitle) {
+  const ka = titleKeywords(aTitle);
+  const kb = titleKeywords(bTitle);
+  const da = digitTokens(ka);
+  const db = digitTokens(kb);
+  const digitConflict =
+    da.size > 0 &&
+    db.size > 0 &&
+    (da.size !== db.size || [...da].some((t) => !db.has(t)));
+  const sharedBigram = hasSharedBigram(ka, kb);
+  const score = jaccard(ka, kb);
+  const shared = sharedCount(ka, kb);
+  const subset = isSubset(ka, kb);
+  const bigramSubstance =
+    sharedBigram && (shared >= CLUSTER_BIGRAM_SHARED_MIN || score >= CLUSTER_BIGRAM_JACCARD_MIN || subset);
+  return {
+    jaccard: score,
+    sharedBigram,
+    shared,
+    subset,
+    digitConflict,
+    duplicate: !digitConflict && (score >= CLUSTER_JACCARD_MIN || bigramSubstance),
+  };
+}
+
+export function titlesAreDuplicates(aTitle, bTitle) {
+  return titleSimilarity(aTitle, bTitle).duplicate;
+}
+
+// Greedy clustering over briefs sorted newest-first (as build-desk.mjs
+// sorts allBriefs). The primary of a cluster is its newest brief; a later
+// brief joins the first cluster whose primary it duplicates and which is at
+// most CLUSTER_WINDOW_MS newer than it. Because the input is newest-first,
+// once a primary is older than the window every later primary is older too,
+// so the scan stops there. Returns [{ primary, also: [brief, …] }] in
+// newest-primary-first order. Pure: no brief is mutated, nothing is dropped.
+export function clusterBriefs(briefs, windowMs = CLUSTER_WINDOW_MS) {
+  const clusters = [];
+  for (const brief of briefs || []) {
+    const at = new Date(brief?.publishedAt).getTime();
+    if (Number.isNaN(at)) {
+      clusters.push({ primary: brief, also: [] });
+      continue;
+    }
+    let placed = false;
+    for (const cluster of clusters) {
+      const primaryAt = new Date(cluster.primary?.publishedAt).getTime();
+      if (Number.isNaN(primaryAt)) continue;
+      if (primaryAt - at > windowMs) break;
+      if (titlesAreDuplicates(cluster.primary?.headline || "", brief?.headline || "")) {
+        cluster.also.push(brief);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) clusters.push({ primary: brief, also: [] });
+  }
+  return clusters;
 }
 
 export function kindLabel(id) {

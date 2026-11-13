@@ -152,6 +152,10 @@ p{text-wrap:pretty}
 .pill-topic{background:rgba(255,255,255,0.04);border:1px solid var(--rule);padding:.1rem .4rem;border-radius:2px;color:var(--muted);font-size:.62rem;text-decoration:none}
 .pill-topic:hover{color:#fff;border-color:var(--rule-strong)}
 .dek{font-family:var(--font-sans);font-size:.88rem;color:var(--muted);line-height:1.52}
+/* P0-1: same story filed by several labs — the other filings, linked from the primary row. */
+.also-filed{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);margin-top:.45rem}
+.also-filed a{color:#d0d7de;text-decoration:underline}
+.also-filed a:hover{color:#fff}
 
 /* Col 3: Status Column */
 .ledger-col-status{display:flex;flex-direction:column;gap:.2rem;border-left:1px solid rgba(255,255,255,0.06);padding-left:1.1rem}

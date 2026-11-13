@@ -14,10 +14,14 @@ import {
   classifyTopics,
   hostAllowed,
   hostOf,
+  clusterBriefs,
   composeWhat,
   composeWhy,
   factsFor,
   presentRelease,
+  titleKeywords,
+  titleSimilarity,
+  titlesAreDuplicates,
 } from "../scripts/desk/core.mjs";
 import { mondayOf } from "../scripts/desk/net.mjs";
 
@@ -361,4 +365,155 @@ test("composeWhy names the filing kind a note, not a launch or research claim", 
   const why = composeWhy("Mistral", "2026-09-28", "note", ["open"]);
   assert.ok(why.includes("public note"));
   assert.ok(why.includes("Open models"), "topics render as labels, not as raw ids");
+});
+
+// --- P0-1: duplicate-story clustering, no AI --------------------------------
+
+test("titleKeywords drops the source name, framing verbs and stopwords, and stems the rest", () => {
+  // "OpenAI" is a lab label word, "launches" a framing verb, "the" a stopword.
+  assert.deepEqual(titleKeywords("OpenAI launches GPT-6"), ["gpt-6"]);
+  assert.deepEqual(titleKeywords("Introducing Gemini 4 Hydrogen"), ["gemini", "4", "hydrogen"]);
+  // A version token stays whole: "v0.34.3" is one token, not "v0" + "34" + "3".
+  assert.deepEqual(titleKeywords("vLLM v0.34.3"), ["vllm", "v0.34.3"]);
+  // Stemming is consistent both ways: "introducing" and "introduced" meet.
+  assert.deepEqual(titleKeywords("Introducing ChatGPT Wallet"), titleKeywords("ChatGPT Wallet introduced"));
+});
+
+test("titlesAreDuplicates clusters the same story filed under different titles", () => {
+  // Real duplicate shapes: one story, two labs, two wordings.
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang steps down as NVIDIA CEO", "Jensen Huang resigns as CEO of NVIDIA"),
+    true,
+    "steps down vs resigns is the same resignation"
+  );
+  assert.equal(
+    titlesAreDuplicates("Introducing Gemini 4 Hydrogen", "Google launches Gemini 4 Hydrogen"),
+    true,
+    "same launch, one title names the source"
+  );
+  assert.equal(
+    titlesAreDuplicates("Introducing ChatGPT Wallet", "OpenAI launches ChatGPT Wallet"),
+    true,
+    "same launch, different framing verb"
+  );
+  assert.equal(
+    titlesAreDuplicates("Gemini 4", "Gemini 4 Hydrogen"),
+    true,
+    "a shorter title for the same launch still matches"
+  );
+});
+
+test("titlesAreDuplicates does not cluster different releases, however similar the title", () => {
+  assert.equal(
+    titlesAreDuplicates("OpenAI launches GPT-6", "OpenAI launches ChatGPT Wallet"),
+    false,
+    "same lab and verb, different product"
+  );
+  assert.equal(
+    titlesAreDuplicates("Anthropic releases Claude Opus 5", "Anthropic releases Claude Sonnet 5"),
+    false,
+    "Opus vs Sonnet are different models, not two filings of one"
+  );
+  assert.equal(
+    titlesAreDuplicates("vLLM v0.34.3", "vLLM v0.34.4"),
+    false,
+    "different patch versions are different releases (digit guard)"
+  );
+  assert.equal(
+    titlesAreDuplicates("Claude Opus 5", "Claude Opus 5.1"),
+    false,
+    "a point release is a different release (digit guard)"
+  );
+  assert.equal(
+    titlesAreDuplicates("Gemini 4", "Gemini 5"),
+    false,
+    "a different major number is a different model"
+  );
+});
+
+test("titleSimilarity exposes why a pair did or did not match", () => {
+  const dup = titleSimilarity("Jensen Huang steps down as NVIDIA CEO", "Jensen Huang resigns as CEO of NVIDIA");
+  assert.equal(dup.duplicate, true);
+  assert.equal(dup.sharedBigram, true, "the shared 'jensen huang' bigram is what catches it");
+  assert.equal(dup.digitConflict, false);
+  const versions = titleSimilarity("vLLM v0.34.3", "vLLM v0.34.4");
+  assert.equal(versions.duplicate, false);
+  assert.equal(versions.digitConflict, true, "the differing version token vetoes the match");
+});
+
+test("titlesAreDuplicates needs shared substance, not just a shared name", () => {
+  // Two same-day pieces that only share the name "Jensen Huang" are two
+  // rows, not one story: different theses, two shared tokens, low Jaccard.
+  assert.equal(
+    titlesAreDuplicates(
+      "Jensen Huang and the End of the Founder Fairy Tale",
+      "What’s really at stake in the Jensen Huang saga"
+    ),
+    false,
+    "same person, different pieces — the shared bigram alone must not merge them"
+  );
+  // A resignation and a chip launch about the same person on the same day
+  // are two stories, even though the titles share the name bigram.
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang resigns as NVIDIA CEO", "Jensen Huang unveils a new AI chip"),
+    false,
+    "same person, different events"
+  );
+});
+
+test("titlesAreDuplicates clusters a short announcement against long descriptive filings", () => {
+  // Real 2026-11-13 filings: the short OpenAI title is a subset of the
+  // longer press titles, and the two press titles share 5 tokens.
+  assert.equal(
+    titlesAreDuplicates("Introducing ChatGPT Wallet", "ChatGPT’s new Wallet lets AI agents shop and check out for you"),
+    true,
+    "short title is a subset of the long one"
+  );
+  assert.equal(
+    titlesAreDuplicates(
+      "ChatGPT Wallet lets OpenAI’s Dots agents make purchases for you",
+      "ChatGPT’s new Wallet lets AI agents shop and check out for you"
+    ),
+    true,
+    "two long filings of the same launch share 5 tokens"
+  );
+});
+
+test("clusterBriefs files the second filing under the first within 48h", () => {
+  const briefs = [
+    { headline: "Jensen Huang resigns as CEO of NVIDIA", lab: "TechCrunch", publishedAt: "2026-11-14T10:00:00Z", path: "/b/2026/11/14/jensen-huang-resigns/" },
+    { headline: "Jensen Huang steps down as NVIDIA CEO", lab: "NVIDIA", publishedAt: "2026-11-13T09:00:00Z", path: "/b/2026/11/13/jensen-huang-steps-down/" },
+    { headline: "OpenAI launches GPT-6", lab: "OpenAI", publishedAt: "2026-11-14T09:00:00Z", path: "/b/2026/11/14/openai-launches-gpt-6/" },
+  ];
+  const clusters = clusterBriefs(briefs);
+  assert.equal(clusters.length, 2, "three briefs, two stories");
+  assert.equal(clusters[0].primary.lab, "TechCrunch", "the primary is the newest filing");
+  assert.equal(clusters[0].also.length, 1, "the NVIDIA filing joins it");
+  assert.equal(clusters[0].also[0].lab, "NVIDIA");
+  assert.equal(clusters[1].primary.lab, "OpenAI");
+  assert.equal(clusters[1].also.length, 0);
+});
+
+test("clusterBriefs does not cluster the same story more than 48h apart", () => {
+  const briefs = [
+    { headline: "Introducing Gemini 4 Hydrogen", lab: "Google", publishedAt: "2026-11-14T10:00:00Z", path: "/b/2026/11/14/gemini-4-hydrogen/" },
+    { headline: "Google launches Gemini 4 Hydrogen", lab: "The Verge", publishedAt: "2026-11-11T09:00:00Z", path: "/b/2026/11/11/gemini-4-hydrogen-verge/" },
+  ];
+  const clusters = clusterBriefs(briefs);
+  assert.equal(clusters.length, 2, "73 hours apart is a new filing, not a duplicate");
+  assert.equal(clusters[0].also.length, 0);
+  assert.equal(clusters[1].also.length, 0);
+});
+
+test("clusterBriefs never drops a brief: every input is a primary or an also", () => {
+  const briefs = [
+    { headline: "Introducing ChatGPT Wallet", lab: "OpenAI", publishedAt: "2026-11-14T10:00:00Z", path: "/b/1/" },
+    { headline: "OpenAI launches ChatGPT Wallet", lab: "TechCrunch", publishedAt: "2026-11-14T09:00:00Z", path: "/b/2/" },
+    { headline: "Introducing ChatGPT Wallet", lab: "The Verge", publishedAt: "2026-11-14T08:00:00Z", path: "/b/3/" },
+  ];
+  const clusters = clusterBriefs(briefs);
+  assert.equal(clusters.length, 1, "three filings, one story");
+  assert.equal(clusters[0].also.length, 2, "both later filings join the newest");
+  const accounted = clusters.flatMap((c) => [c.primary, ...c.also]);
+  assert.equal(accounted.length, briefs.length);
 });
