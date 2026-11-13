@@ -361,14 +361,46 @@ const CLUSTER_GENERIC_VERBS = new Set([
 // Temporal filler, as stems.
 const CLUSTER_FILLER = new Set(["now", "today", "here", "new", "first", "next", "latest", "just"]);
 
-// The filing lab's OWN name only, as tokens. A title keeps every other
-// lab's name: "NVIDIA" is a lab and a subject at once, and stripping every
-// lab's name from every title was the P0-1 defect that merged "NVIDIA posts
-// record revenue" with "AMD posts record revenue" (both reduced to the same
-// two tokens). The filing lab is passed in by clusterBriefs, which knows
-// each brief's lab.
+// A lab's name, as tokens ("The Verge" -> {"the", "verge"}). Used only
+// by sharedLabNameStems, which decides for a PAIR of titles whether a
+// lab-name token is a shared subject reference or the distinguishing
+// subject. Stripping a lab's own name per title was the round-2 defect:
+// it merged "NVIDIA posts record revenue" (NVIDIA) with "AMD posts record
+// revenue" (AMD) — both reduced to [record, revenue] — and it broke
+// identical short launch titles filed by the lab and a press desk
+// ("OpenAI launches GPT-6" filed by OpenAI vs the same title filed by
+// TechCrunch: the lab's filing lost "openai", the press filing kept it,
+// and the 1-token remainder could not clear the bar).
 function ownNameTokens(labLabel) {
   return new Set(String(labLabel || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+}
+
+// Raw tokens of a title, lowercased, hyphenated tokens also split into
+// their parts, so "openai-powered" counts as containing "openai".
+function rawTitleTokens(title) {
+  const out = new Set();
+  for (const token of String(title || "").toLowerCase().match(/(v?\d+(?:\.\d+)+)|([a-z0-9]+(?:-[a-z0-9]+)*)/g) || []) {
+    out.add(token);
+    if (token.includes("-")) for (const p of token.split("-")) out.add(p);
+  }
+  return out;
+}
+
+// Lab-name stems to drop from BOTH keyword lists of a pair: a lab-name
+// token is dropped only when it occurs in BOTH raw titles. "OpenAI
+// launches GPT-6" filed by OpenAI and by TechCrunch drops "openai" on
+// both sides and still merges; "NVIDIA posts record revenue" filed by
+// NVIDIA keeps "nvidia" and "AMD posts record revenue" filed by AMD
+// keeps "amd", so the two revenue stories stay separate. A name that is
+// neither filing's lab is an ordinary content token and is never dropped.
+function sharedLabNameStems(aTitle, bTitle, aLab, bLab) {
+  const inA = rawTitleTokens(aTitle);
+  const inB = rawTitleTokens(bTitle);
+  const drop = new Set();
+  for (const name of [...ownNameTokens(aLab), ...ownNameTokens(bLab)]) {
+    if (inA.has(name) && inB.has(name)) drop.add(stemToken(name));
+  }
+  return drop;
 }
 
 export function stemToken(token) {
@@ -381,18 +413,17 @@ export function stemToken(token) {
 }
 
 // Ordered, deduplicated content tokens of a title: version/model tokens
-// ("v0.34.3", "gpt-5", "4") kept whole, the filing lab's OWN name,
-// stopwords, framing verbs and filler dropped, the rest light-stemmed.
-// labLabel is the filing lab's label ("OpenAI", "The Verge"); pass "" when
-// the lab is unknown and nothing is treated as a source name.
-export function titleKeywords(title, labLabel = "") {
+// ("v0.34.3", "gpt-5", "4") kept whole, stopwords, framing verbs and
+// filler dropped, the rest light-stemmed. Lab names are NOT stripped
+// here — that decision is pairwise (sharedLabNameStems, via
+// tokensAreDuplicates), because only a pair can say whether a lab name
+// is a shared subject reference or the distinguishing subject.
+export function titleKeywords(title) {
   const raw = String(title || "").toLowerCase();
   const tokens = raw.match(/(v?\d+(?:\.\d+)+)|([a-z0-9]+(?:-[a-z0-9]+)*)/g) || [];
-  const ownName = ownNameTokens(labLabel);
   const out = [];
   const seen = new Set();
   for (const token of tokens) {
-    if (ownName.has(token)) continue;
     if (/\d/.test(token)) {
       if (!seen.has(token)) { seen.add(token); out.push(token); }
       continue;
@@ -464,14 +495,21 @@ function sharedBeyondBigram(a, b) {
   return n;
 }
 
-// Outcome verbs, as stems: mutually exclusive outcomes about the same
+// Outcome words, as stems: mutually exclusive outcomes about the same
 // subject are different stories, whatever the overlap says. Staying vs
 // leaving, a one-sided delay/cancel/kill/recall, and a negation on one
-// side only all veto a merge.
+// side only all veto a merge. Verb AND noun forms are both in the sets:
+// "resignation" / "departure" / "cancellation" / "postponement" veto
+// exactly like "resigns" / "departs" / "cancels" / "postpones" — noun
+// headlines were the round-2 defect that let "Jensen Huang's
+// resignation" merge with "Jensen Huang stays". The list is explicit,
+// not prefix matching, so "killer app" never false-vetoes.
 const OUTCOME_STAY = new Set(["stay", "remain", "continu", "renew", "extend"]);
-const OUTCOME_LEAVE = new Set(["resign", "step", "depart", "leav", "quit", "exit"]);
-const OUTCOME_NEGATIVE = new Set(["delay", "cancel", "kill", "recall", "halt", "paus", "postpon"]);
-const NEGATION_RE = /\b(not|never|no|n't)\b/i;
+const OUTCOME_LEAVE = new Set(["resign", "step", "depart", "leav", "quit", "exit", "resignation", "departure"]);
+const OUTCOME_NEGATIVE = new Set(["delay", "cancel", "kill", "recall", "halt", "paus", "postpon", "cancellation", "postponement"]);
+// "no" followed by ". 1" is a ranking ("No. 1 AI model"), not a negation,
+// so that shape is excluded from the negation check.
+const NEGATION_RE = /\b(?:not|never|n't)\b|\bno\b(?!\.\s*\d)/i;
 
 function tokenInGroup(tokens, group) {
   // A hyphenated token counts if any of its parts is in the group:
@@ -515,15 +553,23 @@ function tierConflict(ka, kb) {
 // digitConflict, outcomeConflict, tierConflict, duplicate } for two titles.
 // Digit tokens must agree: if both titles carry digit tokens and the sets
 // differ, the filings are different releases, whatever the overlap says.
-// Outcome and tier vetoes work the same way. Otherwise: a high Jaccard
-// clusters on its own; a shared bigram clusters only with real shared
-// substance (at least 3 shared tokens, or Jaccard >= 0.6); and a subset
-// merge needs that same substance floor counted beyond the bigram's own
-// tokens, so two different pieces that merely name the same person stay
-// separate rows. ka/kb are precomputed titleKeywords arrays (clusterBriefs
-// memoizes them); aTitle/bTitle are the raw titles, read only for the
-// negation check.
-export function tokensAreDuplicates(ka, kb, aTitle, bTitle) {
+// Outcome and tier vetoes work the same way. A lab-name token is dropped
+// from both keyword lists first, but only when it occurs in both raw
+// titles (sharedLabNameStems) — a shared subject reference, never the
+// distinguishing subject. Otherwise: a high Jaccard clusters on its own;
+// a shared bigram clusters only with real shared substance (at least 3
+// shared tokens, or Jaccard >= 0.6); and a subset merge needs that same
+// substance floor counted beyond the bigram's own tokens, so two
+// different pieces that merely name the same person stay separate rows.
+// ka/kb are precomputed titleKeywords arrays (clusterBriefs memoizes
+// them); aTitle/bTitle are the raw titles, read for the negation check
+// and the shared lab-name rule; aLab/bLab are the filing labs.
+export function tokensAreDuplicates(ka, kb, aTitle, bTitle, aLab = "", bLab = "") {
+  const drop = sharedLabNameStems(aTitle, bTitle, aLab, bLab);
+  if (drop.size) {
+    ka = ka.filter((t) => !drop.has(t));
+    kb = kb.filter((t) => !drop.has(t));
+  }
   const da = digitTokens(ka);
   const db = digitTokens(kb);
   const digitConflict =
@@ -559,10 +605,12 @@ export function tokensAreDuplicates(ka, kb, aTitle, bTitle) {
 
 export function titleSimilarity(aTitle, aLab, bTitle, bLab) {
   return tokensAreDuplicates(
-    titleKeywords(aTitle, aLab),
-    titleKeywords(bTitle, bLab),
+    titleKeywords(aTitle),
+    titleKeywords(bTitle),
     aTitle,
     bTitle,
+    aLab,
+    bLab,
   );
 }
 
@@ -588,7 +636,7 @@ export function clusterBriefs(briefs, windowMs = CLUSTER_WINDOW_MS) {
   const keywords = new Map();
   const kw = (brief) => {
     if (!keywords.has(brief)) {
-      keywords.set(brief, titleKeywords(brief?.headline || "", brief?.lab || ""));
+      keywords.set(brief, titleKeywords(brief?.headline || ""));
     }
     return keywords.get(brief);
   };
@@ -610,6 +658,8 @@ export function clusterBriefs(briefs, windowMs = CLUSTER_WINDOW_MS) {
           kw(brief),
           cluster.primary?.headline || "",
           brief?.headline || "",
+          cluster.primary?.lab || "",
+          brief?.lab || "",
         ).duplicate
       ) {
         cluster.also.push(brief);

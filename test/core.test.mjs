@@ -373,18 +373,20 @@ test("composeWhy names the filing kind a note, not a launch or research claim", 
 
 // --- P0-1: duplicate-story clustering, no AI --------------------------------
 
-test("titleKeywords drops the filing lab's OWN name, framing verbs and stopwords, and stems the rest", () => {
-  // "OpenAI" is the filing lab's own label, "launches" a framing verb.
-  assert.deepEqual(titleKeywords("OpenAI launches GPT-6", "OpenAI"), ["gpt-6"]);
-  assert.deepEqual(titleKeywords("Introducing Gemini 4 Hydrogen", "Google"), ["gemini", "4", "hydrogen"]);
+test("titleKeywords drops framing verbs and stopwords and stems the rest — lab names are kept here", () => {
+  // Lab names are NOT stripped at this level: whether a lab name is a
+  // shared subject reference or the distinguishing subject can only be
+  // decided for a pair (see the shared-name test below). "OpenAI" stays
+  // in the tokens; the pairwise comparison drops it only when it occurs
+  // in both titles.
+  assert.deepEqual(titleKeywords("OpenAI launches GPT-6"), ["openai", "gpt-6"]);
+  assert.deepEqual(titleKeywords("Introducing Gemini 4 Hydrogen"), ["gemini", "4", "hydrogen"]);
   // A version token stays whole: "v0.34.3" is one token, not "v0" + "34" + "3".
-  assert.deepEqual(titleKeywords("vLLM v0.34.3", "The Verge"), ["vllm", "v0.34.3"]);
+  assert.deepEqual(titleKeywords("vLLM v0.34.3"), ["vllm", "v0.34.3"]);
   // Stemming is consistent both ways: "introducing" and "introduced" meet.
-  assert.deepEqual(titleKeywords("Introducing ChatGPT Wallet", "OpenAI"), titleKeywords("ChatGPT Wallet introduced", "OpenAI"));
-  // Only the filing lab's own name is dropped: the same title keeps
-  // "nvidia" when filed by TechCrunch, drops it when filed by NVIDIA.
-  assert.deepEqual(titleKeywords("NVIDIA posts record revenue", "NVIDIA"), ["record", "revenue"]);
-  assert.deepEqual(titleKeywords("NVIDIA posts record revenue", "TechCrunch"), ["nvidia", "record", "revenue"]);
+  assert.deepEqual(titleKeywords("Introducing ChatGPT Wallet"), titleKeywords("ChatGPT Wallet introduced"));
+  // The subject stays in the tokens either way now: the pair decides.
+  assert.deepEqual(titleKeywords("NVIDIA posts record revenue"), ["nvidia", "record", "revenue"]);
 });
 
 test("titlesAreDuplicates clusters the same story filed under different titles", () => {
@@ -445,6 +447,40 @@ test("titlesAreDuplicates does not cluster different releases, however similar t
     titlesAreDuplicates("NVIDIA posts record revenue", "TechCrunch", "AMD posts record revenue", "TechCrunch"),
     false,
     "the subject is the story — nvidia vs amd must not meet"
+  );
+});
+
+test("titlesAreDuplicates drops a lab name only when it occurs in both titles (round-2 defects A + B)", () => {
+  // Defect A: each company filing its own revenue — the lab name is the
+  // distinguishing subject, so it is kept on both sides and the two
+  // revenue stories stay separate rows.
+  assert.equal(
+    titlesAreDuplicates("NVIDIA posts record revenue", "NVIDIA", "AMD posts record revenue", "AMD"),
+    false,
+    "own-lab revenue filings must not merge — nvidia vs amd is the story"
+  );
+  assert.equal(
+    titlesAreDuplicates("Google posts record revenue", "Google", "Microsoft posts record revenue", "Microsoft"),
+    false,
+    "same shape, different companies"
+  );
+  // Defect B: the identical short launch title filed by the lab and by a
+  // press desk — the lab name occurs in both titles, so it drops from
+  // both sides and the pair still merges.
+  assert.equal(
+    titlesAreDuplicates("OpenAI launches GPT-6", "OpenAI", "OpenAI launches GPT-6", "TechCrunch"),
+    true,
+    "the same headline is the same story, whoever filed it"
+  );
+  assert.equal(
+    titlesAreDuplicates("NVIDIA launches Blackwell", "NVIDIA", "NVIDIA launches Blackwell", "The Verge"),
+    true,
+    "same headline, lab vs press desk"
+  );
+  assert.equal(
+    titlesAreDuplicates("Google launches Gemini", "Google", "Google launches Gemini", "TechCrunch"),
+    true,
+    "same headline, lab vs press desk"
   );
 });
 
@@ -522,6 +558,55 @@ test("titlesAreDuplicates vetoes opposite outcomes, however similar the title", 
     titlesAreDuplicates("Jensen Huang steps down as NVIDIA CEO", "NVIDIA", "Jensen Huang resigns as CEO of NVIDIA", "TechCrunch"),
     true,
     "steps down vs resigns is the same resignation"
+  );
+});
+
+test("titlesAreDuplicates vetoes noun-form outcomes too (round-2 defect C)", () => {
+  // The reviewer's exact cases: without the noun forms in the outcome
+  // sets these merge on Jaccard 2/3 with outcomeConflict false.
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang’s resignation as CEO of NVIDIA", "The Verge", "Jensen Huang stays as CEO of NVIDIA", "WIRED"),
+    false,
+    "resignation vs stays are opposite outcomes"
+  );
+  assert.equal(
+    titlesAreDuplicates("The departure of Jensen Huang as NVIDIA CEO", "TechCrunch", "Jensen Huang stays as NVIDIA CEO", "WIRED"),
+    false,
+    "departure vs stays are opposite outcomes"
+  );
+  assert.equal(
+    titlesAreDuplicates("The resignation of Jensen Huang as NVIDIA CEO", "TechCrunch", "Jensen Huang remains NVIDIA CEO", "WIRED"),
+    false,
+    "resignation vs remains are opposite outcomes"
+  );
+  // One-sided cancellation / postponement against the event itself: both
+  // pairs would merge on the bigram branch without the guard.
+  assert.equal(
+    titlesAreDuplicates("The cancellation of the GPT-6 launch event", "TechCrunch", "OpenAI launches GPT-6 at the event", "OpenAI"),
+    false,
+    "a cancelled launch is not the launch"
+  );
+  assert.equal(
+    titlesAreDuplicates("The postponement of the GPT-6 launch event", "TechCrunch", "OpenAI launches GPT-6 at the event", "OpenAI"),
+    false,
+    "a postponed launch is not the launch"
+  );
+  // The veto is on the outcome, not the word shape: the guard fires and
+  // says why.
+  const sim = titleSimilarity("Jensen Huang’s resignation as CEO of NVIDIA", "The Verge", "Jensen Huang stays as CEO of NVIDIA", "WIRED");
+  assert.equal(sim.outcomeConflict, true, "the noun form trips the outcome guard");
+  assert.equal(sim.duplicate, false);
+});
+
+test("titlesAreDuplicates does not treat a ranking as a negation", () => {
+  // "No. 1" is a ranking, not a negation: it must not veto a match.
+  const sim = titleSimilarity("No. 1 AI model GPT-6 launches", "TechCrunch", "GPT-6 launches", "OpenAI");
+  assert.equal(sim.outcomeConflict, false, "'No. 1' is not a negation");
+  // A real negation still vetoes (same shape as the pinned test above).
+  assert.equal(
+    titlesAreDuplicates("Jensen Huang does not resign as CEO of NVIDIA", "TechCrunch", "Jensen Huang resigns as CEO of NVIDIA", "NVIDIA"),
+    false,
+    "'does not resign' still vetoes"
   );
 });
 
