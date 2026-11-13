@@ -1,7 +1,7 @@
 import { deflateSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { MARK_DIR, kindLabel } from "./core.mjs";
+import { MARK_DIR, RECENT_MS, kindLabel } from "./core.mjs";
 import { getOut } from "./config.mjs";
 import { blitContain, decodeMark } from "./raster.mjs";
 
@@ -213,9 +213,18 @@ export async function writeOgCard(brief) {
   return "/" + rel;
 }
 
-export async function writeOgCards(briefs) {
+export async function writeOgCards(briefs, today) {
   let n = 0;
   for (const b of briefs) {
+    // P0-2: share cards are drawn only for briefs filed within RECENT_MS of
+    // the build date. At ~60 filed briefs a day, a card for every brief
+    // would double the deployed file count and break the free-tier
+    // 20,000-file ceiling within months. An older brief keeps its page;
+    // its og:image falls back to the desk card (see archives.mjs).
+    if (today !== undefined && !isOgRecent(b, today)) {
+      delete b.ogImage;
+      continue;
+    }
     try {
       b.ogImage = await writeOgCard(b);
       n += 1;
@@ -224,4 +233,15 @@ export async function writeOgCards(briefs) {
     }
   }
   return n;
+}
+
+// A brief filed within RECENT_MS of the build date gets a per-brief share
+// card. A brief with no parseable date keeps its card (fail-open); an
+// unparseable build date keeps every card rather than dropping them all.
+export function isOgRecent(brief, today) {
+  const t = new Date(brief.publishedAt).getTime();
+  if (Number.isNaN(t)) return true;
+  const cutoff = new Date(String(today).slice(0, 10) + "T00:00:00Z").getTime() - RECENT_MS;
+  if (Number.isNaN(cutoff)) return true;
+  return t >= cutoff;
 }

@@ -198,7 +198,10 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
   }
 
   for (const topic of TOPICS) {
-    const rows = allBriefs.filter((b) => (b.topics || []).includes(topic.id));
+    // P0-2: the archive is uncapped now, so the rendered rows are capped
+    // at 80 like /lab/ — the JSON-LD below still carries the true total.
+    const tagged = allBriefs.filter((b) => (b.topics || []).includes(topic.id));
+    const rows = tagged.slice(0, 80);
     await write(
       "topic/" + topic.id + "/index.html",
       shell({
@@ -222,7 +225,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
               mainEntity: {
                 "@type": "ItemList",
                 name: topic.label + " briefs from every lab",
-                numberOfItems: rows.length,
+                numberOfItems: tagged.length,
                 itemListElement: rows.slice(0, 40).map((b, i) => ({
                   "@type": "ListItem",
                   position: i + 1,
@@ -237,7 +240,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "<article class=\"method\"><p class=\"kicker\">Topic</p><h1>",
           esc(topic.label),
           "</h1>",
-          "<p class=\"dek\">Every filed brief tagged ",
+          "<p class=\"dek\">The latest filed briefs tagged ",
           esc(topic.label),
           " — from every lab on the desk. Keyword tag from the official title and summary.</p></article>",
           "<section class=\"board\">",
@@ -249,7 +252,9 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
   }
 
   for (const kind of KINDS) {
-    const rows = allBriefs.filter((b) => b.kind === kind.id);
+    // P0-2: rendered rows capped at 80 like /lab/; JSON-LD keeps the total.
+    const ofKind = allBriefs.filter((b) => b.kind === kind.id);
+    const rows = ofKind.slice(0, 80);
     await write(
       "kind/" + kind.id + "/index.html",
       shell({
@@ -271,7 +276,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
               },
               mainEntity: {
                 "@type": "ItemList",
-                numberOfItems: rows.length,
+                numberOfItems: ofKind.length,
                 itemListElement: rows.slice(0, 40).map((b, i) => ({
                   "@type": "ListItem",
                   position: i + 1,

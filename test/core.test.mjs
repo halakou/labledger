@@ -867,3 +867,17 @@ test("build-desk writes the archive before clustering, so alsoFiled is never per
   assert.ok(clusterCall > -1, "the clusterBriefs call exists");
   assert.ok(archiveWrite < clusterCall, "the archive is written before clusterBriefs runs");
 });
+
+test("build-desk keeps every filed brief: no archive cap slice", async () => {
+  // P0-2: the archive must never delete. The old 500/200 caps sliced the
+  // archive file itself, so the next build dropped those briefs' /b/ pages
+  // (404) and their sitemap entries. The caps are gone from the code, not
+  // just raised.
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("../scripts/build-desk.mjs", import.meta.url), "utf8");
+  assert.equal(src.indexOf("ARCHIVE_MAX"), -1, "no lab archive cap remains in build-desk.mjs");
+  assert.equal(src.indexOf("OPEN_ARCHIVE_MAX"), -1, "no open archive cap remains in build-desk.mjs");
+  const config = await readFile(new URL("../scripts/desk/config.mjs", import.meta.url), "utf8");
+  assert.equal(config.indexOf("ARCHIVE_MAX"), -1, "the lab cap constant is gone from config.mjs");
+  assert.equal(config.indexOf("OPEN_ARCHIVE_MAX"), -1, "the open cap constant is gone from config.mjs");
+});

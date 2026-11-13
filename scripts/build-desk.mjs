@@ -1,7 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import {
   ARCHIVE_FILE,
-  ARCHIVE_MAX,
   LABS,
   MAX_BRIEFS,
   PER_FEED,
@@ -36,7 +35,7 @@ import {
 } from "./desk/net.mjs";
 import { fetchMark } from "./desk/fetch-mark.mjs";
 import { publishSite } from "./desk/pages.mjs";
-import { OPEN_PROJECTS, PER_OPEN, MAX_OPEN, OPEN_ARCHIVE_FILE, OPEN_ARCHIVE_MAX, OPEN_BLOCK } from "./desk/config.mjs";
+import { OPEN_PROJECTS, PER_OPEN, MAX_OPEN, OPEN_ARCHIVE_FILE, OPEN_BLOCK } from "./desk/config.mjs";
 
 const fontNames = await ensureFonts();
 const markMap = {};
@@ -171,13 +170,18 @@ for (const b of byGuid.values()) {
 let allBriefs = [...byGuid.values()].sort(
   (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
 );
-if (allBriefs.length > ARCHIVE_MAX) allBriefs = allBriefs.slice(0, ARCHIVE_MAX);
+// P0-2: no cap. The archive keeps every filed brief, so a filed URL stays
+// put (invariant 6). The old 500-brief cap slice deleted briefs from the
+// archive file itself, and the next build dropped their /b/ pages (404).
 await writeFile(
   ARCHIVE_FILE,
   JSON.stringify({
     nextId,
     briefs: allBriefs.map((b) => ({
       ...b,
+      // ogImage is a per-build derived value (see writeOgCards), not source
+      // data: never persist a card path the next build may not regenerate.
+      ogImage: undefined,
       publishedAt: typeof b.publishedAt === "string" ? b.publishedAt : new Date(b.publishedAt).toISOString(),
     })),
   }),
@@ -333,13 +337,16 @@ for (const brief of openPool) {
 let allOpen = [...openByGuid.values()].sort(
   (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
 );
-if (allOpen.length > OPEN_ARCHIVE_MAX) allOpen = allOpen.slice(0, OPEN_ARCHIVE_MAX);
+// P0-2: no cap, same as the lab archive above — the old 200-release cap
+// slice deleted open releases from the archive and dropped their /b/ pages.
 await writeFile(
   OPEN_ARCHIVE_FILE,
   JSON.stringify({
     nextId: openNextId,
     briefs: allOpen.map((b) => ({
       ...b,
+      // ogImage is a per-build derived value, not source data (see above).
+      ogImage: undefined,
       publishedAt: typeof b.publishedAt === "string" ? b.publishedAt : new Date(b.publishedAt).toISOString(),
     })),
   }),
