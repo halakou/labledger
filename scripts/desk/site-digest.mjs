@@ -13,7 +13,7 @@ export const METHOD_SECTIONS = [
   },
   {
     h: "How a brief is made",
-    p: "About every fifteen minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article\u2019s own og:title and og:description. If that description is Anthropic\u2019s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary \u2014 DeepMind often does \u2014 the desk fills the summary from that same host\u2019s meta description. Duplicates are dropped by guid. A fixed template is filled to about 100 words. Telegram carries the same brief only after the page exists.",
+    p: "About every fifteen minutes, the desk reads allow-listed HTTPS sources. Official RSS is the default. Anthropic has no RSS, so the desk reads the official /news listing and then the article\u2019s own og:title and og:description. If that description is Anthropic\u2019s site-wide boilerplate, the first paragraph of the article is used instead. If a feed item arrives with an empty summary \u2014 DeepMind often does \u2014 the desk fills the summary from that same host\u2019s meta description. A feed item already filed under the same guid is skipped. The same story filed by more than one lab within 48 hours is grouped on the board under its earliest filing, with the other filings linked from that row; every filing keeps its own page. A fixed template is filled to about 100 words. Telegram carries the same brief only after the page exists, and a story is posted once.",
   },
   {
     h: "Archive",
@@ -142,7 +142,7 @@ export async function writeDigest({ allBriefs, briefs, today }) {
         "<article class=\"method\"><p class=\"kicker\">Weekly digest</p><h1>Week of ",
         esc(weekRange),
         "</h1>",
-        "<p class=\"dek\">The same briefs as the board, grouped by day. Nothing here is emailed. If you want a copy without opening the site, use RSS or Telegram.</p>",
+        "<p class=\"dek\">Every filing from this week, grouped by day. A story filed by two labs appears as two rows here; the board groups those filings into one row. Nothing here is emailed. If you want a copy without opening the site, use RSS or Telegram.</p>",
         "<div class=\"subscribe\"><h2>How to follow</h2><p>There is no newsletter form. Subscribe to <a href=\"/rss.xml\">the RSS feed</a> or the <a href=\"",
         esc(CHANNEL),
         "\" rel=\"noreferrer noopener\">Telegram channel</a>. Both carry the filed brief after the page exists.</p></div></article>",

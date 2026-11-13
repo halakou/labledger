@@ -4,6 +4,7 @@ import {
   LABS,
   SITE,
   TOPICS,
+  alsoFiledLine,
   esc,
   factsFor,
   hostOf,
@@ -125,7 +126,51 @@ function isoWeek(y, m, d) {
   return date.getUTCFullYear() + "-W" + String(week).padStart(2, "0");
 }
 
-export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpen = [], today }) {
+// P0-1: a /b/ page says whether its brief is part of a cluster — the
+// primary's page lists the other filings, each duplicate's page points back
+// at the primary. The notes come from build-desk's clusterNotes map, keyed
+// by guid; the briefs themselves are never mutated.
+function clusterNoteHtml(note) {
+  if (!note) return "";
+  if (Array.isArray(note.alsoFiled) && note.alsoFiled.length) {
+    return (
+      "<section class=\"block\"><h2>Also filed</h2><p>Also filed by " +
+      note.alsoFiled
+        .map(
+          (f) =>
+            "<a href=\"" +
+            esc(f.path) +
+            "\">" +
+            esc(f.lab) +
+            "</a> — " +
+            esc(f.headline || "") +
+            " (" +
+            esc(f.dateLabel || "") +
+            ")",
+        )
+        .join(" · ") +
+      ".</p></section>"
+    );
+  }
+  const p = note.clusterPrimary;
+  if (p) {
+    return (
+      "<section class=\"block\"><h2>Same story</h2><p>Filed as part of the same story as " +
+      "<a href=\"" +
+      esc(p.path) +
+      "\">" +
+      esc(p.headline || "") +
+      "</a> (" +
+      esc(p.lab || "") +
+      ", " +
+      esc(p.dateLabel || "") +
+      ").</p></section>"
+    );
+  }
+  return "";
+}
+
+export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpen = [], today, clusterNotes = new Map() }) {
   for (const lab of LABS) {
     const rows = allBriefs.filter((b) => b.labId === lab.id).slice(0, 80);
     const how = lab.listing && !lab.feed ? "Official /news listing, filed as briefs." : lab.feed ? "Official RSS, filed as briefs." : "No official source.";
@@ -350,6 +395,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
             (b.topics || []).map((t) => "<a class=\"tag\" href=\"/topic/" + t + "/\">" + esc(topicLabel(t)) + "</a>").join("") +
             "</div>"
           : "",
+        clusterNoteHtml(clusterNotes.get(b.guid)),
         "<section class=\"block\"><h2>What moved</h2><p>",
         esc(b.what),
         "</p></section>",
@@ -436,7 +482,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
             "</guid><category>" +
             esc(kindLabel(b.kind)) +
             "</category><description>" +
-            esc(b.dek) +
+            esc([b.dek, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" ")) +
             "</description><pubDate>" +
             new Date(b.publishedAt).toUTCString() +
             "</pubDate></item>",

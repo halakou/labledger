@@ -3,6 +3,7 @@
 // of them instead of three copies drifting apart.
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { alsoFiledLine } from "./core.mjs";
 
 export const FALLBACK_CHANNEL = "labledgerdesk";
 
@@ -172,6 +173,11 @@ export function composeChannelPost(post, site = "https://labledgerdesk.pages.dev
     (date ? "  ·  " + escHtml(date) : "");
   const lines = [kicker, "", "<b>" + headline + "</b>"];
   if (dek) lines.push("", "<blockquote>" + escHtml(dek) + "</blockquote>");
+  // P0-1: the post names the story's other filings (lab, headline, date),
+  // the same line feed.json and RSS carry — a reader sees the story was
+  // filed more than once without a second post for it.
+  const also = alsoFiledLine(post.alsoFiled || []);
+  if (also) lines.push("", escHtml(also));
   lines.push("", "<i>Filed from the official source. The brief stays on the page.</i>");
   const buttons = [[{ text: "Read the brief", url }]];
   const src = sourceUrl(post);

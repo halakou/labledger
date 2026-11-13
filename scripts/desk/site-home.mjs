@@ -8,6 +8,7 @@ import {
   LABS,
   SITE,
   TOPICS,
+  alsoFiledLine,
   clip,
   esc,
 } from "./core.mjs";
@@ -182,7 +183,7 @@ export async function writeLlms(briefs, openBriefs = []) {
         id: SITE + b.path,
         url: SITE + b.path,
         title: b.headline,
-        content_text: [b.what, b.why, "Primary source: " + b.source].filter(Boolean).join(" "),
+        content_text: [b.what, b.why, "Primary source: " + b.source, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" "),
         date_published: b.publishedAt,
         authors: [{ name: b.lab }],
         tags: [b.kind, ...(b.topics || [])],

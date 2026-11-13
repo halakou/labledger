@@ -318,7 +318,10 @@ export function shell({
 }
 
 export function rowHtml(b) {
-  const search = [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel)].join(" ").toLowerCase();
+  // The board search matches the row's lab, headline, dek, kind and topics —
+  // and, when the row is a cluster primary, the labs of its other filings,
+  // so searching "TechCrunch" also finds the story TechCrunch filed second.
+  const search = [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel), ...((b.alsoFiled || []).map((f) => f.lab))].join(" ").toLowerCase();
   const citeData = b.headline + " (" + b.lab + ", " + b.dateLabel + ") \u2014 " + SITE + b.path;
   const statusText = kindLabel(b.kind).toUpperCase();
   return [
@@ -335,9 +338,10 @@ export function rowHtml(b) {
     "</div><div class=\"dek\">", esc(b.dek), "</div>",
     // P0-1: same story filed by more than one lab within 48h — one board
     // row, with the other filings linked here, not as separate rows. Each
-    // link goes to that filing's own /b/ page, which still exists.
+    // link goes to that filing's own /b/ page, which still exists, and the
+    // line names the filing's headline and date, not just its lab.
     (Array.isArray(b.alsoFiled) && b.alsoFiled.length
-      ? "<div class=\"also-filed\">Also filed by " + b.alsoFiled.map((f) => "<a href=\"" + esc(f.path) + "\">" + esc(f.lab) + "</a>").join(" · ") + "</div>"
+      ? "<div class=\"also-filed\">Also filed by " + b.alsoFiled.map((f) => "<a href=\"" + esc(f.path) + "\">" + esc(f.lab) + "</a> — " + esc(clip(f.headline || "", 80)) + " (" + esc(f.dateLabel || "") + ")").join(" · ") + "</div>"
       : ""),
     "</div>",
     "<div class=\"ledger-col-status\"><span class=\"col-lbl\">Status</span><span class=\"status-val status-" + esc(b.kind) + "\">" + esc(statusText) + "</span></div>",
