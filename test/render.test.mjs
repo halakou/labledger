@@ -64,6 +64,59 @@ test("rowHtml escapes every field it renders", () => {
   assert.equal(html.includes("Cite"), true);
 });
 
+test("rowHtml renders the also-filed line with lab, headline and date, and searches it", () => {
+  const b = {
+    lab: "OpenAI",
+    labId: "openai",
+    headline: "Introducing ChatGPT Wallet",
+    dek: "A wallet for agents.",
+    kind: "launch",
+    topics: [],
+    path: "/b/2026/11/13/chatgpt-wallet/",
+    dateLabel: "2026-11-13",
+    year: "2026",
+    month: "11",
+    day: "13",
+    briefNo: "001",
+    mark: "O",
+    color: "#fff",
+    markFile: null,
+    alsoFiled: [
+      { lab: "TechCrunch", labId: "techcrunch", path: "/b/2026/11/13/chatgpt-wallet-tc/", headline: "ChatGPT’s new Wallet lets AI agents shop and check out for you", dateLabel: "2026-11-13" },
+    ],
+  };
+  const html = rowHtml(b);
+  assert.ok(html.includes("Also filed by"), "the also-filed line renders");
+  assert.ok(html.includes('<a href="/b/2026/11/13/chatgpt-wallet-tc/">TechCrunch</a>'), "the other filing links to its own page");
+  assert.ok(html.includes("ChatGPT’s new Wallet lets AI agents shop and check out for you"), "the other filing's headline is named");
+  assert.ok(html.includes("(2026-11-13)"), "the other filing's date is named");
+  // The board search matches the also-filed lab, so searching "TechCrunch"
+  // finds this row even though OpenAI filed it first.
+  const search = html.match(/data-search="([^"]*)"/)[1];
+  assert.ok(search.includes("techcrunch"), "the also-filed lab is in the search haystack");
+});
+
+test("rowHtml omits the also-filed line for a single filing", () => {
+  const b = {
+    lab: "OpenAI",
+    labId: "openai",
+    headline: "Introducing ChatGPT Wallet",
+    dek: "A wallet for agents.",
+    kind: "launch",
+    topics: [],
+    path: "/b/2026/11/13/chatgpt-wallet/",
+    dateLabel: "2026-11-13",
+    year: "2026",
+    month: "11",
+    day: "13",
+    briefNo: "001",
+    mark: "O",
+    color: "#fff",
+    markFile: null,
+  };
+  assert.equal(rowHtml(b).includes("Also filed by"), false);
+});
+
 test("shell wraps the body in a <main> landmark and emits a skip link", () => {
   const html = shell({ title: "t", description: "d", path: "/", body: "<p>x</p>" });
   assert.ok(html.includes('<main id="main">'), "body must sit inside <main>");

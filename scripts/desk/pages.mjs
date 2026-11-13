@@ -12,7 +12,7 @@ import { writePrivacy } from "./privacy.mjs";
 import { writeDigest } from "./site-digest.mjs";
 import { writeLearn } from "./learn.mjs";
 
-export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap }) {
+export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap, clusterNotes = new Map() }) {
   await rm(getOut(), { recursive: true, force: true });
   await mkdir(getOut(), { recursive: true });
   await mkdir(getOut() + "/fonts", { recursive: true });
@@ -34,7 +34,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writePrivacy();
   const guideCount = await writeLearn();
   const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
-  await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today });
+  await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today, clusterNotes });
   console.log(
     "wrote board " +
       briefs.length +

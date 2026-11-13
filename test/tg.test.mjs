@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  composeChannelPost,
   handleFrom,
   chatIdOf,
   channelUrlOf,
@@ -71,6 +72,25 @@ test("posted ledger recovery reads the worker wrapper, not its keys", () => {
   assert.equal(map["guid-1"], "https://t.me/labledgerdesk/10");
   assert.equal(map.ok, undefined);
   assert.equal(map.posted, undefined);
+});
+
+test("the channel post names a cluster's other filings, and omits the line for a single filing", () => {
+  const post = {
+    lab: "OpenAI",
+    headline: "Introducing ChatGPT Wallet",
+    dek: "A wallet for agents.",
+    path: "/b/2026/11/13/chatgpt-wallet/",
+    kind: "launch",
+    publishedAt: "2026-11-13T08:00:00Z",
+    source: "https://openai.com/index/chatgpt-wallet/",
+    alsoFiled: [
+      { lab: "TechCrunch", headline: "ChatGPT’s new Wallet lets AI agents shop", dateLabel: "2026-11-13" },
+    ],
+  };
+  const msg = composeChannelPost(post);
+  assert.ok(msg.text.includes("Also filed by TechCrunch: ChatGPT’s new Wallet lets AI agents shop (2026-11-13)"), "the other filing is named in the post");
+  const single = composeChannelPost({ ...post, alsoFiled: [] });
+  assert.equal(single.text.includes("Also filed by"), false, "no line for a single filing");
 });
 
 test("posted ledger recovery unwraps a wrapper that was stored as the map", () => {

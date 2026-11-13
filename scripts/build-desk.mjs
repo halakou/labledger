@@ -8,17 +8,21 @@ import {
   POSTED_FILE,
   QUEUE_FILE,
   RECENT_MS,
+  boardPrimaries,
   classifyKind,
   classifyTopics,
   clip,
   clipSentence,
+  clusterBriefs,
   composeWhat,
   composeWhy,
   hostAllowed,
   kindLabel,
   parseFeed,
   presentRelease,
+  queueFromBoard,
   runLog,
+  selectBoard,
 } from "./desk/core.mjs";
 import {
   ensureFonts,
@@ -179,15 +183,75 @@ await writeFile(
   }),
 );
 
+// P0-1 (rework): the board shows one row per story, not one row per filing.
+// Briefs filed within 48h whose titles are near-duplicates (same story from
+// several labs) collapse into their EARLIEST brief's row — the primary is
+// stable across builds, so a story never changes headline, lab or kind when
+// a newer filing arrives, and the channel never posts it twice. The others
+// are listed on that row as "also filed by …" with links to their own /b/
+// pages.
+//
+// The collapse happens here, AFTER the archive write above, and only in
+// memory: every brief stays in the archive with its own /b/ page (old
+// URLs stay — invariant 6), and alsoFiled is never persisted to
+// .desk-archive.json; the next build recomputes it from the archive.
+// boardPrimaries clones the primaries, so the annotation never leaks into
+// the briefs themselves (the first version mutated them, and /week/ showed
+// both the annotation and the duplicate row).
+//
+// Clustering must never abort the build: an uncaught throw here used to
+// freeze desk-status.json, so a failure falls back to the unclustered board
+// and is logged on the method page.
+//
+// Because the Telegram queue and feed.json are both built from `briefs`
+// below, a duplicate filing also takes no separate Telegram slot and no
+// separate feed slot. Two layers keep a story to one post: the primary is
+// the stable earliest filing, and queueFromBoard suppresses a primary whose
+// alsoFiled list holds a guid that was already posted (an older filing that
+// arrived late and took over as primary).
+const today = new Date().toISOString().slice(0, 10);
+let clusters = [];
+let clusterPrimaries = [...allBriefs];
+try {
+  clusters = clusterBriefs(allBriefs);
+  clusterPrimaries = boardPrimaries(clusters);
+} catch (err) {
+  runLog.push("cluster fail " + (err?.message || err) + " — board unclustered");
+  clusters = [];
+  clusterPrimaries = [...allBriefs];
+}
+
+// Cluster notes for the /b/ pages, keyed by guid: the primary's page lists
+// its other filings, each duplicate's page points back at the primary.
+// Built from the clusters, never by mutating a brief.
+const clusterNotes = new Map();
+for (const { primary, also } of clusters) {
+  if (!also.length) continue;
+  const alsoFiled = also.map((b) => ({
+    guid: b.guid,
+    lab: b.lab,
+    labId: b.labId,
+    path: b.path,
+    headline: b.headline,
+    dateLabel: b.dateLabel,
+  }));
+  clusterNotes.set(primary.guid, { alsoFiled });
+  for (const dup of also) {
+    clusterNotes.set(dup.guid, {
+      clusterPrimary: {
+        lab: primary.lab,
+        path: primary.path,
+        headline: primary.headline,
+        dateLabel: primary.dateLabel,
+      },
+    });
+  }
+}
+
 // The board leads with today's briefs, then backfills the most recent earlier
 // ones so a quiet morning still shows a full board. The desk date is the date
 // the build ran, so "today" means "filed since the last desk day started".
-const today = new Date().toISOString().slice(0, 10);
-const byToday = allBriefs.filter((b) => b.dateLabel === today);
-const briefs = [
-  ...byToday,
-  ...allBriefs.filter((b) => b.dateLabel !== today).slice(0, Math.max(0, MAX_BRIEFS - byToday.length)),
-];
+const briefs = selectBoard(clusterPrimaries, today, MAX_BRIEFS);
 
 // --- Open releases rail -------------------------------------------------
 const openPacks = await Promise.all(
@@ -284,7 +348,11 @@ const openBriefs = allOpen.slice(0, MAX_OPEN);
 await writeFile(
   QUEUE_FILE,
   JSON.stringify({
-    briefs: briefs.map((b) => ({
+    // queueFromBoard drops a primary whose alsoFiled list holds an
+    // already-posted guid: the story was posted once already, under an
+    // earlier primary. alsoFiled travels with the queue entry so the
+    // Telegram post can name the other filings.
+    briefs: queueFromBoard(briefs, posted).map((b) => ({
       guid: b.guid,
       headline: b.headline,
       path: b.path,
@@ -294,6 +362,12 @@ await writeFile(
       kindLabel: kindLabel(b.kind),
       source: b.source,
       publishedAt: b.publishedAt,
+      alsoFiled: (b.alsoFiled || []).map((f) => ({
+        lab: f.lab,
+        headline: f.headline,
+        dateLabel: f.dateLabel,
+        path: f.path,
+      })),
     })),
     open: openBriefs.map((b) => ({
       guid: b.guid,
@@ -309,4 +383,4 @@ await writeFile(
   }),
 );
 
-await publishSite({ allBriefs, briefs, openBriefs, allOpen, today, fontNames, markMap });
+await publishSite({ allBriefs, briefs, openBriefs, allOpen, today, fontNames, markMap, clusterNotes });

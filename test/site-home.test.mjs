@@ -87,6 +87,36 @@ test("the search page renders every brief the desk has filed", async () => {
   assert.ok(html.includes('action="/search/"'), "the form submits back to the search page");
 });
 
+test("feed.json names a cluster's other filings in the item text", async () => {
+  // The feed is built from the clustered board list, so a story takes one
+  // feed slot — and that slot names the other filings, lab + headline +
+  // date, instead of hiding them.
+  const { writeLlms } = await import("../scripts/desk/site-home.mjs");
+  const { OUT, fs } = await freshOut();
+  const { join } = await import("node:path");
+  const briefs = [
+    {
+      headline: "Introducing ChatGPT Wallet",
+      path: "/b/2026/11/13/chatgpt-wallet/",
+      lab: "OpenAI",
+      source: "https://openai.com/index/chatgpt-wallet/",
+      publishedAt: "2026-11-13T08:00:00Z",
+      dateLabel: "2026-11-13",
+      kind: "launch",
+      topics: [],
+      what: "OpenAI launched ChatGPT Wallet.",
+      why: "Filed as a launch filing from OpenAI, 2026-11-13.",
+      alsoFiled: [
+        { lab: "TechCrunch", headline: "ChatGPT’s new Wallet lets AI agents shop", dateLabel: "2026-11-13" },
+      ],
+    },
+  ];
+  await writeLlms(briefs, []);
+  const feed = JSON.parse(await fs.readFile(join(OUT, "feed.json"), "utf8"));
+  assert.equal(feed.items.length, 1, "one story, one feed slot");
+  assert.ok(feed.items[0].content_text.includes("Also filed by TechCrunch: ChatGPT’s new Wallet lets AI agents shop (2026-11-13)"));
+});
+
 test("the _headers CSP lets a same-origin form actually submit", async () => {
   // C-item 6: the CSP shipped form-action 'none', which blocked the search
   // form's GET before it reached the search page. The _headers file is written
