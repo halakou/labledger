@@ -66,7 +66,12 @@ function encodePng(w, h, rgba) {
 
 // Undo PNG filters and return raw RGBA. Handles palette, RGB, and RGBA at
 // 8- and 16-bit depth; anything else returns null.
-function decodePng(buf, w, h, colorType) {
+//
+// F5: the Sub/Avg/Paeth filters step by one PIXEL, not one channel. For
+// 16-bit images a pixel is ch*2 bytes, and stepping by ch mixed the low byte
+// of one sample into the next — MIT Technology Review's 16-bit favicon
+// decoded as a green scrambled T. pixStep is the byte width of one pixel.
+export function decodePng(buf, w, h, colorType) {
   const bitDepth = buf[24];
   if (bitDepth !== 8 && bitDepth !== 16) return null;
   if (colorType !== 2 && colorType !== 6 && colorType !== 3) return null; // RGB, RGBA, palette
@@ -132,6 +137,7 @@ function decodePng(buf, w, h, colorType) {
   }
   const ch = colorType === 6 ? 4 : 3;
   const stride = w * ch * (expand ? 2 : 1);
+  const pixStep = ch * (expand ? 2 : 1);
   const out = Buffer.alloc(w * h * 4);
   let prev = Buffer.alloc(stride);
   let o = 0;
@@ -139,15 +145,16 @@ function decodePng(buf, w, h, colorType) {
     const f = raw[o++];
     const cur = Buffer.from(raw.subarray(o, o + stride));
     o += stride;
-    if (f === 1) for (let x = ch; x < stride; x++) cur[x] = (cur[x] + cur[x - ch]) & 0xff;
+    if (f === 1) for (let x = pixStep; x < stride; x++) cur[x] = (cur[x] + cur[x - pixStep]) & 0xff;
     else if (f === 2) for (let x = 0; x < stride; x++) cur[x] = (cur[x] + prev[x]) & 0xff;
     else if (f === 3)
-      for (let x = 0; x < stride; x++) cur[x] = (cur[x] + ((cur[x - ch] + prev[x]) >> 1)) & 0xff;
+      for (let x = 0; x < stride; x++)
+        cur[x] = (cur[x] + (((x >= pixStep ? cur[x - pixStep] : 0) + prev[x]) >> 1)) & 0xff;
     else if (f === 4) {
       for (let x = 0; x < stride; x++) {
-        const a = x >= ch ? cur[x - ch] : 0;
+        const a = x >= pixStep ? cur[x - pixStep] : 0;
         const b = prev[x];
-        const c = x >= ch ? prev[x - ch] : 0;
+        const c = x >= pixStep ? prev[x - pixStep] : 0;
         const p = a + b - c;
         const pa = Math.abs(p - a),
           pb = Math.abs(p - b),
@@ -578,9 +585,35 @@ export function tileForLuminance(lum, ink) {
 // the tile can flip with the theme. The key is only applied when the result
 // still leaves a recognizable mark: a key that would eat most of the logo is
 // skipped (the logo keeps its own ground, as it was designed).
-function keyBackground(rgba, w, h) {
+//
+// F5: the background is sampled from ALL FOUR corners, and at least three
+// must be opaque and agree (within distance 36). Sampling one corner (2,2)
+// keyed the logo itself when the logo fills its canvas — MIT Technology
+// Review's grey T fills the whole 256px, so (2,2) is part of the T and the
+// key ate the T's dark-grey block. When the corners disagree there is no
+// uniform background to key: { skipped: null }, and the caller falls back to
+// the luminance tile instead of framing the logo in a foreign square.
+export function keyBackground(rgba, w, h) {
   const i = (x, y) => (y * w + x) * 4;
-  const key = [rgba[i(2, 2)], rgba[i(2, 2) + 1], rgba[i(2, 2) + 2]];
+  const corners = [
+    [2, 2],
+    [w - 3, 2],
+    [2, h - 3],
+    [w - 3, h - 3],
+  ]
+    .map(([x, y]) => [rgba[i(x, y)], rgba[i(x, y) + 1], rgba[i(x, y) + 2], rgba[i(x, y) + 3]])
+    .filter((c) => c[3] >= 200);
+  if (corners.length < 3) return { skipped: null };
+  // Largest cluster of corners that mutually agree (within distance 36).
+  let best = [corners[0]];
+  for (const c of corners) {
+    const cluster = corners.filter(
+      (o) => Math.abs(o[0] - c[0]) + Math.abs(o[1] - c[1]) + Math.abs(o[2] - c[2]) < 36,
+    );
+    if (cluster.length > best.length) best = cluster;
+  }
+  if (best.length < 3) return { skipped: null };
+  const key = [0, 1, 2].map((k) => Math.round(best.reduce((a, c) => a + c[k], 0) / best.length));
   let kept = 0;
   let removed = 0;
   const out = new Uint8Array(rgba.length);
@@ -628,7 +661,11 @@ function normalizeRasterWithLum(buf) {
     // whether the mark reads dark or light.
     return { png: encodePng(96, 96, rgba), lum: rasterLuminance(rgba), ink: inkStats(rgba), ground: keyed.skipped };
   }
-  const final = keyed ? Buffer.from(keyed) : rgba;
+  // keyed is either the keyed RGBA buffer, or { skipped: null } when the
+  // corners disagreed (no uniform background to key — F5). A keyed buffer has
+  // no `skipped` property; the null-skipped object means "use the logo as-is
+  // and let the luminance tile carry it".
+  const final = keyed && keyed.skipped === undefined ? Buffer.from(keyed) : rgba;
   return { png: encodePng(96, 96, final), lum: rasterLuminance(final), ink: inkStats(final) };
 }
 
@@ -668,19 +705,26 @@ function rasterToRgba(buf) {
   return squareToRgba(c.rgba, c.w, c.h);
 }
 
-function symbolForRaster(id, ext, buf) {
+// Exported for tests: the MIME derivation is the F3 pin (a WebP payload in a
+// .png file must be labelled image/webp, never image/png).
+export function symbolForRaster(id, ext, buf) {
   // Square everything to 96x96 PNG. ICO files carry embedded PNGs which we
   // extract first; anything we cannot re-encode is embedded raw so the
   // sprite still costs one request. The mime is read from the file's magic
   // bytes, not its extension: the extension comes from the URL we fetched,
-  // and a host can hand a .png path containing JPEG bytes.
+  // and a host can hand a .png path containing JPEG bytes — or a WebP in a
+  // .png file (TechCrunch), which was mislabelled image/png. F3.
   const norm = ext === ".png" || ext === ".ico" ? normalizeRasterWithLum(buf) : null;
   const isJpeg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8;
+  const isWebp =
+    buf.length > 12 &&
+    buf.slice(0, 4).toString("ascii") === "RIFF" &&
+    buf.slice(8, 12).toString("ascii") === "WEBP";
   const mime = norm
     ? "image/png"
     : isJpeg
       ? "image/jpeg"
-      : ext === ".webp"
+      : isWebp
         ? "image/webp"
         : ext === ".jpg" || ext === ".jpeg"
           ? "image/jpeg"
