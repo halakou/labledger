@@ -17,7 +17,7 @@ export const METHOD_SECTIONS = [
   },
   {
     h: "Archive",
-    p: "The board shows about twenty to twenty-eight current briefs. The ledger keeps earlier pages so a filed URL stays put. The desk does not rewrite an old brief\u2019s path. Caps at five hundred kept files.",
+    p: "The board shows about twenty to twenty-eight current briefs. The ledger keeps every filed brief, so a filed URL stays put. The desk does not rewrite an old brief\u2019s path. Share cards are drawn for briefs from the last three weeks; older pages use the desk card.",
   },
   {
     h: "Marks",

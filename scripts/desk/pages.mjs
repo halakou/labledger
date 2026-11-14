@@ -22,7 +22,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   // marks, so build it here rather than in build-desk.mjs.
   await writeMarkSprite([...new Set([...LABS, ...OPEN_PROJECTS].map((l) => l.id))]);
   await writeLlms(briefs, openBriefs);
-  const ogCount = await writeOgCards([...allBriefs, ...allOpen]);
+  const ogCount = await writeOgCards([...allBriefs, ...allOpen], today);
   await writeHome({ allBriefs, briefs, openBriefs, today });
   await writeOpenBoard({ openBriefs, today });
   // Server-side search: every brief on one page, filtered by ?q= on load.

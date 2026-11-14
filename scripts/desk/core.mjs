@@ -2,7 +2,6 @@ import { AMP, KINDS, LABS, TOPICS } from "./config.mjs";
 export {
   AMP,
   ARCHIVE_FILE,
-  ARCHIVE_MAX,
   ASSET_DIR,
   CHANNEL,
   FONT_DIR,

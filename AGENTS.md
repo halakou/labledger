@@ -84,7 +84,7 @@ cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands + optio
   everything, so it is mirrored to worker KV `/posted` on every run and
   recovered from there on a cache miss. Never weaken this mirror.
 - `.desk-queue.json` — what telegram-desk.mjs is due to send.
-- `.desk-archive.json` — every brief ever filed + `nextId`. Capped at 500.
+- `.desk-archive.json` — every brief ever filed + `nextId`. No cap; the archive only grows.
 - `.desk-open.json` — open-project releases.
 - `.desk-assets/` — fonts + fetched logos.
 
@@ -106,7 +106,7 @@ cloudflare/src/index.js    watchdog + /posted KV + Telegram bot commands + optio
    and the sender must keep the short post. See `docs/ai-telegram.md`.
 5. **Free tier, forever.** GitHub Actions free, Cloudflare Pages/Workers/KV
    free tiers. If a feature needs a paid plan, it does not ship.
-6. **Old URLs stay.** The archive never deletes, only slices to 500.
+6. **Old URLs stay.** The archive never deletes. Every filed brief keeps its page; only the board, the topic/kind/lab lists (latest 80 rows) and the per-brief share cards (recent briefs only) are capped.
 7. **One inline script only.** The search filter and the donate copy handler
    both live inside `render.mjs` `SEARCH_SCRIPT`. CSP allows that one hash.
    Do not add a second script or an `onclick`.

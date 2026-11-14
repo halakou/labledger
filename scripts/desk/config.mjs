@@ -396,8 +396,6 @@ export const PER_FEED = 6;
 export const MAX_OPEN = 8;
 export const PER_OPEN = 3;
 export const RECENT_MS = 21 * 24 * 60 * 60 * 1000;
-export const ARCHIVE_MAX = 500;
-export const OPEN_ARCHIVE_MAX = 200;
 export const MARK_MAX = 96 * 1024;
 
 export function handleFrom(raw) {
