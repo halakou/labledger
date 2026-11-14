@@ -66,6 +66,25 @@ test("deepspeed is the orange network, not chevrons", () => {
   assert.equal(s.includes("M2.4 7.2"), false, "the invented chevrons are gone");
 });
 
+test("deepspeed links are stroked, not a filled hull", () => {
+  // The real mark is nodes + links with a mostly empty interior. The first
+  // fix filled the convex hull of the outer nodes — a solid orange blob —
+  // which changes the shape. The links must be strokes and the nodes
+  // circles; no filled orange path may exist in the symbol.
+  const s = symbol("deepspeed");
+  assert.match(s, /stroke="#F17F00" stroke-width="1"/, "links are stroked");
+  assert.equal((s.match(/<circle/g) || []).length, 6, "six node circles");
+  assert.equal(s.includes('<path fill="#F17F00"'), false, "no filled orange path (the hull)");
+  assert.equal(s.includes("M21.91 1.05"), false, "the filled hull is gone");
+  // All nine links from the company's own deepspeed.png, traced node to node.
+  for (const link of [
+    "M22.15 1.85L6.65 4.95", "M22.15 1.85L12.85 11.15", "M22.15 1.85L18.75 17.05",
+    "M6.65 4.95L5.95 12.75", "M6.65 4.95L10.95 17.75",
+    "M12.85 11.15L5.95 12.75", "M12.85 11.15L10.95 17.75",
+    "M5.95 12.75L18.75 17.05", "M18.75 17.05L10.95 17.75",
+  ]) assert.ok(s.includes(link), "link " + link);
+});
+
 test("jax is the 3d cube letters, not an x", () => {
   const s = symbol("jax");
   for (const c of ["#5E97F6", "#2A56C6", "#3367D6", "#EA80FC", "#9C27B0", "#6A1B9A", "#00695C", "#00796B", "#26A69A"]) {

@@ -78,7 +78,23 @@ export const VECTOR_MARKS = `
     <path fill="currentColor" d="M3 3.5h6.2v6.2H3V3.5zm11.8 0H21v6.2h-6.2V3.5zM3 14.3h6.2V20.5H3v-6.2zm11.8 3.1H21v3.1h-6.2v-3.1zM9.2 5.8h5.6v1.6H9.2V5.8zM5.3 9.7v4.6h1.6V9.7H5.3zm11.8 4.6V9.7H15.5v4.6h1.6z"/>
   </symbol>
   <symbol id="mark-deepspeed" viewBox="0 0 24 24">
-    <path fill="#F17F00" d="M21.91 1.05L22.86 1.71L22.95 2.94L22.53 3.55L21.63 3.97L19.18 15.21L19.18 15.59L19.84 16.44L19.65 17.67L18.85 18.28L18.09 18.28L17.52 18.00L17.05 17.33L12.99 17.62L12.42 17.71L12.28 18.23L11.67 18.85L10.35 18.85L9.83 18.42L9.55 17.76L9.55 17.29L10.02 16.34L9.45 14.55L7.33 13.84L6.67 14.22L5.91 14.22L5.34 13.94L4.82 13.13L4.82 12.47L5.11 11.91L6.05 11.34L6.15 10.77L6.52 6.81L5.58 5.86L5.48 5.11L5.67 4.64L6.67 3.93L7.52 4.02L8.27 4.68L8.55 4.68L19.70 2.42L20.07 2.32L20.40 1.61L20.97 1.14ZM19.84 3.22L20.12 3.22L13.37 9.88L12.52 9.78L12.05 9.97L11.53 10.49L11.29 11.10L9.78 11.48L9.26 11.34L7.75 6.62L8.46 5.53L19.79 3.27L19.84 3.22ZM20.69 3.88L20.78 4.26L18.33 15.40L17.05 16.01L12.52 14.60L12.94 12.76L13.75 12.33L14.17 11.72L14.08 10.39L20.64 3.93L20.69 3.88ZM7.28 8.03L8.51 11.62L7.80 11.95L7.42 11.95L6.90 11.53L7.23 8.08L7.28 8.03ZM11.43 11.91L12.09 12.47L11.58 14.31L10.16 13.84L9.64 12.57L9.69 12.33L11.39 11.95L11.43 11.91ZM8.32 12.66L8.74 12.61L9.07 13.42L7.66 13.04L8.27 12.71L8.32 12.66ZM10.39 14.83L11.43 15.21L11.10 16.11L10.77 16.06L10.39 14.93L10.39 14.83ZM12.19 15.49L12.90 15.54L15.87 16.53L12.33 16.86L11.91 16.44L12.19 15.59L12.19 15.49Z"/>
+    <!-- The real DeepSpeed mark is a network constellation: 6 nodes joined by
+      links, mostly empty interior, with a yellow teardrop at bottom-left.
+      Node centres and links are traced from the company's own deepspeed.png
+      (233px: nodes at (218,15) (63,46) (125,108) (56,124) (184,167)
+      (106,174), radius ~15.5px; links ~8px wide). The links are STROKED,
+      never filled: filling the hull turns the network into a solid blob and
+      changes the shape. Stroke 1.0 (true ~0.8) is a size-driven thickening
+      so the links still read at 42px; node radius 1.55 matches the source. -->
+    <path fill="none" stroke="#F17F00" stroke-width="1" stroke-linecap="round" d="M22.15 1.85L6.65 4.95M22.15 1.85L12.85 11.15M22.15 1.85L18.75 17.05M6.65 4.95L5.95 12.75M6.65 4.95L10.95 17.75M12.85 11.15L5.95 12.75M12.85 11.15L10.95 17.75M5.95 12.75L18.75 17.05M18.75 17.05L10.95 17.75"/>
+    <g fill="#F17F00">
+      <circle cx="22.15" cy="1.85" r="1.55"/>
+      <circle cx="6.65" cy="4.95" r="1.55"/>
+      <circle cx="12.85" cy="11.15" r="1.55"/>
+      <circle cx="5.95" cy="12.75" r="1.55"/>
+      <circle cx="18.75" cy="17.05" r="1.55"/>
+      <circle cx="10.95" cy="17.75" r="1.55"/>
+    </g>
     <path fill="#FFC60F" d="M6.15 16.06L6.95 16.11L7.66 16.72L7.75 17.76L7.18 18.89L4.97 20.55L1.00 22.91Z"/>
   </symbol>
   <symbol id="mark-jax" viewBox="0 0 24 24">
