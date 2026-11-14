@@ -183,7 +183,16 @@ export async function writeLlms(briefs, openBriefs = []) {
         id: SITE + b.path,
         url: SITE + b.path,
         title: b.headline,
-        content_text: [b.what, b.why, "Primary source: " + b.source, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" "),
+        // P0-3: the feed carries the full "what" — the brief's own
+        // substance — plus the alsoFiled line naming the story's other
+        // filings (P0-1). The "why" boilerplate ("Filed as a public note
+        // from …") is out: it is a filing record, not the brief's
+        // content, and for a thin brief it was most of the item. The
+        // "Primary source:" pointer is out too — external_url below
+        // already carries the source, and the /b/ page has it. The
+        // "why" still lives where it belongs: the /b/ page's
+        // "Why it matters" section.
+        content_text: [b.what, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" "),
         date_published: b.publishedAt,
         authors: [{ name: b.lab }],
         tags: [b.kind, ...(b.topics || [])],
@@ -270,7 +279,7 @@ function markRow(labs) {
   );
 }
 
-export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
+export async function writeHome({ allBriefs, briefs, boardPool = briefs, openBriefs = [], today }) {
   const shown = briefs.slice(0, HOME_MAX);
   const openShown = openBriefs.slice(0, HOME_MAX);
   const board = shown.map(rowHtml).join("") || "<p class=\"empty\">Desk is waiting on the next official post.</p>";
@@ -285,7 +294,16 @@ export async function writeHome({ allBriefs, briefs, openBriefs = [], today }) {
   ];
   const trendingFrontiers = [];
   for (const f of frontierDefs) {
-    const latest = allBriefs.find((b) => b.labId === f.id);
+    // P0-3: the frontier card is the lab's latest NON-thin filing. The
+    // sidebar used to read allBriefs, so a thin filing that happened to
+    // be a lab's latest — DeepMind's "Introducing Gemini 4 Hydrogen",
+    // whose what is only the empty-summary fallback sentence — was
+    // featured on the home page with no board slot. boardPool is the
+    // same filtered set the board is built from, so the card shows the
+    // latest substantive filing instead; a lab whose filings are all
+    // thin gets no card. The default (boardPool = briefs) is safe: the
+    // board list is already thin-free.
+    const latest = boardPool.find((b) => b.labId === f.id);
     if (latest) {
       trendingFrontiers.push({
         id: f.id,

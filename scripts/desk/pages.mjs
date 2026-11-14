@@ -12,7 +12,7 @@ import { writePrivacy } from "./privacy.mjs";
 import { writeDigest } from "./site-digest.mjs";
 import { writeLearn } from "./learn.mjs";
 
-export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen = [], today, fontNames, markMap, clusterNotes = new Map() }) {
+export async function publishSite({ allBriefs, briefs, boardPool = briefs, openBriefs = [], allOpen = [], today, fontNames, markMap, clusterNotes = new Map() }) {
   await rm(getOut(), { recursive: true, force: true });
   await mkdir(getOut(), { recursive: true });
   await mkdir(getOut() + "/fonts", { recursive: true });
@@ -23,7 +23,7 @@ export async function publishSite({ allBriefs, briefs, openBriefs = [], allOpen 
   await writeMarkSprite([...new Set([...LABS, ...OPEN_PROJECTS].map((l) => l.id))]);
   await writeLlms(briefs, openBriefs);
   const ogCount = await writeOgCards([...allBriefs, ...allOpen], today);
-  await writeHome({ allBriefs, briefs, openBriefs, today });
+  await writeHome({ allBriefs, briefs, boardPool, openBriefs, today });
   await writeOpenBoard({ openBriefs, today });
   // Server-side search: every brief on one page, filtered by ?q= on load.
   await writeSearch({ allBriefs, briefs, openBriefs, today });
