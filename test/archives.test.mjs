@@ -107,6 +107,104 @@ test("every filed brief keeps its /b/ page and sitemap URL past the old 500 cap"
   for (const b of many) assert.ok(sitemap.includes(b.path), "sitemap keeps " + b.path);
 });
 
+test("a lab feed carries only that lab's briefs, with the full what", async () => {
+  // P1-4: the lab feed is the lab page as a feed — same rows, same item
+  // text as the main feed (full what, P0-3), and nothing from another lab.
+  const { OUT, fs } = await freshOut();
+  const mine = brief();
+  const other = brief({
+    guid: "g-2",
+    lab: "TechCrunch",
+    labId: "techcrunch",
+    headline: "TechCrunch files something else",
+    path: "/b/2026/11/13/techcrunch-files/",
+    slug: "techcrunch-files/",
+    what: "TechCrunch filed something else entirely.",
+  });
+  await writeArchives({ allBriefs: [mine, other], briefs: [mine, other], openBriefs: [], allOpen: [], today: "2026-11-13" });
+  const rss = await fs.readFile(join(OUT, "lab/openai/rss.xml"), "utf8");
+  assert.ok(rss.includes("Introducing ChatGPT Wallet"), "the lab's own brief is in its RSS");
+  assert.ok(!rss.includes("TechCrunch files something else"), "another lab's brief is not in it");
+  assert.ok(rss.includes('<atom:link href="https://labledgerdesk.pages.dev/lab/openai/rss.xml" rel="self"'), "the feed names itself");
+  const feed = JSON.parse(await fs.readFile(join(OUT, "lab/openai/feed.json"), "utf8"));
+  assert.equal(feed.items.length, 1, "one brief, one feed item");
+  assert.equal(feed.items[0].content_text, "OpenAI launched ChatGPT Wallet.", "the JSON item carries the full what");
+  assert.equal(feed.items[0].external_url, "https://openai.com/index/chatgpt-wallet/", "the source travels as external_url");
+  const otherFeed = JSON.parse(await fs.readFile(join(OUT, "lab/techcrunch/feed.json"), "utf8"));
+  assert.equal(otherFeed.items.length, 1, "the other lab's feed has only its own brief");
+  assert.equal(otherFeed.items[0].title, "TechCrunch files something else");
+});
+
+test("a topic feed carries only briefs tagged with the topic", async () => {
+  // P1-4: same rule as the lab feed, for topics (and kinds, which share
+  // the writer).
+  const { OUT, fs } = await freshOut();
+  const tagged = brief({ topics: ["llm"] });
+  const untagged = brief({
+    guid: "g-2",
+    headline: "A brief about hardware",
+    path: "/b/2026/11/13/hardware-brief/",
+    slug: "hardware-brief/",
+    topics: ["hardware"],
+  });
+  await writeArchives({ allBriefs: [tagged, untagged], briefs: [tagged, untagged], openBriefs: [], allOpen: [], today: "2026-11-13" });
+  const rss = await fs.readFile(join(OUT, "topic/llm/rss.xml"), "utf8");
+  assert.ok(rss.includes("Introducing ChatGPT Wallet"), "the tagged brief is in the topic RSS");
+  assert.ok(!rss.includes("A brief about hardware"), "the untagged brief is not");
+  const feed = JSON.parse(await fs.readFile(join(OUT, "topic/llm/feed.json"), "utf8"));
+  assert.equal(feed.items.length, 1, "one tagged brief, one feed item");
+  const kindFeed = JSON.parse(await fs.readFile(join(OUT, "kind/launch/feed.json"), "utf8"));
+  assert.equal(kindFeed.items.length, 2, "both briefs are launches, so the kind feed has both");
+});
+
+test("a surface with no briefs still gets valid empty feeds", async () => {
+  // P1-4: the feed exists and is linked from the page, so an empty feed
+  // must be valid — an absent feed would make the page's own link a 404.
+  const { OUT, fs } = await freshOut();
+  await writeArchives({ allBriefs: [], briefs: [], openBriefs: [], allOpen: [], today: "2026-11-13" });
+  const rss = await fs.readFile(join(OUT, "lab/openai/rss.xml"), "utf8");
+  assert.ok(rss.includes("<channel>"), "the empty RSS still has a channel");
+  assert.ok(!rss.includes("<item>"), "and no items");
+  assert.ok(rss.includes("/lab/openai/rss.xml"), "the self link names the feed");
+  const feed = JSON.parse(await fs.readFile(join(OUT, "lab/openai/feed.json"), "utf8"));
+  assert.deepEqual(feed.items, [], "the JSON feed has an empty items list");
+  const page = await fs.readFile(join(OUT, "lab/openai/index.html"), "utf8");
+  assert.ok(page.includes("No filed brief for OpenAI yet."), "the page still says it has nothing filed");
+});
+
+test("lab, topic and kind pages advertise their feeds", async () => {
+  // P1-4: autodiscovery link tags in the head plus visible links on the
+  // page — a feed nobody can find is not a feed.
+  const { OUT, fs } = await freshOut();
+  const one = brief({ topics: ["llm"] });
+  await writeArchives({ allBriefs: [one], briefs: [one], openBriefs: [], allOpen: [], today: "2026-11-13" });
+  const lab = await fs.readFile(join(OUT, "lab/openai/index.html"), "utf8");
+  assert.ok(lab.includes('<link rel="alternate" type="application/rss+xml"'), "the lab page carries an RSS autodiscovery tag");
+  assert.ok(lab.includes('href="https://labledgerdesk.pages.dev/lab/openai/rss.xml"'), "the tag points at the lab's own RSS");
+  assert.ok(lab.includes('<link rel="alternate" type="application/feed+json"'), "and a JSON feed tag");
+  assert.ok(lab.includes('<a href="/lab/openai/rss.xml">RSS</a>'), "and a visible RSS link");
+  assert.ok(lab.includes('<a href="/lab/openai/feed.json">JSON feed</a>'), "and a visible JSON link");
+  const topic = await fs.readFile(join(OUT, "topic/llm/index.html"), "utf8");
+  assert.ok(topic.includes('href="https://labledgerdesk.pages.dev/topic/llm/rss.xml"'), "the topic page advertises its own RSS");
+  const kind = await fs.readFile(join(OUT, "kind/launch/index.html"), "utf8");
+  assert.ok(kind.includes('href="https://labledgerdesk.pages.dev/kind/launch/feed.json"'), "the kind page advertises its own JSON feed");
+});
+
+test("the sitemap lists the per-surface feeds and the status page", async () => {
+  // P1-4: the sitemap already listed /rss.xml, /feed.json and
+  // /open/rss.xml; the per-surface feeds join them so a crawler that
+  // finds the sitemap finds the feeds too.
+  const { OUT, fs } = await freshOut();
+  await writeArchives({ allBriefs: [brief()], briefs: [brief()], openBriefs: [], allOpen: [], today: "2026-11-13" });
+  const sitemap = await fs.readFile(join(OUT, "sitemap.xml"), "utf8");
+  assert.ok(sitemap.includes("/lab/openai/rss.xml"), "the lab RSS is in the sitemap");
+  assert.ok(sitemap.includes("/lab/openai/feed.json"), "the lab JSON feed is in the sitemap");
+  assert.ok(sitemap.includes("/topic/llm/rss.xml"), "the topic RSS is in the sitemap");
+  assert.ok(sitemap.includes("/kind/launch/feed.json"), "the kind JSON feed is in the sitemap");
+  assert.ok(sitemap.includes("/lab/vllm/rss.xml"), "an open project's RSS is in the sitemap too");
+  assert.ok(sitemap.includes("/status/"), "the status page is in the sitemap");
+});
+
 test("topic and kind pages show the latest 80 rows and keep the true total in JSON-LD", async () => {
   // P0-2: with the archive uncapped, the topic/kind lists would render
   // every matching row (multi-MB pages), so they cap at 80 like /lab/.

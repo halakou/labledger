@@ -28,6 +28,7 @@ import {
   ensureFonts,
   fetchFeed,
   fetchListing,
+  fetchText,
   fillEmptySummaries,
   isBoilerplate,
   loadJson,
@@ -36,9 +37,43 @@ import {
 } from "./desk/net.mjs";
 import { fetchMark } from "./desk/fetch-mark.mjs";
 import { publishSite } from "./desk/pages.mjs";
-import { OPEN_PROJECTS, PER_OPEN, MAX_OPEN, OPEN_ARCHIVE_FILE, OPEN_BLOCK } from "./desk/config.mjs";
+import { OPEN_PROJECTS, PER_OPEN, MAX_OPEN, OPEN_ARCHIVE_FILE, OPEN_BLOCK, WATCHDOG } from "./desk/config.mjs";
 
 const fontNames = await ensureFonts();
+// P1-4: the /status/ page shows a BUILD-TIME snapshot of the watchdog's
+// /health — never a live fetch from a reader's browser. The fetch runs
+// through net.mjs, so the allow-list still gates it; the only host is
+// the project's own Worker (WATCHDOG in config.mjs). It starts here so
+// it runs in parallel with the feed fetching below, and is awaited just
+// before publishSite. A failure is not fatal: the snapshot says the
+// watchdog was unreachable, and the page says so instead of showing a
+// green that is not true.
+async function fetchWatchdog() {
+  const fetchedAt = new Date().toISOString();
+  try {
+    const raw = await fetchText(WATCHDOG.url, "application/json", WATCHDOG.hosts);
+    const json = JSON.parse(raw);
+    const last = json && typeof json === "object" ? json.last : null;
+    if (!last || typeof last !== "object" || !last.heartbeat || !last.builtAt) {
+      throw new Error("unexpected /health shape");
+    }
+    return {
+      reachable: true,
+      ok: json.ok === true,
+      heartbeat: String(last.heartbeat),
+      builtAt: String(last.builtAt),
+      siteHttp: Number(last.siteHttp) || 0,
+      ageMs: Number(last.ageMs) || 0,
+      dispatch: String(last.dispatch || "unknown"),
+      staleAfterMs: Number(last.staleAfterMs) || 720000,
+      fetchedAt,
+    };
+  } catch (err) {
+    runLog.push("watchdog: unreachable " + (err?.message || err));
+    return { reachable: false, fetchedAt };
+  }
+}
+const watchdogPromise = fetchWatchdog();
 const markMap = {};
 await Promise.all(
   LABS.map(async (lab) => {
@@ -406,4 +441,5 @@ await writeFile(
   }),
 );
 
-await publishSite({ allBriefs, briefs, boardPool, openBriefs, allOpen, today, fontNames, markMap, clusterNotes });
+const watchdog = await watchdogPromise;
+await publishSite({ allBriefs, briefs, boardPool, openBriefs, allOpen, today, fontNames, markMap, clusterNotes, watchdog });

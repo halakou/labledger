@@ -212,6 +212,7 @@ const NAV = [
   ["/week/", "Week"],
   ["/learn/", "Guide"],
   ["/method/", "Method"],
+  ["/status/", "Status"],
   ["/donate/", "Support"],
 ];
 
@@ -309,7 +310,7 @@ export function shell({
     "<footer class=\"status-dock\"><div class=\"dock-inner\">" +
     "<div class=\"dock-left\"><span class=\"dock-tag\"><span class=\"pulse-dot\" aria-hidden=\"true\"></span>STATUS DOCK <span class=\"dock-active\">ACTIVE</span> <span id=\"desk-live\" class=\"desk-live\">UNKNOWN</span></span></div>" +
     "<nav class=\"dock-links\" aria-label=\"Desk\"><a href=\"/method/\">Method</a><a href=\"/week/\">Week</a><a href=\"/learn/\">Guide</a><a href=\"/donate/\">Support</a><a href=\"/terms/\">Terms</a><a href=\"/privacy/\">Privacy</a><a href=\"" +
-    esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a></nav>" +
+    esc(CHANNEL) + "\" rel=\"noreferrer noopener\">Telegram</a><a href=\"/rss.xml\">RSS</a><a href=\"/status/\">Status</a></nav>" +
     "</div></footer></div>" +
     "<nav class=\"mobile-dock\" aria-label=\"Mobile\">" + navHtml(path) + "</nav>",
     "<script>" + SEARCH_SCRIPT + "</script>",

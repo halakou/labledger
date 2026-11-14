@@ -409,6 +409,18 @@ export function handleFrom(raw) {
   return "";
 }
 
+// P1-4: the project's own watchdog. The /status/ page shows a build-time
+// snapshot of the Worker's /health — never a live fetch from a reader's
+// browser. This is infra, not a news source: the only host is the
+// project's own Worker, and nothing else may be fetched through it. The
+// build-time fetch goes through net.mjs, so the allow-list still gates it
+// (invariant 1); this entry is the minimal, explicit exception, and the
+// Reviewer judges it as such.
+export const WATCHDOG = {
+  url: "https://labledger-desk.halakou.workers.dev/health",
+  hosts: ["labledger-desk.halakou.workers.dev"],
+};
+
 // C6: channel URL from TELEGRAM_CHAT_ID handle or hard-coded fallback.
 // TELEGRAM_CHANNEL_URL is unused.
 export function channelUrl() {

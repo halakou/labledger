@@ -8,7 +8,6 @@ import {
   LABS,
   SITE,
   TOPICS,
-  alsoFiledLine,
   clip,
   esc,
 } from "./core.mjs";
@@ -24,6 +23,7 @@ import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml
 // reaches the CSP. render.mjs holds the live binding.
 const analyticsToken = () => ANALYTICS_TOKEN;
 import { GUIDE_ENTRIES } from "./learn.mjs";
+import { jsonFeedDoc } from "./archives.mjs";
 
 export const HOME_MAX = 20;
 
@@ -46,7 +46,7 @@ export const HOME_FAQ = [
   },
 ];
 
-export async function writeStatic(fontNames) {
+export async function writeStatic(fontNames, builtAt = new Date().toISOString()) {
   await write(CSS_NAME, CSS);
   for (const name of fontNames) {
     const src = join(FONT_DIR, name);
@@ -72,7 +72,10 @@ export async function writeStatic(fontNames) {
   );
   const ogOk = await copyOg();
   await write("googlece6d31c0feb18c8c.html", "google-site-verification: googlece6d31c0feb18c8c.html");
-  await write("desk-status.json", JSON.stringify({ ok: true, builtAt: new Date().toISOString(), service: "labledger-desk", site: SITE, feeds: LABS.length, boards: OPEN_PROJECTS.length }));
+  // P1-4: the timestamp is passed in by publishSite so desk-status.json
+  // and the /status/ page carry the identical build time — the two must
+  // never disagree by a second.
+  await write("desk-status.json", JSON.stringify({ ok: true, builtAt, service: "labledger-desk", site: SITE, feeds: LABS.length, boards: OPEN_PROJECTS.length }));
   await write(
     "robots.txt",
     ["User-agent: *", "Allow: /", "Sitemap: " + SITE + "/sitemap.xml", "LLMs: " + SITE + "/llms.txt", "", "User-agent: GPTBot", "Allow: /", "User-agent: ChatGPT-User", "Allow: /", "User-agent: PerplexityBot", "Allow: /", "User-agent: Google-Extended", "Allow: /", "User-agent: ClaudeBot", "Allow: /", "User-agent: anthropic-ai", "Allow: /", ""].join("\n"),
@@ -154,6 +157,9 @@ export async function writeLlms(briefs, openBriefs = []) {
       "- " + SITE + "/week/ \u2014 weekly digest",
       "- " + SITE + "/method/ \u2014 how the desk works",
       "- " + SITE + "/rss.xml \u2014 machine feed",
+      "- " + SITE + "/feed.json \u2014 machine feed, JSON",
+      "- " + SITE + "/status/ \u2014 desk health: last build, watchdog heartbeat",
+      "- per-lab, per-topic and per-kind feeds: " + SITE + "/lab/<id>/rss.xml and /feed.json, " + SITE + "/topic/<id>/rss.xml and /feed.json, " + SITE + "/kind/<id>/rss.xml and /feed.json",
       "- " + SITE + "/sitemap.xml",
       "- " + SITE + "/open/ \u2014 open-source releases board",
       "- " + SITE + "/learn/ \u2014 field guide: original AI explainers",
@@ -171,33 +177,16 @@ export async function writeLlms(briefs, openBriefs = []) {
       "",
     ].join("\n"),
   );
+  // P1-4: the main JSON feed is one call to the shared builder now — the
+  // item shape (full what, P0-3) lives in jsonFeedItem, once.
   await write(
     "feed.json",
-    JSON.stringify({
-      version: "https://jsonfeed.org/version/1.1",
+    jsonFeedDoc({
       title: "Lab Ledger Desk",
-      home_page_url: SITE + "/",
-      feed_url: SITE + "/feed.json",
+      homeUrl: SITE + "/",
+      feedUrl: SITE + "/feed.json",
       description: "Official AI-lab briefs. Named sources only.",
-      items: briefs.slice(0, 40).map((b) => ({
-        id: SITE + b.path,
-        url: SITE + b.path,
-        title: b.headline,
-        // P0-3: the feed carries the full "what" — the brief's own
-        // substance — plus the alsoFiled line naming the story's other
-        // filings (P0-1). The "why" boilerplate ("Filed as a public note
-        // from …") is out: it is a filing record, not the brief's
-        // content, and for a thin brief it was most of the item. The
-        // "Primary source:" pointer is out too — external_url below
-        // already carries the source, and the /b/ page has it. The
-        // "why" still lives where it belongs: the /b/ page's
-        // "Why it matters" section.
-        content_text: [b.what, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" "),
-        date_published: b.publishedAt,
-        authors: [{ name: b.lab }],
-        tags: [b.kind, ...(b.topics || [])],
-        external_url: b.source,
-      })),
+      items: briefs.slice(0, 40),
     }),
   );
   const a = getAssets();
