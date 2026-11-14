@@ -3,38 +3,22 @@ import { write } from "./net.mjs";
 import { esc, kindLabel } from "./core.mjs";
 import { rowHtml, shell } from "./render.mjs";
 import { SITE } from "./core.mjs";
+import { feedLinks, feedLinksHtml, rssFeedXml, writeSurfaceFeeds } from "./archives.mjs";
 
 export async function writeOpenRss(openBriefs) {
-  const items = (openBriefs || [])
-    .map(
-      (b) =>
-        "<item><title>" +
-        esc(b.headline) +
-        "</title><link>" +
-        SITE + b.path +
-        "</link><guid>" +
-        SITE + b.path +
-        "</guid><category>" +
-        esc(b.lab) +
-        "</category><description>" +
-        esc(b.dek) +
-        "</description><pubDate>" +
-        new Date(b.publishedAt).toUTCString() +
-        "</pubDate></item>",
-    )
-    .join("");
+  // P1-4: one RSS builder for every feed now — the item shape lives in
+  // rssFeedItem, once. Open briefs carry no alsoFiled, so the description
+  // is exactly their dek, as before.
   await write(
     "open/rss.xml",
-    '<?xml version="1.0" encoding="UTF-8"?>' +
-      '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">' +
-      "<channel><title>Lab Ledger Desk — Open releases</title><link>" +
-      SITE +
-      "/open/</link><description>Official release notes from open-source AI projects: vLLM, SGLang, Ollama, Transformers, ComfyUI, DeepSpeed, JAX, PyTorch, llama.cpp, LangChain.</description>" +
-      '<atom:link href="' +
-      SITE +
-      '/open/rss.xml" rel="self" type="application/rss+xml"/>' +
-      items +
-      "</channel></rss>",
+    rssFeedXml({
+      title: "Lab Ledger Desk — Open releases",
+      link: SITE + "/open/",
+      description:
+        "Official release notes from open-source AI projects: vLLM, SGLang, Ollama, Transformers, ComfyUI, DeepSpeed, JAX, PyTorch, llama.cpp, LangChain.",
+      selfUrl: SITE + "/open/rss.xml",
+      items: openBriefs || [],
+    }),
   );
 }
 
@@ -48,16 +32,26 @@ export async function writeOpenArchives({ allOpen, today }) {
         title: proj.label + " — Lab Ledger Desk",
         description: "Open-source " + proj.label + " releases filed by Lab Ledger Desk.",
         path: "/lab/" + proj.id + "/",
+        extra: feedLinks("lab/" + proj.id, proj.label + " — Lab Ledger Desk"),
         body: [
           '<article class="method"><p class="kicker">Open project</p><h1>',
           esc(proj.label),
           '</h1><p class="dek">',
           how,
-          '</p></article><section class="board">',
+          "</p>",
+          feedLinksHtml("lab/" + proj.id),
+          '</article><section class="board">',
           rows.map(rowHtml).join("") || '<p class="empty">No filed release for ' + esc(proj.label) + " yet.</p>",
           "</section>",
         ].join(""),
       }),
     );
+    // P1-4: the project's own feeds, from the same rows its page renders.
+    await writeSurfaceFeeds("lab/" + proj.id, {
+      title: proj.label + " — Lab Ledger Desk",
+      pageUrl: SITE + "/lab/" + proj.id + "/",
+      description: "Open-source " + proj.label + " releases filed by Lab Ledger Desk.",
+      rows,
+    });
   }
 }

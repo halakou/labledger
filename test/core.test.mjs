@@ -987,3 +987,31 @@ test("build-desk keeps every filed brief: no archive cap slice", async () => {
   assert.equal(config.indexOf("ARCHIVE_MAX"), -1, "the lab cap constant is gone from config.mjs");
   assert.equal(config.indexOf("OPEN_ARCHIVE_MAX"), -1, "the open cap constant is gone from config.mjs");
 });
+
+test("build-desk hands the watchdog snapshot to publishSite, which threads it to the status page", async () => {
+  // P1-4: the /status/ page shows a build-time snapshot of the Worker's
+  // /health — fetched once by build-desk through net.mjs, threaded
+  // build-desk -> publishSite -> writeStatus. The fetch must go through
+  // the allow-list (WATCHDOG hosts in config.mjs, the project's own
+  // Worker only), never a raw fetch and never a live fetch from the
+  // reader's browser. publishSite defaults the snapshot to unreachable,
+  // so a caller that forgets it can never show a green that is not true.
+  const { readFile } = await import("node:fs/promises");
+  const build = await readFile(new URL("../scripts/build-desk.mjs", import.meta.url), "utf8");
+  assert.ok(build.includes("const watchdogPromise = fetchWatchdog();"), "build-desk starts the watchdog fetch");
+  assert.ok(build.includes("const watchdog = await watchdogPromise;"), "and awaits it before publishing");
+  assert.ok(build.includes("fetchText(WATCHDOG.url, \"application/json\", WATCHDOG.hosts)"), "the fetch goes through net.mjs with the WATCHDOG hosts");
+  assert.ok(build.includes("await publishSite({ allBriefs, briefs, boardPool, openBriefs, allOpen, today, fontNames, markMap, clusterNotes, watchdog });"), "build-desk hands the snapshot to publishSite");
+  assert.equal(build.indexOf("fetch(WATCHDOG"), -1, "no raw fetch of the watchdog anywhere");
+  const config = await readFile(new URL("../scripts/desk/config.mjs", import.meta.url), "utf8");
+  assert.ok(config.includes('url: "https://labledger-desk.halakou.workers.dev/health"'), "the WATCHDOG entry names the project's own Worker");
+  assert.ok(config.includes('hosts: ["labledger-desk.halakou.workers.dev"]'), "and no other host");
+  const pages = await readFile(new URL("../scripts/desk/pages.mjs", import.meta.url), "utf8");
+  assert.ok(pages.includes("watchdog = { reachable: false }"), "publishSite defaults the snapshot to unreachable");
+  assert.ok(pages.includes("await writeStatus({ builtAt, feeds: LABS.length, boards: OPEN_PROJECTS.length, watchdog, today });"), "publishSite hands the snapshot to writeStatus");
+  assert.ok(pages.includes("const builtAt = new Date().toISOString();"), "publishSite computes one build timestamp");
+  const home = await readFile(new URL("../scripts/desk/site-home.mjs", import.meta.url), "utf8");
+  assert.ok(home.includes("await writeStatic(fontNames, builtAt);") || pages.includes("await writeStatic(fontNames, builtAt);"), "the same timestamp goes to desk-status.json");
+  const status = await readFile(new URL("../scripts/desk/status.mjs", import.meta.url), "utf8");
+  assert.equal(status.indexOf("fetch("), -1, "the status writer fetches nothing itself");
+});

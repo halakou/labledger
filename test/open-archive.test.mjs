@@ -131,3 +131,65 @@ test("the /open/ board builder renders what it is given — cleanup happens upst
   assert.ok(!/signed-off-by/i.test(cleanHtml), "a clean brief renders a clean page");
   assert.ok(/762 commits/.test(cleanHtml), "the clean release note is rendered");
 });
+
+test("each open project gets its own feeds, from the same rows as its lab page", async () => {
+  // P1-4: /lab/<project>/ has a page built from allOpen, so it gets feeds
+  // built from the same rows — one project's feed never carries another
+  // project's releases. The open rail's own /open/rss.xml is unchanged
+  // (dek as the description, since open briefs carry no alsoFiled).
+  const { getOut } = await mod("scripts/desk/config.mjs");
+  const out = getOut();
+  const fs = await import("node:fs/promises");
+  await fs.rm(out, { recursive: true, force: true });
+  await fs.mkdir(out + "/fonts", { recursive: true });
+  const { writeOpenArchives, writeOpenRss } = await mod("scripts/desk/open-archives.mjs");
+  const base = {
+    lab: "vLLM",
+    labId: "vllm",
+    kind: "note",
+    topics: [],
+    mark: "U",
+    color: "#3d4a2e",
+    markFile: null,
+    dateLabel: "2026-10-01",
+    publishedAt: "2026-10-01T08:00:00Z",
+    source: "https://github.com/vllm-project/vllm/releases/tag/v0.30.0",
+  };
+  const vllm = {
+    ...base,
+    headline: "vLLM v0.30.0",
+    dek: "vLLM v0.30.0 ships faster attention.",
+    what: "vLLM v0.30.0 ships faster attention for long contexts.",
+    why: "Filed as a release from vLLM, 2026-10-01.",
+    guid: "open-vllm-1",
+    path: "/open/vllm/v0-30-0/",
+  };
+  const sglang = {
+    ...base,
+    lab: "SGLang",
+    labId: "sglang",
+    headline: "SGLang v0.5.0",
+    dek: "SGLang v0.5.0 ships a new scheduler.",
+    what: "SGLang v0.5.0 ships a new scheduler for multi-turn serving.",
+    why: "Filed as a release from SGLang, 2026-10-01.",
+    guid: "open-sglang-1",
+    path: "/open/sglang/v0-5-0/",
+    source: "https://github.com/sgl-project/sglang/releases/tag/v0.5.0",
+  };
+  await writeOpenArchives({ allOpen: [vllm, sglang], today: "2026-10-01" });
+  const vllmRss = await fs.readFile(join(out, "lab/vllm/rss.xml"), "utf8");
+  assert.ok(vllmRss.includes("vLLM v0.30.0"), "the vLLM feed has the vLLM release");
+  assert.ok(!vllmRss.includes("SGLang v0.5.0"), "and not the SGLang release");
+  const vllmFeed = JSON.parse(await fs.readFile(join(out, "lab/vllm/feed.json"), "utf8"));
+  assert.equal(vllmFeed.items.length, 1, "one release, one feed item");
+  assert.equal(vllmFeed.items[0].content_text, "vLLM v0.30.0 ships faster attention for long contexts.", "the JSON item carries the full what");
+  const sglangFeed = JSON.parse(await fs.readFile(join(out, "lab/sglang/feed.json"), "utf8"));
+  assert.equal(sglangFeed.items.length, 1, "the SGLang feed has only its own release");
+  const page = await fs.readFile(join(out, "lab/vllm/index.html"), "utf8");
+  assert.ok(page.includes('<a href="/lab/vllm/rss.xml">RSS</a>'), "the project page links its RSS");
+  await writeOpenRss([vllm, sglang]);
+  const openRss = await fs.readFile(join(out, "open/rss.xml"), "utf8");
+  assert.ok(openRss.includes("vLLM v0.30.0"), "the open rail RSS still carries both releases");
+  assert.ok(openRss.includes("SGLang v0.5.0"), "including SGLang");
+  assert.ok(openRss.includes("vLLM v0.30.0 ships faster attention."), "with the dek as the description");
+});

@@ -11,13 +11,17 @@ import { writeTerms } from "./terms.mjs";
 import { writePrivacy } from "./privacy.mjs";
 import { writeDigest } from "./site-digest.mjs";
 import { writeLearn } from "./learn.mjs";
+import { writeStatus } from "./status.mjs";
 
-export async function publishSite({ allBriefs, briefs, boardPool = briefs, openBriefs = [], allOpen = [], today, fontNames, markMap, clusterNotes = new Map() }) {
+export async function publishSite({ allBriefs, briefs, boardPool = briefs, openBriefs = [], allOpen = [], today, fontNames, markMap, clusterNotes = new Map(), watchdog = { reachable: false } }) {
+  // P1-4: one build timestamp for desk-status.json and the /status/ page,
+  // so the two never disagree by a second.
+  const builtAt = new Date().toISOString();
   await rm(getOut(), { recursive: true, force: true });
   await mkdir(getOut(), { recursive: true });
   await mkdir(getOut() + "/fonts", { recursive: true });
   await mkdir(getOut() + "/marks", { recursive: true });
-  const ogOk = await writeStatic(fontNames);
+  const ogOk = await writeStatic(fontNames, builtAt);
   // The sprite must be written after OUT is cleared, and it reads the fetched
   // marks, so build it here rather than in build-desk.mjs.
   await writeMarkSprite([...new Set([...LABS, ...OPEN_PROJECTS].map((l) => l.id))]);
@@ -32,6 +36,9 @@ export async function publishSite({ allBriefs, briefs, boardPool = briefs, openB
   await writeDonate({ today, briefsCount: allBriefs.length, openCount: openBriefs.length, labsCount: LABS.length + OPEN_PROJECTS.length });
   await writeTerms({ today });
   await writePrivacy();
+  // P1-4: the public status page, from the same build timestamp as
+  // desk-status.json and the watchdog snapshot build-desk fetched.
+  await writeStatus({ builtAt, feeds: LABS.length, boards: OPEN_PROJECTS.length, watchdog, today });
   const guideCount = await writeLearn();
   const weekCount = await writeDigest({ allBriefs, briefs, openBriefs, today });
   await writeArchives({ allBriefs, briefs, openBriefs, allOpen, today, clusterNotes });

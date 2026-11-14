@@ -170,6 +170,129 @@ function clusterNoteHtml(note) {
   return "";
 }
 
+// P1-4: one definition of a feed item, shared by the main feeds and the
+// per-surface feeds. The RSS item carries [dek, alsoFiledLine] exactly as
+// the main rss.xml always has; the JSON item carries [what, alsoFiledLine]
+// exactly as feed.json has since P0-3. A surface feed must never show a
+// brief its page does not, and the item text must never drift between the
+// main feed and a lab feed — so both shapes live here, once.
+export function rssFeedItem(b) {
+  return (
+    "<item><title>" +
+    esc(b.headline) +
+    "</title><link>" +
+    SITE +
+    b.path +
+    "</link><guid>" +
+    SITE +
+    b.path +
+    "</guid><category>" +
+    esc(kindLabel(b.kind)) +
+    "</category><description>" +
+    esc([b.dek, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" ")) +
+    "</description><pubDate>" +
+    new Date(b.publishedAt).toUTCString() +
+    "</pubDate></item>"
+  );
+}
+
+export function jsonFeedItem(b) {
+  return {
+    id: SITE + b.path,
+    url: SITE + b.path,
+    title: b.headline,
+    // P0-3: the feed carries the full "what" — the brief's own substance —
+    // plus the alsoFiled line naming the story's other filings (P0-1). The
+    // "why" boilerplate ("Filed as a public note from …") is out: it is a
+    // filing record, not the brief's content. The "Primary source:"
+    // pointer is out too — external_url below already carries the source,
+    // and the /b/ page has it. The "why" still lives where it belongs:
+    // the /b/ page's "Why it matters" section.
+    content_text: [b.what, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" "),
+    date_published: b.publishedAt,
+    authors: [{ name: b.lab }],
+    tags: [b.kind, ...(b.topics || [])],
+    external_url: b.source,
+  };
+}
+
+export function rssFeedXml({ title, link, description, selfUrl, items }) {
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>' +
+    esc(title) +
+    "</title><link>" +
+    esc(link) +
+    "</link><description>" +
+    esc(description) +
+    '</description><atom:link href="' +
+    esc(selfUrl) +
+    '" rel="self" type="application/rss+xml"/>' +
+    items.map(rssFeedItem).join("") +
+    "</channel></rss>"
+  );
+}
+
+export function jsonFeedDoc({ title, homeUrl, feedUrl, description, items }) {
+  return JSON.stringify({
+    version: "https://jsonfeed.org/version/1.1",
+    title,
+    home_page_url: homeUrl,
+    feed_url: feedUrl,
+    description,
+    items: items.map(jsonFeedItem),
+  });
+}
+
+// Writes both feed files for one surface (a lab, topic, kind, or open
+// project). The rows are the same list the surface's page renders, so a
+// feed never shows a brief its page does not. A surface with no rows
+// still gets valid empty feeds — the feed exists and is linked, it just
+// has no items yet; an absent feed would make the page's own link a 404.
+export async function writeSurfaceFeeds(dir, { title, pageUrl, description, rows }) {
+  await write(
+    dir + "/rss.xml",
+    rssFeedXml({ title, link: pageUrl, description, selfUrl: SITE + "/" + dir + "/rss.xml", items: rows }),
+  );
+  await write(
+    dir + "/feed.json",
+    jsonFeedDoc({ title, homeUrl: pageUrl, feedUrl: SITE + "/" + dir + "/feed.json", description, items: rows }),
+  );
+}
+
+// Autodiscovery link tags for a surface's feeds, for shell()'s `extra`.
+export function feedLinks(dir, title) {
+  return (
+    '<link rel="alternate" type="application/rss+xml" title="' +
+    esc(title) +
+    '" href="' +
+    SITE +
+    "/" +
+    dir +
+    '/rss.xml">' +
+    '<link rel="alternate" type="application/feed+json" title="' +
+    esc(title) +
+    '" href="' +
+    SITE +
+    "/" +
+    dir +
+    '/feed.json">'
+  );
+}
+
+// Visible feed links for a surface's page body. The class is the one the
+// home page already uses for its source links; it is deliberately
+// unstyled, so no new CSS is needed.
+export function feedLinksHtml(dir) {
+  return (
+    '<p class="source-links"><a href="/' +
+    dir +
+    '/rss.xml">RSS</a><a href="/' +
+    dir +
+    '/feed.json">JSON feed</a></p>'
+  );
+}
+
 export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpen = [], today, clusterNotes = new Map() }) {
   for (const lab of LABS) {
     const rows = allBriefs.filter((b) => b.labId === lab.id).slice(0, 80);
@@ -180,6 +303,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
         title: lab.label + " — Lab Ledger Desk",
         description: "Official " + lab.label + " announcements filed by Lab Ledger Desk.",
         path: "/lab/" + lab.id + "/",
+        extra: feedLinks("lab/" + lab.id, lab.label + " — Lab Ledger Desk"),
         body: [
           "<article class=\"method\"><p class=\"kicker\">Archive</p><h1>",
           esc(lab.label),
@@ -187,6 +311,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
           "<p class=\"dek\">",
           how,
           "</p>",
+          feedLinksHtml("lab/" + lab.id),
           activityChart(rows, lab.label),
           "</article>",
           "<section class=\"board\">",
@@ -195,6 +320,13 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
         ].join(""),
       }),
     );
+    // P1-4: the lab's own feeds, from the same rows its page renders.
+    await writeSurfaceFeeds("lab/" + lab.id, {
+      title: lab.label + " — Lab Ledger Desk",
+      pageUrl: SITE + "/lab/" + lab.id + "/",
+      description: "Official " + lab.label + " announcements filed by Lab Ledger Desk.",
+      rows,
+    });
   }
 
   for (const topic of TOPICS) {
@@ -208,7 +340,8 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
         title: topic.label + " — Lab Ledger Desk",
         description: "Official AI-lab briefs tagged " + topic.label + " from allow-listed sources.",
         path: "/topic/" + topic.id + "/",
-        extra: jsonLdScript({
+        extra:
+          jsonLdScript({
           "@context": "https://schema.org",
           "@graph": [
             {
@@ -235,20 +368,29 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
               },
             },
           ],
-        }),
+        }) + feedLinks("topic/" + topic.id, topic.label + " — Lab Ledger Desk"),
         body: [
           "<article class=\"method\"><p class=\"kicker\">Topic</p><h1>",
           esc(topic.label),
           "</h1>",
           "<p class=\"dek\">The latest filed briefs tagged ",
           esc(topic.label),
-          " — from every lab on the desk. Keyword tag from the official title and summary.</p></article>",
+          " — from every lab on the desk. Keyword tag from the official title and summary.</p>",
+          feedLinksHtml("topic/" + topic.id),
+          "</article>",
           "<section class=\"board\">",
           rows.map(rowHtml).join("") || "<p class=\"empty\">No filed brief currently tagged " + esc(topic.label) + ".</p>",
           "</section>",
         ].join(""),
       }),
     );
+    // P1-4: the topic's own feeds, from the same rows its page renders.
+    await writeSurfaceFeeds("topic/" + topic.id, {
+      title: topic.label + " — Lab Ledger Desk",
+      pageUrl: SITE + "/topic/" + topic.id + "/",
+      description: "Official AI-lab briefs tagged " + topic.label + " from allow-listed sources.",
+      rows,
+    });
   }
 
   for (const kind of KINDS) {
@@ -261,43 +403,53 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
         title: kind.label + " — Lab Ledger Desk",
         description: "Official AI-lab briefs labelled " + kind.label + ".",
         path: "/kind/" + kind.id + "/",
-        extra: jsonLdScript({
-          "@context": "https://schema.org",
-          "@graph": [
-            {
-              "@type": "CollectionPage",
-              name: kind.label + " — Lab Ledger Desk",
-              url: SITE + "/kind/" + kind.id + "/",
-              dateModified: today,
-              publisher: {
-                "@type": "NewsMediaOrganization",
-                name: "Lab Ledger Desk",
-                url: SITE + "/",
+        extra:
+          jsonLdScript({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "CollectionPage",
+                name: kind.label + " — Lab Ledger Desk",
+                url: SITE + "/kind/" + kind.id + "/",
+                dateModified: today,
+                publisher: {
+                  "@type": "NewsMediaOrganization",
+                  name: "Lab Ledger Desk",
+                  url: SITE + "/",
+                },
+                mainEntity: {
+                  "@type": "ItemList",
+                  numberOfItems: ofKind.length,
+                  itemListElement: rows.slice(0, 40).map((b, i) => ({
+                    "@type": "ListItem",
+                    position: i + 1,
+                    url: SITE + b.path,
+                    name: b.headline,
+                  })),
+                },
               },
-              mainEntity: {
-                "@type": "ItemList",
-                numberOfItems: ofKind.length,
-                itemListElement: rows.slice(0, 40).map((b, i) => ({
-                  "@type": "ListItem",
-                  position: i + 1,
-                  url: SITE + b.path,
-                  name: b.headline,
-                })),
-              },
-            },
-          ],
-        }),
+            ],
+          }) + feedLinks("kind/" + kind.id, kind.label + " — Lab Ledger Desk"),
         body: [
           "<article class=\"method\"><p class=\"kicker\">Type</p><h1>",
           esc(kind.label),
           "</h1>",
-          "<p class=\"dek\">Launch, Research, or Note — a keyword label on the official claim, across every lab.</p></article>",
+          "<p class=\"dek\">Launch, Research, or Note — a keyword label on the official claim, across every lab.</p>",
+          feedLinksHtml("kind/" + kind.id),
+          "</article>",
           "<section class=\"board\">",
           rows.map(rowHtml).join("") || "<p class=\"empty\">No filed brief currently labelled " + esc(kind.label) + ".</p>",
           "</section>",
         ].join(""),
       }),
     );
+    // P1-4: the kind's own feeds, from the same rows its page renders.
+    await writeSurfaceFeeds("kind/" + kind.id, {
+      title: kind.label + " — Lab Ledger Desk",
+      pageUrl: SITE + "/kind/" + kind.id + "/",
+      description: "Official AI-lab briefs labelled " + kind.label + ".",
+      rows,
+    });
   }
 
   for (const b of [...allBriefs, ...allOpen]) {
@@ -444,10 +596,22 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/rss.xml", today],
     ["/feed.json", today],
     ["/llms.txt", today],
+    ["/status/", today],
     ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
     ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/", today]),
     ...TOPICS.map((t) => ["/topic/" + t.id + "/", today]),
     ...KINDS.map((k) => ["/kind/" + k.id + "/", today]),
+    // P1-4: every surface's own feeds, so a reader (or a crawler) that
+    // finds the sitemap finds the per-lab, per-topic and per-kind feeds
+    // too — the same way /rss.xml and /feed.json were already listed.
+    ...LABS.map((l) => ["/lab/" + l.id + "/rss.xml", today]),
+    ...LABS.map((l) => ["/lab/" + l.id + "/feed.json", today]),
+    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/rss.xml", today]),
+    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/feed.json", today]),
+    ...TOPICS.map((t) => ["/topic/" + t.id + "/rss.xml", today]),
+    ...TOPICS.map((t) => ["/topic/" + t.id + "/feed.json", today]),
+    ...KINDS.map((k) => ["/kind/" + k.id + "/rss.xml", today]),
+    ...KINDS.map((k) => ["/kind/" + k.id + "/feed.json", today]),
     ...allBriefs.map((b) => [b.path, b.dateLabel]),
     ...allOpen.map((b) => [b.path, b.dateLabel]),
   ];
@@ -466,33 +630,17 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
       unique.map(([u, d]) => "<url><loc>" + SITE + u + "</loc><lastmod>" + d + "</lastmod></url>").join("") +
       "</urlset>",
   );
+  // P1-4: the main feed is one call to the shared builder now — the item
+  // shape lives in rssFeedItem, once, instead of being spelled out here
+  // and again in every per-surface feed.
   await write(
     "rss.xml",
-    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\"><channel><title>Lab Ledger Desk</title><link>" +
-      SITE +
-      "</link><description>Official AI-lab briefs, dated and sourced.</description><atom:link href=\"" +
-      SITE +
-      "/rss.xml\" rel=\"self\" type=\"application/rss+xml\"/>" +
-      briefs
-        .map(
-          (b) =>
-            "<item><title>" +
-            esc(b.headline) +
-            "</title><link>" +
-            SITE +
-            b.path +
-            "</link><guid>" +
-            SITE +
-            b.path +
-            "</guid><category>" +
-            esc(kindLabel(b.kind)) +
-            "</category><description>" +
-            esc([b.dek, alsoFiledLine(b.alsoFiled)].filter(Boolean).join(" ")) +
-            "</description><pubDate>" +
-            new Date(b.publishedAt).toUTCString() +
-            "</pubDate></item>",
-        )
-        .join("") +
-      "</channel></rss>",
+    rssFeedXml({
+      title: "Lab Ledger Desk",
+      link: SITE,
+      description: "Official AI-lab briefs, dated and sourced.",
+      selfUrl: SITE + "/rss.xml",
+      items: briefs,
+    }),
   );
 }
