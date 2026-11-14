@@ -16,6 +16,7 @@ import {
   composeWhat,
   composeWhy,
   hostAllowed,
+  isThinBrief,
   kindLabel,
   parseFeed,
   presentRelease,
@@ -213,16 +214,31 @@ await writeFile(
 // the stable earliest filing, and queueFromBoard suppresses a primary whose
 // alsoFiled list holds a guid that was already posted (an older filing that
 // arrived late and took over as primary).
+// P0-3: thin briefs are filed and keep their pages, but take no board
+// slot and are never posted. A filing whose "what" is a bare category
+// label, a "blog post by …" line, or the empty-summary fallback sentence
+// has almost no substance (isThinBrief: under 12 words of what). Filter
+// them out of the board pool BEFORE clustering, so the earliest NON-thin
+// filing becomes the cluster primary and a thin filing can never smuggle
+// a thin row onto the board — filtering after clustering would drop a
+// whole cluster whose primary happened to be thin. The Telegram queue
+// and feed.json both derive from `briefs` below, and RSS derives from it
+// too, so one filter covers all three surfaces; /lab/, /week/, search
+// and the /b/ pages still render from allBriefs. The same filter applies
+// to the unclustered fallback: a cluster failure must never re-admit
+// thin briefs to the board.
+const boardPool = allBriefs.filter((b) => !isThinBrief(b));
+
 const today = new Date().toISOString().slice(0, 10);
 let clusters = [];
-let clusterPrimaries = [...allBriefs];
+let clusterPrimaries = [...boardPool];
 try {
-  clusters = clusterBriefs(allBriefs);
+  clusters = clusterBriefs(boardPool);
   clusterPrimaries = boardPrimaries(clusters);
 } catch (err) {
   runLog.push("cluster fail " + (err?.message || err) + " — board unclustered");
   clusters = [];
-  clusterPrimaries = [...allBriefs];
+  clusterPrimaries = [...boardPool];
 }
 
 // Cluster notes for the /b/ pages, keyed by guid: the primary's page lists
@@ -390,4 +406,4 @@ await writeFile(
   }),
 );
 
-await publishSite({ allBriefs, briefs, openBriefs, allOpen, today, fontNames, markMap, clusterNotes });
+await publishSite({ allBriefs, briefs, boardPool, openBriefs, allOpen, today, fontNames, markMap, clusterNotes });

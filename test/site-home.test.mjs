@@ -87,6 +87,51 @@ test("the search page renders every brief the desk has filed", async () => {
   assert.ok(html.includes('action="/search/"'), "the form submits back to the search page");
 });
 
+test("the frontier sidebar shows a lab's latest non-thin filing, never a thin one", async () => {
+  // P0-3: the "Trending frontiers" sidebar used to read allBriefs, so a
+  // thin filing that happened to be a lab's latest — DeepMind's
+  // "Introducing Gemini 4 Hydrogen", whose what is only the
+  // empty-summary fallback sentence — was featured on the home page with
+  // no board slot. The sidebar now reads the filtered board pool: the
+  // card shows the lab's latest substantive filing, and a lab whose
+  // filings are all thin gets no card.
+  const { writeHome } = await import("../scripts/desk/site-home.mjs");
+  const { OUT, fs } = await freshOut();
+  const { join } = await import("node:path");
+  const thinDeepMind = {
+    headline: "Introducing Gemini 4 Hydrogen",
+    labId: "deepmind",
+    lab: "DeepMind",
+    dateLabel: "2026-11-12",
+    path: "/b/2026/11/12/gemini-4-hydrogen/",
+    what: "DeepMind published \u201cIntroducing Gemini 4 Hydrogen\u201d on 2026-11-12.",
+  };
+  const fullDeepMind = {
+    headline: "Gemini 4 brings live reasoning to DeepMind research tools",
+    labId: "deepmind",
+    lab: "DeepMind",
+    dateLabel: "2026-11-11",
+    path: "/b/2026/11/11/gemini-4-research-tools/",
+    what: "DeepMind Gemini 4 brings live reasoning and citations to its research tools, with a wider rollout planned for next month.",
+  };
+  const thinMistral = {
+    headline: "Mistral releases a small model update",
+    labId: "mistral",
+    lab: "Mistral",
+    dateLabel: "2026-11-12",
+    path: "/b/2026/11/12/mistral-small-update/",
+    what: "Mistral published \u201cMistral releases a small model update\u201d on 2026-11-12.",
+  };
+  const allBriefs = [thinDeepMind, thinMistral, fullDeepMind];
+  const boardPool = [fullDeepMind];
+  await writeHome({ allBriefs, briefs: [], boardPool, openBriefs: [], today: "2026-11-13" });
+  const html = await fs.readFile(join(OUT, "index.html"), "utf8");
+  assert.ok(html.includes("Gemini 4 brings live reasoning to DeepMind research tools"), "the DeepMind card shows the latest non-thin filing");
+  assert.ok(!html.includes("Introducing Gemini 4 Hydrogen"), "the thin filing appears nowhere on the home page");
+  assert.ok(!html.includes("Mistral releases a small model update"), "a thin-only lab's filing is not featured");
+  assert.ok(!html.includes('frontier-name">Mistral'), "a lab whose filings are all thin gets no frontier card");
+});
+
 test("feed.json names a cluster's other filings in the item text", async () => {
   // The feed is built from the clustered board list, so a story takes one
   // feed slot — and that slot names the other filings, lab + headline +
@@ -115,6 +160,62 @@ test("feed.json names a cluster's other filings in the item text", async () => {
   const feed = JSON.parse(await fs.readFile(join(OUT, "feed.json"), "utf8"));
   assert.equal(feed.items.length, 1, "one story, one feed slot");
   assert.ok(feed.items[0].content_text.includes("Also filed by TechCrunch: ChatGPT’s new Wallet lets AI agents shop (2026-11-13)"));
+});
+
+test("feed.json content_text is the full what, not the why boilerplate", async () => {
+  // P0-3: a feed item's text is the brief's own substance. The "why"
+  // filing record ("Filed as a public note from …") used to sit in the
+  // middle of it — and for a thin brief it was most of the item. The
+  // source pointer is out too: external_url already carries the source.
+  const { writeLlms } = await import("../scripts/desk/site-home.mjs");
+  const { OUT, fs } = await freshOut();
+  const { join } = await import("node:path");
+  const briefs = [
+    {
+      headline: "Google Search gets a major upgrade with Gemini 4 Hydrogen",
+      path: "/b/2026/11/12/google-search-gemini-4-hydrogen/",
+      lab: "Google",
+      source: "https://blog.google/products/search/gemini-4-hydrogen/",
+      publishedAt: "2026-11-12T19:00:00Z",
+      dateLabel: "2026-11-12",
+      kind: "note",
+      topics: [],
+      what: "Google Search gets a major upgrade with Gemini 4 Hydrogen, bringing live reasoning and citations to results pages for everyone.",
+      why: "Filed as a public note from Google, 2026-11-12.",
+    },
+    {
+      headline: "Introducing ChatGPT Wallet",
+      path: "/b/2026/11/13/chatgpt-wallet/",
+      lab: "OpenAI",
+      source: "https://openai.com/index/chatgpt-wallet/",
+      publishedAt: "2026-11-13T08:00:00Z",
+      dateLabel: "2026-11-13",
+      kind: "launch",
+      topics: [],
+      what: "OpenAI launched ChatGPT Wallet.",
+      why: "Filed as a launch filing from OpenAI, 2026-11-13.",
+      alsoFiled: [
+        { lab: "TechCrunch", headline: "ChatGPT’s new Wallet lets AI agents shop", dateLabel: "2026-11-13" },
+      ],
+    },
+  ];
+  await writeLlms(briefs, []);
+  const feed = JSON.parse(await fs.readFile(join(OUT, "feed.json"), "utf8"));
+  assert.equal(feed.items.length, 2, "two board briefs, two feed items");
+  assert.equal(
+    feed.items[0].content_text,
+    "Google Search gets a major upgrade with Gemini 4 Hydrogen, bringing live reasoning and citations to results pages for everyone.",
+    "a single filing's item text is exactly its what",
+  );
+  assert.ok(!feed.items[0].content_text.includes("Filed as a public note"), "no why boilerplate in the item text");
+  assert.ok(!feed.items[0].content_text.includes("Primary source:"), "no redundant source pointer in the item text");
+  assert.equal(feed.items[0].external_url, "https://blog.google/products/search/gemini-4-hydrogen/", "the source still travels as external_url");
+  assert.equal(
+    feed.items[1].content_text,
+    "OpenAI launched ChatGPT Wallet. Also filed by TechCrunch: ChatGPT’s new Wallet lets AI agents shop (2026-11-13)",
+    "a clustered story's item text is its what plus the alsoFiled line — and nothing else",
+  );
+  assert.ok(!feed.items[1].content_text.includes("Filed as a launch filing"), "no why boilerplate in a clustered item either");
 });
 
 test("the _headers CSP lets a same-origin form actually submit", async () => {

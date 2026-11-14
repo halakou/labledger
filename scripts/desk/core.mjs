@@ -227,6 +227,24 @@ export function wordCount(text) {
   return String(text).trim().split(/\s+/).filter(Boolean).length;
 }
 
+// P0-3: a brief is thin when its "what" carries almost no substance —
+// fewer than 12 words. The threshold is the same one presentRelease
+// already uses for open releases (thinRelease = words < 12), so one
+// definition covers both intake paths. In live data the thin shapes are
+// a bare category label ("Education Innovation", 2 words), a "blog post
+// by …" line (8–9 words), and composeWhat's empty-summary fallback
+// ("DeepMind published "Introducing Gemini 4 Hydrogen" on 2026-11-12.",
+// 8–10 words); real briefs start at 14 words, so the gap is clean. The
+// rule reads the brief's own "what" — the substance the reader sees —
+// not the raw summary, which makeBrief does not store. A thin brief is
+// still filed and keeps its page; it only takes no board slot and is
+// never posted (see build-desk.mjs).
+export const THIN_WHAT_WORDS = 12;
+
+export function isThinBrief(brief) {
+  return wordCount(brief?.what || "") < THIN_WHAT_WORDS;
+}
+
 export function clipWords(text, max) {
   const words = String(text).replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
   if (words.length <= max) return words.join(" ");

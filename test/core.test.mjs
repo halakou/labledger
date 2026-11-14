@@ -20,6 +20,7 @@ import {
   composeWhat,
   composeWhy,
   factsFor,
+  isThinBrief,
   presentRelease,
   queueFromBoard,
   selectBoard,
@@ -862,10 +863,115 @@ test("build-desk writes the archive before clustering, so alsoFiled is never per
   const { readFile } = await import("node:fs/promises");
   const src = await readFile(new URL("../scripts/build-desk.mjs", import.meta.url), "utf8");
   const archiveWrite = src.indexOf("writeFile(\n  ARCHIVE_FILE,");
-  const clusterCall = src.indexOf("clusterBriefs(allBriefs)");
+  const clusterCall = src.indexOf("clusterBriefs(boardPool)");
   assert.ok(archiveWrite > -1, "the archive write exists");
   assert.ok(clusterCall > -1, "the clusterBriefs call exists");
   assert.ok(archiveWrite < clusterCall, "the archive is written before clusterBriefs runs");
+});
+
+test("isThinBrief calls a brief thin when its what carries almost no substance", () => {
+  // The three thin shapes from live data: a bare category label, a
+  // "blog post by …" line, and composeWhat's empty-summary fallback.
+  // The bar is 12 words — the same threshold presentRelease already uses
+  // for open releases (thinRelease) — and real briefs start at 14.
+  assert.equal(isThinBrief({ what: "Education Innovation" }), true, "a category label is thin");
+  assert.equal(isThinBrief({ what: "Health & Bioscience" }), true, "another category label is thin");
+  assert.equal(isThinBrief({ what: "A Blog post by NVIDIA on Hugging Face" }), true, "a blog-post-by line is thin");
+  assert.equal(
+    isThinBrief({ what: "DeepMind published \u201cIntroducing Gemini 4 Hydrogen\u201d on 2026-11-12." }),
+    true,
+    "the empty-summary fallback sentence is thin",
+  );
+  assert.equal(isThinBrief({ what: "" }), true, "an empty what is thin");
+  assert.equal(isThinBrief({}), true, "a missing what is thin");
+  assert.equal(
+    isThinBrief({ what: "OpenAI released a small update to its developer tools this morning" }),
+    true,
+    "11 words is still thin",
+  );
+  assert.equal(
+    isThinBrief({ what: "OpenAI released a small update to its developer tools this morning, quietly" }),
+    false,
+    "12 words is not thin",
+  );
+  assert.equal(
+    isThinBrief({ what: "Google Search gets a major upgrade with Gemini 4 Hydrogen, bringing live reasoning to results." }),
+    false,
+    "a real brief is not thin",
+  );
+});
+
+test("a thin earliest filing never becomes a cluster primary", () => {
+  // P0-3: the board pool is filtered before clustering, so the earliest
+  // NON-thin filing becomes the primary. The thin DeepMind filing is the
+  // earliest filing of the Gemini 4 Hydrogen story, but its what is only
+  // the empty-summary fallback sentence.
+  const thin = {
+    headline: "Introducing Gemini 4 Hydrogen",
+    lab: "DeepMind",
+    publishedAt: "2026-11-12T18:00:00Z",
+    path: "/b/2026/11/12/gemini-4-hydrogen/",
+    what: "DeepMind published \u201cIntroducing Gemini 4 Hydrogen\u201d on 2026-11-12.",
+  };
+  const full = {
+    headline: "Google Search gets a major upgrade with Gemini 4 Hydrogen",
+    lab: "Google",
+    publishedAt: "2026-11-12T19:00:00Z",
+    path: "/b/2026/11/12/google-search-gemini-4-hydrogen/",
+    what: "Google Search gets a major upgrade with Gemini 4 Hydrogen, bringing live reasoning and citations to results pages for everyone.",
+  };
+  const pool = [thin, full].filter((b) => !isThinBrief(b));
+  assert.equal(pool.length, 1, "the thin filing leaves the board pool");
+  const clusters = clusterBriefs(pool);
+  assert.equal(clusters.length, 1, "one story, one cluster");
+  assert.equal(clusters[0].primary.lab, "Google", "the earliest non-thin filing is primary");
+  assert.equal(clusters[0].also.length, 0, "the thin filing is not an alsoFiled entry either");
+});
+
+test("a story whose filings are all thin takes no board row at all", () => {
+  const thin = [
+    { headline: "Health & Bioscience", lab: "Google Research", publishedAt: "2026-11-13T10:00:00Z", path: "/b/a/", what: "Health & Bioscience" },
+    { headline: "Health & Bioscience", lab: "Google Research", publishedAt: "2026-11-13T11:00:00Z", path: "/b/b/", what: "Health & Bioscience" },
+  ];
+  const pool = thin.filter((b) => !isThinBrief(b));
+  assert.equal(pool.length, 0, "nothing survives the filter");
+  assert.equal(clusterBriefs(pool).length, 0, "no cluster, no row — the filings stay in the archive only");
+});
+
+test("the home page frontier sidebar reads the filtered board pool, not the archive", async () => {
+  // P0-3: the sidebar used to read allBriefs, so a thin filing that was a
+  // lab's latest was featured on the home page with no board slot. The
+  // pool is threaded build-desk -> publishSite -> writeHome, and the
+  // lookup reads it. publishSite defaults the pool to the board list,
+  // which is already thin-free, so a caller that forgets the pool can
+  // never leak a thin brief onto the home page.
+  const { readFile } = await import("node:fs/promises");
+  const build = await readFile(new URL("../scripts/build-desk.mjs", import.meta.url), "utf8");
+  assert.ok(build.includes("await publishSite({ allBriefs, briefs, boardPool,"), "build-desk hands the filtered pool to publishSite");
+  const pages = await readFile(new URL("../scripts/desk/pages.mjs", import.meta.url), "utf8");
+  assert.ok(pages.includes("boardPool = briefs"), "publishSite defaults the pool to the thin-free board list");
+  assert.ok(pages.includes("await writeHome({ allBriefs, briefs, boardPool, openBriefs, today });"), "publishSite hands the pool to writeHome");
+  const home = await readFile(new URL("../scripts/desk/site-home.mjs", import.meta.url), "utf8");
+  assert.ok(home.includes("const latest = boardPool.find((b) => b.labId === f.id);"), "the frontier lookup reads the pool");
+  assert.equal(home.indexOf("allBriefs.find((b) => b.labId"), -1, "no frontier lookup reads the unfiltered archive");
+});
+
+test("build-desk filters the board pool for thin briefs before clustering", async () => {
+  // A source-order pin for P0-3: the thin filter must run before
+  // clusterBriefs, so a thin earliest filing can never become a primary —
+  // filtering after clustering would drop a whole cluster whose primary
+  // happened to be thin. The unclustered fallback must use the filtered
+  // pool too, or a cluster failure would re-admit thin briefs.
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("../scripts/build-desk.mjs", import.meta.url), "utf8");
+  const filter = src.indexOf("const boardPool = allBriefs.filter((b) => !isThinBrief(b));");
+  const clusterCall = src.indexOf("clusterBriefs(boardPool)");
+  const fallback = src.indexOf("clusterPrimaries = [...boardPool];");
+  assert.ok(filter > -1, "the board pool filter exists");
+  assert.ok(clusterCall > -1, "clustering runs on the filtered pool");
+  assert.ok(filter < clusterCall, "the filter runs before clustering");
+  assert.ok(fallback > -1, "the unclustered fallback uses the filtered pool");
+  assert.equal(src.indexOf("clusterBriefs(allBriefs)"), -1, "clustering never runs on the unfiltered archive");
 });
 
 test("build-desk keeps every filed brief: no archive cap slice", async () => {
