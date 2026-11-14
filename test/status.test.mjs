@@ -91,10 +91,15 @@ test("the status page adds no second script", async () => {
   const { join } = await import("node:path");
   await writeStatus({ builtAt: "2026-11-14T13:01:14.633Z", feeds: 18, boards: 9, watchdog: freshWatchdog(), today: "2026-11-14" });
   const html = await fs.readFile(join(OUT, "status/index.html"), "utf8");
-  // Count bare <script> tags: the page's JSON-LD block is a
-  // <script type="application/ld+json"> data block, not an executable
-  // script, so it must not count toward the one-script invariant.
-  assert.equal((html.match(/<script>/g) || []).length, 1, "exactly one executable script tag — the shell's own");
+  // Count executable <script> tags: match any <script ...> open tag
+  // case-insensitively (CodeQL: a bare /<script>/ misses upper-case
+  // <SCRIPT>), then exclude the page's JSON-LD block, a
+  // <script type="application/ld+json"> data block, which is not an
+  // executable script and must not count toward the one-script invariant.
+  const scripts = (html.match(/<script\b[^>]*>/gi) || []).filter(
+    (t) => !/type="application\/ld\+json"/i.test(t),
+  );
+  assert.equal(scripts.length, 1, "exactly one executable script tag — the shell's own");
   assert.ok(!html.includes("workers.dev"), "and no reference to the watchdog host anywhere on the page");
   // The shell's one script does fetch desk-status.json (same origin, the
   // long-standing freshness label); the status page itself must not add
