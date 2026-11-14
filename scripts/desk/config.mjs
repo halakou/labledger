@@ -69,7 +69,9 @@ export const LABS = [
     feed: "https://blog.google/technology/ai/rss/",
     listing: null,
     hosts: ["blog.google"],
-    icons: ["https://blog.google/static/blogv2/images/google.png", "https://blog.google/favicon.ico"],
+    // F6: the favicon is the 4-colour "G"; the wordmark PNG is wide and
+    // letterboxes. Favicon first.
+    icons: ["https://blog.google/favicon.ico", "https://blog.google/static/blogv2/images/google.png"],
   },
   {
     id: "deepmind",
@@ -121,11 +123,13 @@ export const LABS = [
     listing: null,
     hosts: ["blogs.nvidia.com"],
     iconHosts: ["blogs.nvidia.com", "nvidia.com"],
+    // F6: the favicon is the eye-only mark (the wide lockup SVGs render as a
+    // ~7.7px sliver at tile size). Favicons first; the SVGs stay as fallbacks.
     icons: [
-      "https://www.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/images/NVIDIA-Logo.svg",
-      "https://www.nvidia.com/content/dam/en-zz/Solutions/about-nvidia/nvidia-brochure/images/nvidia-logo-black.svg",
       "https://blogs.nvidia.com/favicon.ico",
       "https://www.nvidia.com/favicon.ico",
+      "https://www.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/images/NVIDIA-Logo.svg",
+      "https://www.nvidia.com/content/dam/en-zz/Solutions/about-nvidia/nvidia-brochure/images/nvidia-logo-black.svg",
     ],
   },
   {
@@ -136,6 +140,9 @@ export const LABS = [
     feed: "https://aws.amazon.com/blogs/machine-learning/feed/",
     listing: null,
     hosts: ["aws.amazon.com"],
+    // F9 BLOCKED: this is 16x16 only. The larger AWS smile mark lives on
+    // a0.awsstatic.com, which is NOT on the allow-list — adding it needs a
+    // decision (see PR body). No change here until then.
     icons: ["https://aws.amazon.com/favicon.ico"],
   },
   {
@@ -317,12 +324,12 @@ export const OPEN_PROJECTS = [
     repo: "huggingface/transformers",
     feed: "https://github.com/huggingface/transformers/releases.atom",
     hosts: ["github.com"],
-    iconHosts: [...GH_ICONS, "huggingface.co"],
+    iconHosts: GH_ICONS,
     pathPrefix: "/huggingface/transformers/releases",
-    icons: [
-      "https://huggingface.co/front/thumbnails/transformers.png",
-      "https://github.com/huggingface.png",
-    ],
+    // F4: the huggingface.co thumbnail was a 1200x648 documentation banner,
+    // not a logo — it letterboxed to a thin strip. The HF org avatar is the
+    // mark; huggingface.co is no longer an icon host (the feed host stays).
+    icons: ["https://github.com/huggingface.png"],
   },
   {
     id: "comfyui",
@@ -366,6 +373,11 @@ export const OPEN_PROJECTS = [
       "githubusercontent.com",
     ],
     pathPrefix: "/langchain-ai/langchain/releases",
+    // F11: kept on the Simple Icons CDN deliberately. LangChain's own dark
+    // green (#1C3C3C) is 1.6:1 on the dark tile — invisible — while the
+    // Simple Icons asset has the correct chain-link shape in a legible light
+    // blue. Shape carries recognition; the colour reads. Switching to
+    // langchain.com would also add a new host.
     icons: ["https://cdn.simpleicons.org/langchain"],
   },
   {

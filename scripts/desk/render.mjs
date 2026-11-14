@@ -7,7 +7,7 @@ import { VECTOR_MARKS } from "./marks-vector.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 
 const HAS_VECTOR = new Set([
-  "openai", "anthropic", "google", "mistral", "huggingface", "microsoft", "nvidia", "deepmind", "meta",
+  "openai", "anthropic", "google", "mistral", "huggingface", "microsoft", "nvidia", "deepmind",
   "aws", "apple", "gresearch", "bair", "mit", "mittr", "wired", "techcrunch", "msftai", "theverge",
   "pytorch", "vllm", "sglang", "ollama", "transformers", "comfyui", "deepspeed", "langchain", "jax",
 ]);
@@ -262,11 +262,11 @@ export function shell({
     "<link rel=\"apple-touch-icon\" sizes=\"512x512\" href=\"/icon-512.png\">",
     "<link rel=\"manifest\" href=\"/manifest.webmanifest\">",
     "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Lab Ledger Desk\" href=\"", SITE, "/rss.xml\">",
-    // C11: the sprite is ~60KB of base64 marks, and it is only needed once the
-    // body's <use> references paint — never on the critical first render.
-    // preload made it block-style-blocking on every navigation, so fetch it
-    // with low priority and let the browser cache it for later pages instead.
-    "<link rel=\"preload\" href=\"" + spritePath + "\" as=\"image\" type=\"image/svg+xml\" crossorigin fetchpriority=\"low\">",
+    // F10: the sprite preload is gone. Every source now has a vector mark, so
+    // no <use> on any page references the sprite — preloading ~60KB of base64
+    // marks on every navigation paid for zero uses. The sprite is still built
+    // (writeMarkSprite) as the fallback for any future non-vector mark; it is
+    // fetched only if a page actually references it.
     // C11: only the two faces the first paint actually needs are preloaded.
     // The 600 weight of Source Sans is used for bold runs further down the
     // page; it loads on demand from the same immutable /fonts/ cache entry.

@@ -23,6 +23,24 @@ function extFrom(url, type) {
   return ".ico";
 }
 
+// Extension from the payload's magic bytes, never the URL or the declared
+// content-type: a host can hand a .png path containing JPEG bytes (or a WebP
+// in a .png file). SVG has no magic bytes, so this returns null and the caller
+// falls back to extFrom(). F3.
+export function extFromBytes(buf) {
+  if (buf.length >= 2 && buf[0] === 0x89 && buf[1] === 0x50) return ".png";
+  if (buf.length >= 3 && buf[0] === 0x00 && buf[1] === 0x00 && buf[2] === 0x01) return ".ico";
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xd8) return ".jpg";
+  if (
+    buf.length >= 12 &&
+    buf.slice(0, 4).toString("ascii") === "RIFF" &&
+    buf.slice(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return ".webp";
+  }
+  return null;
+}
+
 async function fetchIcon(url, hosts) {
   const res = await fetch(url, {
     headers: { "user-agent": FONT_UA, accept: "image/*, image/svg+xml, */*" },
@@ -58,7 +76,11 @@ export function looksLikeMark(buf, type) {
   if (buf[0] === 0x89 && buf[1] === 0x50) return buf.length >= 400;
   if (buf[0] === 0x00 && buf[1] === 0x00 && buf[2] === 0x01) return buf.length >= 400;
   if (buf[0] === 0xff && buf[1] === 0xd8) return buf.length >= 400;
-  if (buf.slice(0, 4).toString("ascii") === "RIFF") return buf.length >= 400;
+  // WebP is rejected, not accepted: the pipeline has no WebP decoder, and a
+  // WebP payload cached as .png breaks the sprite (it is embedded raw with a
+  // PNG mime). TechCrunch's icon URL now serves WebP; rejecting it lets the
+  // fetch fall through to the next icon or the seed. F3.
+  if (buf.slice(0, 4).toString("ascii") === "RIFF") return false;
   if (head.includes("<svg")) return buf.length >= 200;
   if (/image\/|icon|svg/i.test(type) && buf.length >= 400) return true;
   return false;
@@ -128,7 +150,9 @@ export async function fetchMark(lab) {
       const type = res.headers.get("content-type") || "";
       const buf = Buffer.from(await res.arrayBuffer());
       if (!looksLikeMark(buf, type)) continue;
-      const ext = extFrom(url, type);
+      // The cached filename comes from the payload's magic bytes, so a
+      // mislabelled payload never lands under the wrong extension. F3.
+      const ext = extFromBytes(buf) || extFrom(url, type);
       await writeFile(join(MARK_DIR, lab.id + ext), buf);
       await pruneOtherExts(lab, ext);
       await writeFile(srcPath(lab), url);

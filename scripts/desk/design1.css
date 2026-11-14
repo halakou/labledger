@@ -49,16 +49,19 @@
 .mark-anthropic{color:#d97757}
 .mark-google,.mark-gresearch{color:#8ab4f8}
 .mark-mistral{color:#ff7000}
-.mark-huggingface,.mark-transformers{color:#ffd21e}
-.mark-microsoft,.mark-msftai{color:#5eb3ff}
-.mark-nvidia,.mark-deepspeed{color:#76b900}
+/* huggingface/transformers: explicit brand fills in the symbol (HF face), so
+   no currentColor rule. microsoft/msftai: explicit four-square fills. */
+.mark-nvidia{color:#76b900}
+/* deepspeed: explicit fills in the symbol (orange network). */
 .mark-aws{color:#ff9900}
 .mark-techcrunch{color:#00d06a}
 .mark-pytorch{color:#ee4c2c}
 .mark-langchain{color:#e8fff4}
-.mark-mit,.mark-mittr,.mark-bair{color:#e24a3b}
-.mark-vllm,.mark-sglang,.mark-jax,.mark-comfyui{color:#d7dee6}
-.mark-meta{color:#4f9bff}
+.mark-mit,.mark-mittr{color:#e24a3b}
+/* BAIR: the real bear is Cal gold, not the red used for the old "MB" letters. */
+.mark-bair{color:#FDB515}
+.mark-vllm,.mark-sglang,.mark-comfyui{color:#d7dee6}
+/* jax: explicit fills in the symbol (3D cube letters). meta: symbol deleted. */
 .dock-inner{display:grid;grid-template-columns:auto 1fr;align-items:center}
 .dock-active{color:var(--accent-green);margin-left:.35rem}
 .dock-links{justify-content:center;gap:1.3rem}
@@ -77,6 +80,11 @@ html,body{font-synthesis:weight}
 }
 @media(max-width:860px){
   .row.ledger-row{grid-template-columns:48px minmax(0,1fr)}
+  /* F7: the mobile logo column is 48px, so the tile must be 48px too — the
+     desktop 54px tile overflowed its track by 6px (invisible only because the
+     16px grid gap absorbed it). The sprite shrinks in proportion (42 -> 38). */
+  .ledger-mark-tile{width:48px;height:48px}
+  .ledger-mark-tile .mark-sprite{width:38px;height:38px}
   .ledger-col-status,.ledger-col-data{grid-column:1 / -1;flex-direction:row;align-items:center;border-left:0;padding-left:0;gap:.7rem}
   .ledger-col-data .btn-cite{width:auto;margin-top:0;margin-left:auto}
   .frontiers-list{display:flex;gap:.6rem;overflow-x:auto;padding-bottom:.3rem}
