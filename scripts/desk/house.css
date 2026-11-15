@@ -294,6 +294,9 @@ a.row[hidden],article.row[hidden]{display:none}
 .g-code-lang{position:absolute;top:0;right:0;font-family:var(--font-mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:var(--card);border-left:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:.25rem .55rem}
 .g-code pre{margin:0;padding:1.1rem 1.2rem;overflow-x:auto}
 .g-code code{font-family:var(--font-mono);font-size:.85rem;line-height:1.65;color:#f0f3f6;white-space:pre}
+.g-figure{margin:0;background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:1.2rem 1.2rem 1rem}
+.g-figure svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.g-figure figcaption{margin:1rem 0 0;font-size:.92rem;line-height:1.6;color:var(--muted);border-top:1px solid var(--rule);padding-top:.9rem}
 .g-foot{margin-top:3.2rem;display:grid;gap:1.8rem}
 .g-byline-box{display:grid;grid-template-columns:2.2rem 1fr;gap:.9rem;align-items:start;border-top:1px solid var(--rule);padding-top:1.5rem}
 .g-byline-name{margin:0 0 .25rem;font-weight:600;color:#fff}

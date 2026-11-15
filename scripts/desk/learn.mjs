@@ -14,6 +14,10 @@
 //   callout  — labeled aside (`tone`: note | tip | warn), not in the TOC
 //   quote    — pull quote with optional attribution, not in the TOC
 //   code     — heading + pre/code block with a language label
+//   figure   — heading + inline SVG diagram + caption. The svg is
+//              desk-authored trusted markup (same pattern as the MARK
+//              constant below), not user input: it is inserted raw,
+//              the caption is escaped like every other string.
 import { CHANNEL, SITE, esc, clip } from "./core.mjs";
 import { jsonLdScript, shell } from "./render.mjs";
 import { write } from "./net.mjs";
@@ -546,6 +550,244 @@ const ENTRIES = [
       },
     ],
   },
+  {
+    slug: "ai-agents-that-act",
+    title: "AI agents that act",
+    dek: "The labs stopped shipping chatbots and started shipping hands: agents that shop, call, and hand off work. What an agent that acts actually is, how it works, and what to check before you let one spend your money or speak in your name.",
+    kind: "Explainer",
+    level: "Intermediate",
+    date: "2026-11-14",
+    reading: 21,
+    body: [
+      {
+        h: "Why this exists",
+        kind: "prose",
+        p: [
+          "For years the product was a chat box. You typed, it answered, and nothing in the world moved. In two days, 12–13 November 2026, the board filed five stories in which the agent does something instead: it completes a purchase, it places a phone call, it navigates a work system on your behalf. The question changed with it. It is no longer only whether the answer is right. It is whether the action is right, whether you approved it, and what happens when it goes wrong.",
+          "The five stories are the evidence, and they are all on the board. OpenAI introduced ChatGPT Wallet, for agents that complete purchases. The Verge went hands-on with Claude Duet, Anthropic's agent for consumers. TechCrunch reported that Muse can now place calls to US businesses. OpenAI filed Shield, whose Forge agents take over legacy portal work from technicians. And TechCrunch reported that LangChain, the company behind the agent tooling LangSmith, hit a $3B valuation. Five stories, four sources, two days — that is a trend, not a single launch.",
+          "This guide is the deep version of one line in the desk's vocabulary guide, where an agent is defined as a program that calls a model repeatedly and can use tools. That definition is correct and it is not enough anymore. When the tool is a checkout, the definition needs a second half: what the agent is allowed to do, and who is watching.",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "tip",
+        label: "How to read this guide",
+        p: [
+          "If you have ten minutes, read the first section, the section on what the labs actually shipped, and the approval checkpoint. The two diagrams and the worked errand are the shortcut: if you understand the loop and the gate, you understand the guide. If you have an hour, read it all. Everything that comes from a lab names the lab and the filing; everything else is the desk explaining the idea in plain words.",
+        ],
+      },
+      {
+        h: "The words you need",
+        kind: "terms",
+        terms: [
+          ["Agent", "A program that calls a model repeatedly, decides its own next step, and can use tools — search, code, a browser, a checkout — instead of only answering. A chatbot answers. An agent acts, and then reads the result of its own action and decides what to do next."],
+          ["Tool use", "The moment a model stops producing words and calls something outside itself: a search, a calendar, a payment step. The model does not do the thing. The harness around it does, on the model's instruction. That separation is the whole ballgame, because the tool is where an idea becomes an action."],
+          ["Agentic", "The adjective the labs now attach to anything that acts on its own. Agentic commerce means a purchase completed by an agent. The word is doing marketing work; what matters is the action underneath it, not the label."],
+          ["Agentic commerce", "Buying and checkout carried out by an agent on your behalf. The week's clearest example is ChatGPT Wallet: OpenAI's own filing describes it as a secure way for agents to complete purchases with user approval and existing card protections."],
+          ["Autonomy", "How much the agent decides for itself before it comes back to you. Low autonomy means it asks before every step. High autonomy means it runs a whole errand and reports at the end. Every product in this guide sits somewhere on that line, and the line is the thing to check."],
+          ["Approval", "A human saying yes before the agent does something irreversible. OpenAI's Wallet filing names user approval as part of the design. Approval is not the same as safety: it means you saw the action, not that the action was right."],
+          ["Handoff", "Passing work from the agent to a person, or the other way around. Shield, per OpenAI's filing, uses Forge agents to navigate legacy portals so technicians can focus on the issues needing their judgment. The handoff is the design: the agent takes the routine part, the person keeps the part that needs judgment."],
+          ["Sandbox", "A walled-off place where the agent can act without touching the real thing. An agent tested in a sandbox can break nothing that matters. An agent given your real account has left the sandbox, whether anyone says so or not."],
+          ["Workflow vs agent", "A workflow is a fixed sequence: step one, then step two, always the same. An agent decides the sequence as it goes, changing its plan when a step fails. Workflows are predictable. Agents are flexible. That flexibility is the benefit and the risk in the same sentence."],
+          ["Hallucination", "A confident wrong answer — see the desk's guide on why AI hallucinates. With an agent, a hallucination stops being a wrong sentence and becomes a wrong action: a wrong address typed into a form, a wrong item bought, a wrong person called. The failure is the same mechanism; the cost is higher."],
+        ],
+      },
+      {
+        h: "How an agent that acts actually works",
+        kind: "prose",
+        p: [
+          "Strip away the product names and every agent that acts runs the same loop. It takes a goal from you, makes a plan, picks a tool, acts, reads the result, and repeats until the goal is done or it gets stuck. The loop is the whole idea. The model is the part that reasons about which step comes next; the tools are the part that touches the world.",
+          "Walk it through a purchase, because that is the week's example. You say: buy the charger I keep forgetting. The agent reads the goal, searches for the item, picks a seller, and reaches the checkout. At the checkout it needs your card, your address, and your permission — that is the approval step, and it is the step that decides whether this is a useful tool or a leak in your wallet. It completes the purchase, reads the confirmation, and reports back. If a step fails — the item is out of stock, the price changed, the address is wrong — a good agent stops and tells you. A bad one guesses.",
+          "Three things about that loop are easy to miss. The model never buys anything — the harness around it calls the checkout, the same way a browser calls a website when you click. The loop also has no natural stopping point. A chatbot stops when it has answered; an agent stops when it decides it is done, and deciding it is done is itself a judgment call. And every step is a place where the wrong thing can happen quietly: the search returns the wrong item, the plan skips a step, the tool is given the wrong input. The errors do not announce themselves. They arrive as a confirmation email for something you did not want.",
+        ],
+      },
+      {
+        h: "The loop, drawn out",
+        kind: "figure",
+        svg: `<svg viewBox="0 0 760 162" role="img" aria-label="The agent loop: goal, plan, pick a tool, act, read the result, repeat"><title>The agent loop</title><rect x="22" y="16" width="132" height="64" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="168" y="16" width="132" height="64" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="314" y="16" width="132" height="64" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="460" y="16" width="132" height="64" rx="3" fill="#13161c" stroke="#ff5722"/><rect x="606" y="16" width="132" height="64" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><text x="88" y="44" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="14" font-weight="700" fill="#f0f3f6">GOAL</text><text x="88" y="64" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#8b949e">what done looks like</text><text x="234" y="44" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="14" font-weight="700" fill="#f0f3f6">PLAN</text><text x="234" y="64" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#8b949e">which step next</text><text x="380" y="44" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="14" font-weight="700" fill="#f0f3f6">PICK A TOOL</text><text x="380" y="64" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#8b949e">search · browser · checkout</text><text x="526" y="44" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="14" font-weight="700" fill="#f0f3f6">ACT</text><text x="526" y="64" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#8b949e">the tool touches the world</text><text x="672" y="42" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="12" font-weight="700" fill="#f0f3f6">READ THE RESULT</text><text x="672" y="62" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#8b949e">done? retry? stop?</text><line x1="156" y1="48" x2="164" y2="48" stroke="#ff5722" stroke-width="2"/><polygon points="158,42 158,54 168,48" fill="#ff5722"/><line x1="302" y1="48" x2="310" y2="48" stroke="#ff5722" stroke-width="2"/><polygon points="304,42 304,54 314,48" fill="#ff5722"/><line x1="448" y1="48" x2="456" y2="48" stroke="#ff5722" stroke-width="2"/><polygon points="450,42 450,54 460,48" fill="#ff5722"/><line x1="594" y1="48" x2="602" y2="48" stroke="#ff5722" stroke-width="2"/><polygon points="596,42 596,54 606,48" fill="#ff5722"/><path d="M672 80 V150 H234 V88" fill="none" stroke="#ff5722" stroke-width="2"/><polygon points="228,96 240,96 234,84" fill="#ff5722"/><text x="453" y="140" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#8b949e">loop back — repeat until done, stuck, or stopped</text></svg>`,
+        caption: "The same loop every agent runs. The model reasons; the tools act. The return arrow is what makes it an agent instead of a single call — and the part that repeats a mistake if nothing outside the loop stops it. The orange box is the only step that touches the world.",
+      },
+      {
+        h: "One errand, step by step",
+        kind: "prose",
+        p: [
+          "Take the charger from the previous section and run it through the loop slowly, with the numbers attached. The goal, in one sentence: buy the USB-C charger I keep forgetting, under $25, from a seller that ships to my address. That sentence is the whole guardrail — the agent can check itself against it, and so can you.",
+          "Plan: search for the charger, compare two sellers, pick one, check out. Pick a tool: the search tool first. Act: the search returns three results; the agent picks the $19 one from a seller that delivers to your address. Read the result: in stock, $19 plus $3 shipping, $22 total, under the cap. So far nothing irreversible has happened. The next step is the checkout — and that is where the loop stops. The agent shows you the item, the price, the seller, and waits. You approve. Then it acts again, completes the purchase, reads the confirmation, and reports back: bought, $22, arrives Thursday.",
+          "Now change one fact and watch the loop change. The search returns the wrong charger — last year's model, same name. A good agent reads that result and stops: the item does not match the goal, so it asks. A bad one proceeds, because the plan said buy the charger and this is a charger. The loop did not fail. The read-the-result step did, because nobody taught the agent what a mismatch looks like. That is why the goal is written in one sentence and the receipt is read before the next step — those two habits are the only places the loop checks itself.",
+        ],
+        ul: [
+          "Goal — buy the charger, under $25. The agent checks itself against it.",
+          "Plan — search, compare, pick, check out. The agent can change the plan; it cannot change the goal.",
+          "Act — search, then (after approval) purchase. The only step that touches the world.",
+          "Read the result — $22 total, in stock, confirmation read back. The step where a mismatch is caught, or missed.",
+        ],
+      },
+      {
+        kind: "quote",
+        quote: "The chat answers. The agent acts. Only one of them can spend money while you are not looking.",
+        cite: "the desk, on why the approval step matters more than the model",
+      },
+      {
+        h: "What the labs actually shipped this week",
+        kind: "prose",
+        p: [
+          "Five stories, each filed on the board with its primary source. Read them as five answers to the same question — what does the agent actually do — and notice how different the answers are.",
+          "OpenAI, 13 November: ChatGPT Wallet. OpenAI's own filing describes it as a secure way for agents in ChatGPT Work, Codex, and Dots to complete purchases with user approval and existing card protections. TechCrunch's filing adds the rollout: a limited rollout to US Pro subscribers. The Verge also filed it, describing Wallet as letting OpenAI's Dots agents make purchases for you. Three filings, one story, and the shape is clear: the agent buys, the human approves, the card protections stay in place. What the filings do not say is when the wider rollout happens, or what the approval looks like in practice — whether it is per purchase or a blanket permission. The desk files the rollout when it happens; until then the limited rollout is the news.",
+          "Anthropic, via The Verge, 13 November: Claude Duet. The Verge's hands-on calls Duet Anthropic's AI agent for consumers, and frames it as the latest attempt by an AI company to try to convince us that agents can be useful for people who do not write code. The review's headline says it is a little neurotic and surprisingly helpful. That is a hands-on impression, not a launch announcement, and the guide treats it that way: Duet is the consumer test of the idea, the one aimed at people who never asked for an API.",
+          "Anthropic, via TechCrunch, 12 November: Muse can now place calls to US businesses. The filing is short and the condition is in the headline: if you pay. TechCrunch's summary says Muse's AI can now place outbound calls to US businesses, but it is not free. No price was published in the filing, and this guide will not invent one. The action here is a phone call made in your name, which is a different kind of trust from a purchase: a call can be rude, wrong, or impossible to undo once it has been made.",
+          "OpenAI, 13 November: Shield. OpenAI's filing says Shield uses OpenAI to help IT technicians hand off work in legacy portals, and that its Forge agents navigate systems so technicians can focus on issues needing their judgment. This is the handoff pattern at work: the agent takes the routine navigation, the person keeps the judgment. It is also the least consumer-facing of the five stories, and the most honest about the division of labour.",
+          "LangChain, via TechCrunch, 13 November: a $3B valuation for the agent startup, with LangChain claiming 7,000 customers of LangSmith, its model and platform agnostic agent management tool. The valuation is TechCrunch's report; the customer count is LangChain's own claim. The number matters here for a different reason: it is evidence that the tooling for building and managing agents is itself a business now. The agents need operators, and the operators need dashboards, logs, and guardrails. That is a market forming around the loop.",
+        ],
+        ul: [
+          "All five have the same shape: an action in the world, a permission attached to it, and a human somewhere in the loop.",
+          "They diverge on the details — the action, the rollout, the stakes. A purchase can be undone. A phone call can't. A handoff inside a company portal is neither one nor the other.",
+          "And none of them settles who is responsible when the agent acts wrongly. That question is still open, and the next section is about why it stays open.",
+        ],
+      },
+      {
+        h: "The five things that can go wrong",
+        kind: "prose",
+        p: [
+          "The failures of an agent that acts are the failures of a chatbot, plus one new class: the action itself. They come in five shapes, and the shape tells you which check to run.",
+          "Each failure sits somewhere different in the loop, and that is why the shape tells you the check. A wrong action is usually a bad plan, or the wrong tool picked for the job. A runaway loop is the return arrow doing its job too well — every retry is a real action, charged or dialled again. An invented fact slips in when the agent types its own guess into a form, at the act step or in the input it hands the tool. The agreeable agent is a goal problem: give it something vague and it will execute the vagueness literally. The credential problem is the act step too, because that is where the key actually gets used. Fix the stage, not the agent.",
+        ],
+        ul: [
+          "The wrong action. The agent buys the wrong item, calls the wrong business, or files the wrong form. It did everything right except the choice that mattered, and it did it confidently. This is the most common failure, and the one an approval step is supposed to catch — if the approval shows you what is about to happen in words you can actually read.",
+          "The runaway loop. A step fails, the agent retries, the retry fails, the agent retries again — and each retry is a real action. A purchase attempted three times is three charges. A call attempted three times is three calls. The loop that makes agents useful is the same loop that repeats a mistake until something outside the agent stops it.",
+          "The invented fact, handed to a tool. A hallucination becomes an action the moment the agent types it into a form. The model's wrong address becomes a delivery to the wrong address. Nothing in the output marks it as invented, because the tool does not know the difference between a fact and a guess.",
+          "The agreeable agent. You imply a premise and the agent builds on it instead of correcting it. You say the charger is the one you always buy, and it buys the one you bought once, two years ago. The agent did what you said. It did not do what you meant, and the gap between those two is where your money went.",
+          "The credential problem. An agent that can buy things holds your card. An agent that can call holds your voice and your number. An agent that can work in your systems holds your logins. Each of those is a key, and the agent is a new place where the key lives. A leak, a prompt injection, or a bug in the harness does not just read your data. It acts with it.",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "warn",
+        label: "The one that costs the most",
+        p: [
+          "An agent holding your card is a key to your money, and it should be treated like a key: given the smallest scope that still works, watched, and revocable in one click. Before you connect a payment method to any agent, check three things — can you set a spending cap, can you require approval for every purchase, and can you disconnect it without emailing support. If any answer is no, the product is not ready for your card.",
+        ],
+      },
+      {
+        h: "What a good approval screen shows",
+        kind: "prose",
+        p: [
+          "Approval is only as good as what it shows you. A good approval screen names the exact action in plain words — buy this charger, from this seller, for $22 — with the amount and the recipient visible before you say yes. What happens if you say no should be there too, and the undo path: can you cancel, can you get a refund? If the screen shows a bare \"Approve purchase?\" with no item and no price, you approved a sentence, not an action, and the approval did you no good.",
+          "One honest gap: OpenAI's Wallet filing names user approval as part of the design, but it does not say what the approval screen looks like — whether it is per purchase or a blanket permission granted once. Until a filing or a hands-on shows it, treat every agent's approval as unproven and read the receipt as if the approval had not happened. The desk will file the screen when a source shows it.",
+        ],
+      },
+      {
+        h: "The approval checkpoint, in practice",
+        kind: "steps",
+        items: [
+          { t: "Scope the task in one sentence", d: "Write down what done looks like before the agent starts: the item, the price ceiling, the seller if you care. A goal the agent can check itself against is the cheapest guardrail there is, and it costs you one sentence." },
+          { t: "Set a cap before the first action", d: "A spending limit, a number of attempts, a time window. The cap is not there for the agent's benefit. It is there so a runaway loop has a ceiling that is not your bank balance." },
+          { t: "Require approval for anything irreversible", d: "A purchase, a call, a message sent in your name, a file deleted. Reversible steps — a search, a draft, a comparison — can run freely. Irreversible steps should wait for a human who has read what is about to happen." },
+          { t: "Give it the minimum access that works", d: "One card with a low limit, not the card you pay rent with. One calendar, not your inbox. An agent with less access can do less damage, and the access you did not grant is the failure that never happens." },
+          { t: "Read the receipt before the next step", d: "Every action produces a record: a confirmation, a transcript, a log. Read it before you let the agent start the next errand. A wrong first action discovered after the fifth is five wrong actions." },
+          { t: "Keep a human as the last reader", d: "Anything that leads to money, a published claim, or a message sent under your name should pass a checkpoint that knows which sentences to doubt. The agent can draft, shop, and dial. It should not be the last reader." },
+        ],
+      },
+      {
+        h: "The gate, drawn out",
+        kind: "figure",
+        svg: `<svg viewBox="0 0 760 178" role="img" aria-label="The approval gate: reversible steps run freely, irreversible steps stop at the gate"><title>The approval gate</title><text x="16" y="22" font-family="ui-monospace,monospace" font-size="11" letter-spacing="1" fill="#10b981">RUNS FREELY — NO APPROVAL NEEDED</text><rect x="16" y="32" width="118" height="46" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="16" y="32" width="3" height="46" fill="#10b981"/><text x="75" y="61" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="13" font-weight="600" fill="#f0f3f6">Search</text><rect x="146" y="32" width="150" height="46" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="146" y="32" width="3" height="46" fill="#10b981"/><text x="221" y="61" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="13" font-weight="600" fill="#f0f3f6">Draft a reply</text><rect x="308" y="32" width="168" height="46" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="308" y="32" width="3" height="46" fill="#10b981"/><text x="392" y="61" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="13" font-weight="600" fill="#f0f3f6">Compare prices</text><text x="16" y="112" font-family="ui-monospace,monospace" font-size="11" letter-spacing="1" fill="#ff5722">STOPS AT THE GATE — YOU SAY YES FIRST</text><line x1="22" y1="126" x2="22" y2="170" stroke="#ff5722" stroke-width="3"/><line x1="30" y1="126" x2="30" y2="170" stroke="#ff5722" stroke-width="3"/><rect x="44" y="124" width="84" height="46" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="44" y="124" width="3" height="46" fill="#ff5722"/><text x="86" y="153" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="13" font-weight="600" fill="#f0f3f6">Buy</text><rect x="140" y="124" width="84" height="46" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="140" y="124" width="3" height="46" fill="#ff5722"/><text x="182" y="153" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="13" font-weight="600" fill="#f0f3f6">Call</text><rect x="236" y="124" width="178" height="46" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="236" y="124" width="3" height="46" fill="#ff5722"/><text x="325" y="153" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="13" font-weight="600" fill="#f0f3f6">Send in your name</text><rect x="426" y="124" width="100" height="46" rx="3" fill="#13161c" stroke="rgba(255,255,255,0.18)"/><rect x="426" y="124" width="3" height="46" fill="#ff5722"/><text x="476" y="153" text-anchor="middle" font-family="'Source Sans 3',sans-serif" font-size="13" font-weight="600" fill="#f0f3f6">Delete</text></svg>`,
+        caption: "Two lanes. The top lane runs freely, because nothing in it is irreversible. The bottom lane stops at the gate — and the gate is you, reading the exact action before you say yes.",
+      },
+      {
+        h: "A pre-flight checklist you can copy",
+        kind: "code",
+        lang: "txt",
+        lines: [
+          "Before an agent acts for you, answer these six lines.",
+          "",
+          "1. WHAT: the task in one sentence, with the price ceiling.",
+          "2. CAP: the spending limit, the attempt limit, the time limit.",
+          "3. APPROVAL: which actions need my yes first (purchases, calls, sends).",
+          "4. ACCESS: the smallest permission that still does the job.",
+          "5. RECEIPT: where do I read what it did, before the next step?",
+          "6. OFF SWITCH: how do I stop it and disconnect it, right now?",
+          "",
+          "If any line has no answer, the agent waits.",
+        ],
+      },
+      {
+        h: "What is still unclear",
+        kind: "prose",
+        p: [
+          "A guide that pretends these questions are settled would be lying, and the honest version is shorter. Nobody has a settled answer to who is liable when an agent buys the wrong thing: the lab, the seller, or you, for approving it. The filings do not say, and this guide will not guess.",
+          "What user approval covers is also unclear. OpenAI's Wallet filing names approval as part of the design, but it does not say whether approval is per purchase or a blanket permission granted once. That is the difference between a checkpoint and a rubber stamp, and the product will be judged on it.",
+          "Refunds for agent purchases are untested in public. If an agent buys the wrong item, does the card protection cover it the way a mistaken click would? The filing says existing card protections apply; what that covers in practice has not been shown. The same goes for a phone call made by Muse: a call cannot be refunded, and a wrong call cannot be unmade.",
+          "Then there's privacy. An agent that shops and calls knows what you buy and who you call, and the filings don't say where that record lives, who can read it, or whether it trains anything. And price: Muse's calls are paid, but the price wasn't published; Wallet's wider rollout date wasn't either. The desk will file those when a source states them, not before.",
+        ],
+      },
+      {
+        h: "Common misunderstandings",
+        kind: "prose",
+        p: [
+          "Four ideas keep showing up in coverage of agents, and all four are wrong in the same direction: they make the agent sound simpler and safer than it is.",
+        ],
+        ul: [
+          "An agent is not a smarter chatbot. A chatbot's worst failure is a wrong sentence. An agent's worst failure is a wrong action, and the two need different checks. Treating an agent like a chatbot is how a wrong sentence becomes a wrong purchase.",
+          "Seeing the action isn't the same as the action being safe. Approval means you saw it before it happened — and if the approval screen shows you a summary you cannot verify, you approved a sentence, not an action. Read the receipt, not the approval.",
+          "The demo is not the product. Wallet is a limited rollout to US Pro subscribers, Duet is a hands-on preview, Muse's calls are paid. A launch post describes a product at its best, on its best day, for its first users. The product you get is the rollout, and the rollout is what the desk files.",
+          "Judgment doesn't disappear when an agent takes over — it moves. It used to sit in doing the task; now it sits in scoping the task, setting the cap, and reading the receipt. The work didn't go away. It changed shape, and the shape is the checkpoint above.",
+        ],
+      },
+      {
+        h: "Short answers",
+        kind: "terms",
+        terms: [
+          ["Can an agent spend my money without asking?", "It depends on the product. OpenAI's Wallet filing says purchases complete with user approval. But approval settings vary between products, and a blanket permission is not the same as a per-purchase approval. Check the product's own settings before you connect a card."],
+          ["Is ChatGPT Wallet available to me?", "As filed on 13 November, the rollout is limited to US Pro subscribers, per TechCrunch. If you are not in that group, the answer is not yet — and the desk will file the wider rollout when a source states it."],
+          ["Is Claude Duet available to me?", "The Verge's piece is a hands-on preview, not a launch announcement, and its filing does not state general availability. Treat it as the consumer test of the idea, and check Anthropic's own page for the current state."],
+          ["Do agents fix the hallucination problem?", "No. They move it. A wrong fact becomes a wrong action, and a wrong action costs more than a wrong sentence. If you have not read the desk's guide on why AI hallucinates, read it before you let an agent act — the same checks apply, only the stakes are higher."],
+          ["What should I never let an agent do without a per-action approval?", "Anything irreversible or high-stakes: purchases, phone calls, messages sent in your name, files deleted, credentials used. Reversible steps — searches, drafts, comparisons — can run freely."],
+          ["Are agents only for developers?", "No. That is the point of Duet: Anthropic's agent for consumers, aimed at people who do not write code. The pitch is that the agent is the interface now, and the code is hidden underneath it. Whether the pitch holds is what the next year of filings will show."],
+          ["What does the $3B LangChain valuation mean for me?", "Directly, nothing. Indirectly, it means the tooling for building and managing agents — LangSmith, per LangChain's claim used by 7,000 customers — is a business in its own right. Agents are no longer a demo; they have operators, dashboards, and guardrails, and those are the places where the safety work will actually happen."],
+        ],
+      },
+      {
+        h: "How the desk files these",
+        kind: "prose",
+        p: [
+          "The desk files the action and the rollout, not the promise. Wallet was filed as an announcement with a limited rollout, because that is what the sources stated. Duet was filed from a hands-on, because that is what existed. The wider Wallet rollout, the Muse call price, and the Duet launch will be filed when a source states them — as new briefs, with their own dates, not as edits to the old ones.",
+          "Every claim in this guide that came from a lab names the lab and the filing. Where a source was silent — on prices, on dates, on liability — the guide says so instead of filling the gap, because the gap is the information. If a filing later contradicts something here, the guide gets corrected, and the correction is dated. That is the whole method, and it is the same method the board uses every fifteen minutes.",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "tip",
+        label: "If you only change one thing",
+        p: [
+          "Approve each irreversible action yourself, and read the receipt before the next step. That one habit covers the wrong action, the runaway loop, and the invented fact handed to a tool — three of the five failures — and it costs you a few seconds per errand.",
+        ],
+      },
+      {
+        h: "What to remember",
+        kind: "prose",
+        p: [
+          "If you read nothing else in this guide, read these seven lines. They are the whole article in short form, and the checklist to run before any agent acts for you.",
+        ],
+        ul: [
+          "An agent is a loop: goal, plan, tool, act, read the result, repeat. The model reasons; the tools act.",
+          "The loop has no natural stopping point. The cap and the approval step are the stopping points you add.",
+          "A purchase is reversible; a phone call is not; a handoff is neither. The stakes change with the action, not with the model.",
+          "Approval means you saw the action. It does not mean the action was right. Read the receipt.",
+          "Give the minimum access that works — an agent can only abuse the keys it actually holds.",
+          "The demo is not the product. Wallet is a limited rollout to US Pro subscribers; Duet is a hands-on preview; Muse's calls are paid.",
+          "What is still unclear is still unclear: liability, what approval covers, refunds, privacy, prices. The desk files those when a source states them.",
+        ],
+      },
+      {
+        h: "The honest limit",
+        kind: "prose",
+        p: [
+          "This guide will date. Wallet will roll out wider, or it will not. Duet will launch, or it will stay a preview. Muse's call price will be published, and someone will discover what a refund looks like when the buyer was not a person. The loop underneath will not change — goal, plan, tool, act, read the result, repeat — but the products around it will, and the approvals that matter will move with them.",
+          "What does not date is the checkpoint. Scope the task, set the cap, require approval for the irreversible, give the minimum access, read the receipt, keep a human as the last reader. The agent takes the errand. The judgment stays with you.",
+        ],
+      },
+    ],
+  },
 ];
 
 export const GUIDE_ENTRIES = ENTRIES;
@@ -572,7 +814,7 @@ const MARK =
   "</svg></span>";
 
 // Callouts and quotes are asides, not sections, so they stay out of the TOC.
-const TOC_KINDS = ["prose", "terms", "steps", "code"];
+const TOC_KINDS = ["prose", "terms", "steps", "code", "figure"];
 
 function paraHtml(p) {
   return "<p>" + esc(p) + "</p>";
@@ -628,6 +870,13 @@ function sectionHtml(s) {
           })
           .join("") +
         "</ol>";
+      break;
+    case "figure":
+      inner =
+        '<figure class="g-figure">' +
+        (s.svg || "") +
+        (s.caption ? "<figcaption>" + esc(s.caption) + "</figcaption>" : "") +
+        "</figure>";
       break;
     case "code":
       inner =
