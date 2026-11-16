@@ -107,10 +107,20 @@ export async function writeStatic(fontNames, builtAt = new Date().toISOString())
       ],
     }),
   );
+  // SW fix (2026-11-16): network-first for documents. The old cache-first
+  // handler served a six-week-old page whose hashed stylesheet no longer
+  // exists, so the page rendered with no CSS at all. The network fetch uses
+  // {cache:'reload'} so the browser HTTP cache cannot satisfy a document
+  // request with a stale copy; the SW cache is only the offline fallback.
+  // Versioned assets (hashed CSS/SVG/WOFF2, /fonts/) stay cache-first:
+  // their names change with their content, so a cached copy is never stale.
+  // search-index.json matches no ASSET pattern, so it rides the document
+  // path and is network-first too. Bump CACHE on any future handler change
+  // so activate() drops the old cache.
   await write(
     "sw.js",
     [
-      "const CACHE='desk-v1';",
+      "const CACHE='desk-v2';",
       "const ASSET=/-[0-9a-f]{12}\\.(css|svg|woff2)$|\\/fonts\\//;",
       "self.addEventListener('install',function(e){self.skipWaiting();e.waitUntil(caches.open(CACHE).then(function(c){return c.add('/');}));});",
       "self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});",
@@ -121,8 +131,8 @@ export async function writeStatic(fontNames, builtAt = new Date().toISOString())
       "if(u.origin!==self.location.origin)return;",
       "var cached=caches.match(req);",
       "if(ASSET.test(u.pathname)){e.respondWith(cached.then(function(r){return r||fetch(req);}));return;}",
-      "var network=fetch(req).then(function(res){if(res&&res.ok&&res.type==='basic'){var copy=res.clone();caches.open(CACHE).then(function(c){c.put(req,copy);});}return res;}).catch(function(){return cached;});",
-      "e.respondWith(cached.then(function(r){return r||network;}));",
+      "var network=fetch(req,{cache:'reload'}).then(function(res){if(res&&res.ok&&res.type==='basic'){var copy=res.clone();caches.open(CACHE).then(function(c){c.put(req,copy);});}return res;});",
+      "e.respondWith(network.catch(function(){return cached;}));",
       "});",
     ].join(""),
   );
@@ -222,8 +232,16 @@ export async function writeLlms(briefs, openBriefs = []) {
       // audience of the assets for no benefit. An explicit same-origin value
       // overrides the platform default instead of leaving it to platform
       // behaviour. Cloudflare honours an ACAO set in _headers over its own.
+      // SW fix (2026-11-16): the global block carries NO Cache-Control.
+      // Cloudflare Pages merges every matching rule, so a global directive
+      // doubled with each per-asset one (the live CSS carried both
+      // "max-age=0, must-revalidate, stale-while-revalidate=86400" and
+      // "max-age=31536000, immutable"). Each asset class owns its directive
+      // below; HTML takes the platform default, and the service worker's
+      // {cache:'reload'} document fetch keeps pages fresh regardless.
+      // stale-while-revalidate is dropped with it: a news desk rebuilding
+      // every ~15 minutes must not serve a day-old page from any cache.
       "  Access-Control-Allow-Origin: same-origin",
-      "  Cache-Control: public, max-age=0, must-revalidate, stale-while-revalidate=86400",
       "",
       "/og.jpg",
       "  Cache-Control: public, max-age=86400",
@@ -248,6 +266,12 @@ export async function writeLlms(briefs, openBriefs = []) {
       "  Content-Type: text/html; charset=utf-8",
       "  X-Robots-Tag: noindex",
       "/desk-status.json",
+      "  Content-Type: application/json; charset=utf-8",
+      "  Cache-Control: public, max-age=60, must-revalidate",
+      // SW fix (2026-11-16): the search index rebuilds with every build, so
+      // it gets the same short leash as desk-status.json — a direct fetch
+      // (before the worker controls the page) must never sit on a stale copy.
+      "/search-index.json",
       "  Content-Type: application/json; charset=utf-8",
       "  Cache-Control: public, max-age=60, must-revalidate",
       "/feed.json",
