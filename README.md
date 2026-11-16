@@ -30,7 +30,8 @@ GitHub Actions (clock)  ──every ~15 min──▶  pages.yml
 node scripts/build-desk.mjs      fetch 27 allow-listed sources
    │                              → dedupe by guid → briefs → queue
    ▼
-wrangler deploy                  static site → Cloudflare Pages + Worker assets
+wrangler deploy labledgerdesk.toml   site as Worker static assets (mirror)
+wrangler pages deploy dist-site     site on Cloudflare Pages
    │
    ▼
 node scripts/telegram-desk.mjs   posts ONLY after the pages exist
@@ -39,6 +40,18 @@ node scripts/telegram-desk.mjs   posts ONLY after the pages exist
 Cloudflare Worker (cron */5)     staleness watchdog
    └─ GET /desk-status.json → if older than 12 min, dispatch pages.yml
 ```
+
+## What the site offers
+
+- **Today's board** (`/`) — the 20 latest lab briefs plus the 8 latest open releases.
+- **Per-lab, per-topic, and per-kind feeds** — every `/lab/`, `/topic/`, and `/kind/` page has its own `rss.xml` and `feed.json`, built from the same rows the page shows. Root `rss.xml` and `feed.json` cover the whole board.
+- **`/learn/`** — the field guide: 6 original explainers in plain words, free, kept current.
+- **`/search/`** — every filed brief, filterable by text, kind, or topic.
+- **`/week/`** — the weekly digest, same briefs as the board grouped by day.
+- **`/method/`** — how the desk works, in full.
+- **`/status/`** — a build-time snapshot of the last build and the watchdog's view of the site.
+- **`/donate/`** — the cost ledger; no bill so far, served within the free-tier allowance.
+- **Machine-readable:** `llms.txt`, `sitemap.xml`, `feed.json`.
 
 ## Ops runbook — the clock is not the cadence
 
@@ -127,17 +140,33 @@ scripts/desk/config.mjs       the source registry (18 feeds + 9 open projects)
 scripts/desk/core.mjs         brief shape, parseFeed, classify, esc, slugify
 scripts/desk/net.mjs          fetch layer — allow-list enforcement lives here
 scripts/desk/render.mjs       page chrome, rows, JSON-LD, the one inline script
-scripts/desk/site-home.mjs    home, board, llms.txt, _headers, desk-status.json
-scripts/desk/archives.mjs     /lab/ /topic/ /kind/ /b/YYYY/M/D/slug/, sitemap
-scripts/desk/sprite.mjs       one sprite.svg for every source mark + contrast tiles
-scripts/desk/ogcard.mjs       per-brief 1200×630 OG image, hand-drawn
+scripts/desk/site-home.mjs    home, board, llms.txt, _headers, desk-status.json, sw.js
+scripts/desk/archives.mjs     /lab/ /topic/ /kind/ /b/YYYY/M/D/slug/, sitemap, feeds
+scripts/desk/open-archives.mjs /open/ pages + /open/rss.xml
+scripts/desk/status.mjs       /status/ build-time snapshot
+scripts/desk/site-digest.mjs  /method/ + weekly /week/ digest
 scripts/desk/learn.mjs        /learn/ field guide — original explainers
 scripts/desk/donate.mjs       /donate/ cost ledger
+scripts/desk/house.css        all styling
+scripts/desk/design1.css      header and clock styles
+scripts/desk/glyphs.mjs       fallback glyph per source (when no real logo)
+scripts/desk/raster.mjs       PNG/ICO decode for mark normalization
+scripts/desk/fetch-mark.mjs   fetch + normalize one source logo
+scripts/desk/seed-marks.mjs   one-shot helper for missing fallback marks
+scripts/desk/marks-vector.mjs hand-drawn vector marks (real company marks only)
+scripts/desk/ai-telegram.mjs  optional channel rewrite, default off
+scripts/desk/privacy.mjs      /privacy/   scripts/desk/terms.mjs  /terms/
+scripts/desk/pages.mjs        publishSite() wiring for every page type
+scripts/desk/seed-queue-from-fixture.mjs  seed the Telegram queue from a fixture
+scripts/desk/sprite.mjs       one sprite.svg for every source mark + contrast tiles
+scripts/desk/ogcard.mjs       per-brief 1200×630 OG image, hand-drawn
 scripts/desk/tg.mjs           shared Telegram helpers (chat, escaping, secrets)
 scripts/check-repo.mjs        repo guard: layout + credential scan, runs in CI
 test/                         unit tests, zero dependencies (node --test)
 cloudflare/                   the watchdog Worker + static-asset config
-.github/workflows/            clock, pages, ci, gitleaks, deploy-worker
+.github/workflows/            clock, pages, ci, gitleaks, codeql, deploy-worker, cleanup-channel, telegram-ai-once
+docs/                         ai-telegram.md, ai-research.md, telegram-capabilities.md
+CONTRIBUTING.md               how to contribute
 ```
 
 ## Invariants — breaking these breaks the project
@@ -150,8 +179,10 @@ cloudflare/                   the watchdog Worker + static-asset config
 4. **No invented news.** Classification is keyword tagging, never a verdict.
 5. **Free tier, forever.** If a feature needs a paid plan, it does not ship.
 6. **Old URLs stay.** The archive never deletes.
-7. **The posted-ledger KV mirror.** Both directions, every run — a lost Actions
+7. **One inline script only.** The search filter, the donate copy handler, and the live clock all live inside `render.mjs` `SEARCH_SCRIPT`. CSP allows that one hash. Do not add a second script or an `onclick`.
+8. **The posted-ledger KV mirror.** Both directions, every run — a lost Actions
    cache must never re-post every brief ever filed.
+9. **Contrast tiles are baked into the sprite `<symbol>`.** A logo's luminance picks its tile color at build time, so it stays legible in dark mode without a second file or a CSS branch. Do not move this out of the symbol.
 
 ## Security
 
@@ -162,8 +193,7 @@ cloudflare/                   the watchdog Worker + static-asset config
   failure mode that once leaked another project's source into this repo.
 - **Strict CSP.** The site ships `default-src 'none'` with a single
   allow-listed inline script whose SHA-256 hash is generated at build time.
-- **No client-side state, no forms, no auth, no cookies.** Static HTML, CSS,
-  one search script, pre-generated images.
+- **No forms, no auth, no cookies.** Static HTML, CSS, one inline script (search filter, donate copy handler, live clock), pre-generated images — plus one service worker (`sw.js`, cache-first, cache `desk-v1`) that keeps an offline copy of visited pages. The worker is the only client-side state on the site; it never invents or rewrites content, but a cached page can lag the live build until the next navigation.
 - **Every rendered field is escaped.** Pinned by tests in `test/`.
 - **Every workflow action is SHA-pinned.** No `uses:` line references a moving
   tag — each is a 40-hex commit SHA with the version in a trailing comment, so
@@ -184,8 +214,7 @@ node scripts/check-repo.mjs   # layout + credential guard
 node scripts/build-desk.mjs   # full local build, writes only to dist-site
 ```
 
-CI (`.github/workflows/ci.yml`) runs the guard and the tests on every push
-and pull request, plus a full build smoke on pull requests. `pages.yml`
+CI (`.github/workflows/ci.yml`) runs the guard and the tests on every push to `main` and every pull request, plus a full build smoke on pull requests. `pages.yml`
 runs the guard and the tests again and will not deploy if they fail.
 `main` rejects a direct push. A change merges only through a pull request
 after `verify` and `gitleaks` are green.
