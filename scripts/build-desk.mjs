@@ -25,6 +25,7 @@ import {
   selectBoard,
 } from "./desk/core.mjs";
 import {
+  disambiguateBriefPaths,
   ensureFonts,
   fetchFeed,
   fetchListing,
@@ -206,6 +207,15 @@ for (const b of byGuid.values()) {
 let allBriefs = [...byGuid.values()].sort(
   (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
 );
+// PR2 (slug collisions): three live pairs share one /b/ URL (Gemini Omni
+// 8571/8570, AWS Okta AgentCore 9080/9076, Amplitude/OpenAI 11359/11414),
+// so one brief's content is unreachable. Disambiguate in filing order
+// (lowest ledgerId first) before the archive write: the first filing
+// keeps its URL, later ones get "-<ledgerId>". This also repairs the
+// already-archived losers — their stored path is rewritten here and
+// persisted below, so the fix is not new-filings-only.
+const byLedgerId = (a, b) => (Number(a.ledgerId) || 0) - (Number(b.ledgerId) || 0);
+disambiguateBriefPaths([...allBriefs].sort(byLedgerId));
 // P0-2: no cap. The archive keeps every filed brief, so a filed URL stays
 // put (invariant 6). The old 500-brief cap slice deleted briefs from the
 // archive file itself, and the next build dropped their /b/ pages (404).
@@ -388,6 +398,12 @@ for (const brief of openPool) {
 let allOpen = [...openByGuid.values()].sort(
   (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
 );
+// PR2: the open ledger shares the /b/ namespace with the lab ledger, so
+// disambiguate the union — lab briefs first, so a lab filing keeps the
+// base URL on a cross-ledger tie and only the open filing moves. Lab
+// paths are already unique (and the lab archive already written), so
+// this pass can only move open briefs.
+disambiguateBriefPaths([...[...allBriefs].sort(byLedgerId), ...[...allOpen].sort(byLedgerId)]);
 // P0-2: no cap, same as the lab archive above — the old 200-release cap
 // slice deleted open releases from the archive and dropped their /b/ pages.
 await writeFile(
