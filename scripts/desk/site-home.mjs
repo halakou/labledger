@@ -27,6 +27,13 @@ import { jsonFeedDoc } from "./archives.mjs";
 
 export const HOME_MAX = 20;
 
+// F1 (SEO): Google's HTML-file verification fails on Cloudflare Pages —
+// the platform strips ".html" for root files, so the verification file is
+// served only at the extensionless URL and Google never sees it at the
+// exact URL it asks for. The meta-tag route works instead. The file
+// (written by writeStatic) stays as a fallback.
+const GSC_VERIFICATION_META = '<meta name="google-site-verification" content="googlece6d31c0feb18c8c">';
+
 // This module lives at scripts/desk/, so the repo's own assets/ dir is two
 // levels up. Used for the PWA icons, which are committed rather than fetched.
 const here = () => dirname(fileURLToPath(import.meta.url));
@@ -174,6 +181,10 @@ export async function writeLlms(briefs, openBriefs = []) {
       "",
       "## Latest briefs",
       ...briefs.slice(0, 20).map((b) => "- " + b.dateLabel + " \u00b7 " + b.lab + " \u00b7 " + b.headline + " \u2014 " + SITE + b.path),
+      // F8 (SEO): the board shows the 20 lab rows plus the open rail, so the
+      // latest list carries the open releases too — the same 28 rows the
+      // home page shows, in the same order.
+      ...openBriefs.slice(0, HOME_MAX).map((b) => "- " + b.dateLabel + " \u00b7 " + b.lab + " \u00b7 " + b.headline + " \u2014 " + SITE + b.path),
       "",
     ].join("\n"),
   );
@@ -323,7 +334,7 @@ export async function writeHome({ allBriefs, briefs, boardPool = briefs, openBri
         description: "A public ledger of official AI-lab announcements.",
         dateModified: today + "T00:00:00Z",
         publisher: { "@id": SITE + "/#org" },
-        potentialAction: { "@type": "SearchAction", target: SITE + "/?q={search_term_string}", "query-input": "required name=search_term_string" },
+        potentialAction: { "@type": "SearchAction", target: SITE + "/search/?q={search_term_string}", "query-input": "required name=search_term_string" },
       },
       {
         "@type": "NewsMediaOrganization",
@@ -336,12 +347,16 @@ export async function writeHome({ allBriefs, briefs, boardPool = briefs, openBri
         dateModified: today + "T00:00:00Z",
       },
       {
+        // F8 (SEO): the board on the home page is the 20 lab rows plus the
+        // open rail, so the list carries both — 28 rows, in page order.
+        // Before this it listed only the 20 lab rows while the page showed
+        // 28, and the main feed already carried 28.
         "@type": "ItemList",
         "@id": SITE + "/#board",
         name: "Today's board",
-        numberOfItems: shown.length,
+        numberOfItems: shown.length + openShown.length,
         itemListOrder: "https://schema.org/ItemListOrderDescending",
-        itemListElement: shown.map((b, i) => ({ "@type": "ListItem", position: i + 1, url: SITE + b.path, name: b.headline })),
+        itemListElement: [...shown, ...openShown].map((b, i) => ({ "@type": "ListItem", position: i + 1, url: SITE + b.path, name: b.headline })),
       },
       {
         "@type": "FAQPage",
@@ -355,7 +370,7 @@ export async function writeHome({ allBriefs, briefs, boardPool = briefs, openBri
       title: "Lab Ledger Desk \u2014 Primary moves from the labs",
       description: "Official AI announcements from named labs, research groups, and the press that covers them \u2014 plus open-source release notes. Dated, sourced, kept.",
       path: "/",
-      extra: jsonLdScript(homeSchema),
+      extra: GSC_VERIFICATION_META + jsonLdScript(homeSchema),
       ticker: shown.slice(0, 4).map((b) => ({ lab: b.lab, headline: b.headline, path: b.path })),
       body: [
         "<div class=\"dashboard-grid\">",

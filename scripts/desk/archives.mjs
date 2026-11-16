@@ -582,36 +582,40 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     }));
   }
 
+  // F7 (SEO): evergreen pages carry no lastmod. Stamping the build date
+  // on every build taught Google to ignore the sitemap's lastmod signals,
+  // because "today" was never the content date. Only briefs (their
+  // per-brief date) and guides (their guide date) carry one.
   const urls = [
-    ["/", today],
-    ["/method/", today],
-    ["/week/", today],
-    ["/learn/", today],
+    ["/", null],
+    ["/method/", null],
+    ["/week/", null],
+    ["/learn/", null],
     ...GUIDE_ENTRIES.map((g) => ["/learn/" + g.slug + "/", g.date]),
-    ["/donate/", today],
-    ["/terms/", today],
-    ["/privacy/", today],
-    ["/open/", today],
-    ["/open/rss.xml", today],
-    ["/rss.xml", today],
-    ["/feed.json", today],
-    ["/llms.txt", today],
-    ["/status/", today],
-    ...LABS.map((l) => ["/lab/" + l.id + "/", today]),
-    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/", today]),
-    ...TOPICS.map((t) => ["/topic/" + t.id + "/", today]),
-    ...KINDS.map((k) => ["/kind/" + k.id + "/", today]),
+    ["/donate/", null],
+    ["/terms/", null],
+    ["/privacy/", null],
+    ["/open/", null],
+    ["/open/rss.xml", null],
+    ["/rss.xml", null],
+    ["/feed.json", null],
+    ["/llms.txt", null],
+    ["/status/", null],
+    ...LABS.map((l) => ["/lab/" + l.id + "/", null]),
+    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/", null]),
+    ...TOPICS.map((t) => ["/topic/" + t.id + "/", null]),
+    ...KINDS.map((k) => ["/kind/" + k.id + "/", null]),
     // P1-4: every surface's own feeds, so a reader (or a crawler) that
     // finds the sitemap finds the per-lab, per-topic and per-kind feeds
     // too — the same way /rss.xml and /feed.json were already listed.
-    ...LABS.map((l) => ["/lab/" + l.id + "/rss.xml", today]),
-    ...LABS.map((l) => ["/lab/" + l.id + "/feed.json", today]),
-    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/rss.xml", today]),
-    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/feed.json", today]),
-    ...TOPICS.map((t) => ["/topic/" + t.id + "/rss.xml", today]),
-    ...TOPICS.map((t) => ["/topic/" + t.id + "/feed.json", today]),
-    ...KINDS.map((k) => ["/kind/" + k.id + "/rss.xml", today]),
-    ...KINDS.map((k) => ["/kind/" + k.id + "/feed.json", today]),
+    ...LABS.map((l) => ["/lab/" + l.id + "/rss.xml", null]),
+    ...LABS.map((l) => ["/lab/" + l.id + "/feed.json", null]),
+    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/rss.xml", null]),
+    ...OPEN_PROJECTS.map((p) => ["/lab/" + p.id + "/feed.json", null]),
+    ...TOPICS.map((t) => ["/topic/" + t.id + "/rss.xml", null]),
+    ...TOPICS.map((t) => ["/topic/" + t.id + "/feed.json", null]),
+    ...KINDS.map((k) => ["/kind/" + k.id + "/rss.xml", null]),
+    ...KINDS.map((k) => ["/kind/" + k.id + "/feed.json", null]),
     ...allBriefs.map((b) => [b.path, b.dateLabel]),
     ...allOpen.map((b) => [b.path, b.dateLabel]),
   ];
@@ -627,7 +631,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
   await write(
     "sitemap.xml",
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">" +
-      unique.map(([u, d]) => "<url><loc>" + SITE + u + "</loc><lastmod>" + d + "</lastmod></url>").join("") +
+      unique.map(([u, d]) => "<url><loc>" + SITE + u + "</loc>" + (d ? "<lastmod>" + d + "</lastmod>" : "") + "</url>").join("") +
       "</urlset>",
   );
   // P1-4: the main feed is one call to the shared builder now — the item

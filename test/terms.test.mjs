@@ -54,7 +54,8 @@ test("the terms page is joined everywhere a crawler or a reader looks", async ()
   // sitemap + llms.txt are written by archives.mjs/site-home.mjs from lists the
   // terms page cannot see; assert the join is present in the source instead.
   const archives = await fs.readFile(join(import.meta.dirname, "../scripts/desk/archives.mjs"), "utf8");
-  assert.ok(archives.includes('["/terms/", today]'), "archives.mjs lists /terms/ in the sitemap");
+  // F7 (SEO): evergreen pages carry no lastmod, so the entry is ["/terms/", null] — the join is what matters here.
+  assert.ok(archives.includes('["/terms/", null]'), "archives.mjs lists /terms/ in the sitemap");
   const home = await fs.readFile(join(import.meta.dirname, "../scripts/desk/site-home.mjs"), "utf8");
   assert.ok(home.includes("SITE + \"/terms/"), "site-home.mjs lists /terms/ in llms.txt");
 });
