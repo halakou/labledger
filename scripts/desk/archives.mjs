@@ -599,6 +599,7 @@ export async function writeArchives({ allBriefs, briefs, openBriefs = [], allOpe
     ["/open/rss.xml", null],
     ["/rss.xml", null],
     ["/feed.json", null],
+    ["/search-index.json", null],
     ["/llms.txt", null],
     ["/status/", null],
     ...LABS.map((l) => ["/lab/" + l.id + "/", null]),

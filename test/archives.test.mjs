@@ -85,7 +85,10 @@ test("a /b/ page with no cluster note renders no cluster section", async () => {
   const single = brief();
   await writeArchives({ allBriefs: [single], briefs: [single], openBriefs: [], allOpen: [], today: "2026-11-13" });
   const page = await fs.readFile(join(OUT, "b/2026/11/13/chatgpt-wallet/index.html"), "utf8");
-  assert.equal(page.includes("Also filed"), false);
+  // PR3: the inline search script now contains the literal "Also filed by "
+  // (it renders that line for index rows), so the check targets the rendered
+  // section markup, not the bare phrase.
+  assert.equal(page.includes('<div class="also-filed">'), false);
   assert.equal(page.includes("Same story"), false);
 });
 
