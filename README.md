@@ -193,13 +193,7 @@ CONTRIBUTING.md               how to contribute
   failure mode that once leaked another project's source into this repo.
 - **Strict CSP.** The site ships `default-src 'none'` with a single
   allow-listed inline script whose SHA-256 hash is generated at build time.
-- **No forms, no auth, no cookies.** Static HTML, CSS, one inline script
-  (search filter, donate copy handler, live clock), pre-generated images —
-  plus one service worker (`sw.js`, network-first for documents, cache-first
-  only for versioned assets, cache `desk-v2`) that keeps an offline copy of
-  visited pages. The worker is the only client-side state on the site; it
-  never invents or rewrites content, and a cached page is served only when
-  the network is unreachable.
+- **No forms, no auth, no cookies.** Static HTML, CSS, one inline script (search filter, donate copy handler, live clock), pre-generated images — plus one service worker (`sw.js`, cache-first, cache `desk-v1`) that keeps an offline copy of visited pages. The worker is the only client-side state on the site; it never invents or rewrites content, but a cached page can lag the live build until the next navigation.
 - **Every rendered field is escaped.** Pinned by tests in `test/`.
 - **Every workflow action is SHA-pinned.** No `uses:` line references a moving
   tag — each is a 40-hex commit SHA with the version in a trailing comment, so
