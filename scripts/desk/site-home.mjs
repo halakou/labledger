@@ -13,7 +13,7 @@ import {
 } from "./core.mjs";
 import { OPEN_PROJECTS, getOut } from "./config.mjs";
 import { copyOg, exists, write } from "./net.mjs";
-import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml, shell,
+import { CSS, CSS_NAME, getAssets, jsonLdScript, markHtml, markToSprite, rowHtml, searchIndexRow, shell,
   SEARCH_SCRIPT_HASH,
   ANALYTICS_HOST,
   ANALYTICS_TOKEN,
@@ -444,13 +444,23 @@ export async function writeOpenBoard({ openBriefs, today }) {
   );
 }
 
-// Real server-side search, as far as a static site can take it: every filed
-// brief is rendered here (the home board caps at 20), and the same inline
-// script the board already uses reads location.search for ?q= and filters on
-// load. The form action="/" was changed to point here, and the CSP now allows
-// form-action 'self' so the GET can actually submit.
+// Search, slimmed: the page ships today's board (the same 28 rows the home
+// page shows) and the full ledger lives in search-index.json, fetched by the
+// inline script on load. The old shape rendered every filed brief into the
+// HTML, so the page grew ~90-125 KB a day with the archive. Without
+// JavaScript the page still shows today's board, and every brief stays
+// reachable under its lab. The form action="/" was changed to point here,
+// and the CSP now allows form-action 'self' so the GET can actually submit.
 export async function writeSearch({ allBriefs, briefs, openBriefs = [], today }) {
   const rows = [...allBriefs, ...openBriefs];
+  // No-JS fallback: today's board — 20 lab rows plus the 8-row open rail,
+  // the same 28 rows the home page shows. Bounded, so the page stops
+  // growing with the archive.
+  const shown = [...(briefs || []).slice(0, HOME_MAX), ...(openBriefs || []).slice(0, 8)];
+  await write(
+    "search-index.json",
+    JSON.stringify({ site: SITE, sprite: getAssets().sprite, rows: rows.map(searchIndexRow) }),
+  );
   await write(
     "search/index.html",
     shell({
@@ -468,7 +478,8 @@ export async function writeSearch({ allBriefs, briefs, openBriefs = [], today })
       }),
       body: [
         "<article class=\"method\"><p class=\"kicker\">Search</p><h1>Search the ledger</h1>",
-        "<p class=\"dek\">Every brief the desk has filed, filterable by text, kind, or topic. The query runs against the headline, the lab name, the kind, and the topic tags.</p></article>",
+        "<p class=\"dek\">Every brief the desk has filed, filterable by text, kind, or topic. The query runs against the headline, the lab name, the kind, and the topic tags.</p>",
+        "<p class=\"dek\">The full ledger loads on this page when JavaScript runs; without it, this page shows today's board.</p></article>",
         "<section class=\"board\" id=\"today\">",
         "<div class=\"panel-hdr\">",
         "<h2 class=\"panel-title\">All filed briefs</h2>",
@@ -481,8 +492,8 @@ export async function writeSearch({ allBriefs, briefs, openBriefs = [], today })
         "</div>",
         "<div class=\"chips\" data-group=\"topic\">" + topicChips(TOPICS) + "</div>",
         "</form>",
-        "<div class=\"ledger-feed\">",
-        rows.map(rowHtml).join("") || "<p class=\"empty\">Desk is waiting on the next official post.</p>",
+        "<div class=\"ledger-feed\" id=\"search-feed\">",
+        shown.map(rowHtml).join("") || "<p class=\"empty\">Desk is waiting on the next official post.</p>",
         "</div>",
         "</section>",
       ].join(""),
