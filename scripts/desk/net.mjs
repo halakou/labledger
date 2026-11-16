@@ -332,6 +332,49 @@ export function makeBrief(pack, item, ledgerId) {
   };
 }
 
+// PR2 (slug collisions): two filings can land on the same /b/ URL — the
+// same headline from two labs, a headline whose distinguishing suffix is
+// lost to the 72-character slug truncation, or one headline re-filed.
+// The /b/ page is written from b.slug and every link uses b.path, so a
+// shared path means one brief's content is unreachable: the page shows
+// whichever filing the writer happened to write last. Disambiguate in
+// place, before the archive is written: the first filing in the array
+// keeps its path, and each later filing with the same path gets
+// "-<ledgerId>" appended to its slug (and its path rebuilt from it).
+// ledgerId is the brief number, unique within a ledger, so the new path
+// cannot collide with another filing's — unless a headline naturally
+// ends in the same number, in which case "-2", "-3", ... are tried
+// until the path is free. Callers pass briefs in filing order (lowest
+// ledgerId first), lab ledger before open ledger, so the lab ledger
+// keeps the base URL on a cross-ledger tie. Idempotent: once every
+// path is unique, a second call changes nothing — so a repair to an
+// already-archived loser persists, and the first filing's URL never
+// moves (invariant 6: the loser's new URL is a restoration, not a break,
+// because the shared URL never showed its content).
+export function disambiguateBriefPaths(briefs) {
+  const taken = new Set();
+  for (const b of briefs) {
+    if (!b?.path) continue;
+    if (!taken.has(b.path)) {
+      taken.add(b.path);
+      continue;
+    }
+    const base = b.slug || String(b.path).split("/").filter(Boolean).pop() || "brief";
+    let n = 0;
+    let slug = base;
+    let path = b.path;
+    do {
+      n += 1;
+      slug = n === 1 ? base + "-" + b.ledgerId : base + "-" + b.ledgerId + "-" + n;
+      path = "/b/" + b.year + "/" + b.month + "/" + b.day + "/" + slug + "/";
+    } while (taken.has(path));
+    b.slug = slug;
+    b.path = path;
+    taken.add(path);
+  }
+  return briefs;
+}
+
 export function reviveBrief(raw) {
   const lab = LAB_BY_ID[raw.labId] || OPEN_BY_ID[raw.labId];
   const publishedAt = new Date(raw.publishedAt);
