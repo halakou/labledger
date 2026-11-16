@@ -29,7 +29,8 @@ export async function publishSite({ allBriefs, briefs, boardPool = briefs, openB
   const ogCount = await writeOgCards([...allBriefs, ...allOpen], today);
   await writeHome({ allBriefs, briefs, boardPool, openBriefs, today });
   await writeOpenBoard({ openBriefs, today });
-  // Server-side search: every brief on one page, filtered by ?q= on load.
+  // Search: the page ships today's board and the full ledger as
+  // search-index.json, loaded by the inline script on demand.
   await writeSearch({ allBriefs, briefs, openBriefs, today });
   await writeOpenArchives({ allOpen, today });
   await writeOpenRss(openBriefs);

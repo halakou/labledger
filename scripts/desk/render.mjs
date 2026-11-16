@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { VECTOR_MARKS } from "./marks-vector.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 
-const HAS_VECTOR = new Set([
+export const HAS_VECTOR = new Set([
   "openai", "anthropic", "google", "mistral", "huggingface", "microsoft", "nvidia", "deepmind",
   "aws", "apple", "gresearch", "bair", "mit", "mittr", "wired", "techcrunch", "msftai", "theverge",
   "pytorch", "vllm", "sglang", "ollama", "transformers", "comfyui", "deepspeed", "langchain", "jax",
@@ -108,8 +108,8 @@ export const SEARCH_SCRIPT =
   "el.addEventListener('click',function(){copyAddr(el);});" +
   "el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();copyAddr(el);}});" +
   "});" +
-  "var cites=[].slice.call(document.querySelectorAll('.btn-cite'));" +
-  "cites.forEach(function(btn){" +
+  "function bindCites(){" +
+  "[].forEach.call(document.querySelectorAll('.btn-cite'),function(btn){" +
   "btn.addEventListener('click',function(e){" +
   "e.preventDefault();e.stopPropagation();" +
   "var txt=btn.getAttribute('data-cite')||'';" +
@@ -122,6 +122,8 @@ export const SEARCH_SCRIPT =
   "}).catch(function(){});" +
   "});" +
   "});" +
+  "}" +
+  "bindCites();" +
   "var q=document.getElementById('q');" +
   "var board=document.getElementById('today');" +
   "var rows=[].slice.call((board||document).querySelectorAll('.row[data-search]'));" +
@@ -173,6 +175,64 @@ export const SEARCH_SCRIPT =
   "var qv=qp.get('q')||'';" +
   "if(qv){q.value=qv;apply();}" +
   "}" +
+  // The search index lives in its own file now. The page ships today's
+  // board (28 rows); this fetches the full ledger and renders the rows
+  // with DOM APIs — never innerHTML, which the CSP's Trusted Types rule
+  // (require-trusted-types-for 'script', with a default policy that only
+  // defines createScriptURL) would refuse. If the fetch fails, the 28
+  // server rows stay and keep filtering. Only the search page has a
+  // #search-feed element, so this runs nowhere else.
+  "var feed=document.getElementById('search-feed');" +
+  "var siteUrl='';" +
+  "var spriteUrl='';" +
+  "var indexDone=false;" +
+  "function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}" +
+  "function markEl(r){" +
+  "var id=r.labId||'';" +
+  "var vec=['openai','anthropic','google','mistral','huggingface','microsoft','nvidia','deepmind','aws','apple','gresearch','bair','mit','mittr','wired','techcrunch','msftai','theverge','pytorch','vllm','sglang','ollama','transformers','comfyui','deepspeed','langchain','jax'].indexOf(id)>=0;" +
+  "var d=el('div','mark mark-'+id+' sm');" +
+  "if(vec){var g=el('span','glyph');var s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('class','mark-sprite');s.setAttribute('aria-hidden','true');var u=document.createElementNS('http://www.w3.org/2000/svg','use');u.setAttribute('href','#mark-'+id);s.appendChild(u);g.appendChild(s);d.appendChild(g);return d;}" +
+  "var mf=r.markFile?String(r.markFile).replace(/^\\/marks\\//,'').replace(/\\.[^.]+$/,''):'';" +
+  "if(mf){var g2=el('span','glyph');var s2=document.createElementNS('http://www.w3.org/2000/svg','svg');s2.setAttribute('class','mark-sprite');s2.setAttribute('aria-hidden','true');var u2=document.createElementNS('http://www.w3.org/2000/svg','use');u2.setAttribute('href',spriteUrl+'#m-'+mf);s2.appendChild(u2);g2.appendChild(s2);d.appendChild(g2);return d;}" +
+  "d.className+=' letter';d.setAttribute('style','background:'+(r.color||'#1c1914'));d.appendChild(el('span','glyph',r.mark||''));return d;" +
+  "}" +
+  "function rowEl(r){" +
+  "var a=el('article','row ledger-row');" +
+  "a.setAttribute('data-search',r.search||'');" +
+  "a.setAttribute('data-kind',r.kind||'');" +
+  "a.setAttribute('data-topics',(r.topics||[]).join(' '));" +
+  "a.setAttribute('data-lab',r.labId||'');" +
+  "var logo=el('div','ledger-col-logo');var tile=el('div','ledger-mark-tile');tile.appendChild(markEl(r));logo.appendChild(tile);a.appendChild(logo);" +
+  "var main=el('div','ledger-col-main');" +
+  "var tl=el('div','ledger-title-line');var h=el('a','headline',r.headline);h.setAttribute('href',r.path);tl.appendChild(h);main.appendChild(tl);" +
+  "var sub=el('div','ledger-sub-line');" +
+  "var t=el('time',null,r.dateLabel+' UTC');t.setAttribute('datetime',r.datetime);sub.appendChild(t);" +
+  "sub.appendChild(el('span','pill-kind pill-'+r.kind,(r.kindLabel||'').toUpperCase()));" +
+  "var ll=el('a','lab-link',r.lab);ll.setAttribute('href','/lab/'+r.labId+'/');sub.appendChild(ll);" +
+  "(r.topics||[]).forEach(function(tp,i){var p=el('a','pill-topic',(r.topicLabels[i]||'').toUpperCase());p.setAttribute('href','/topic/'+tp+'/');sub.appendChild(p);});" +
+  "main.appendChild(sub);" +
+  "main.appendChild(el('div','dek',r.dek));" +
+  "if(r.alsoFiled&&r.alsoFiled.length){var af=el('div','also-filed');af.appendChild(document.createTextNode('Also filed by '));r.alsoFiled.forEach(function(f,i){if(i)af.appendChild(document.createTextNode(' \\u00b7 '));var fa=el('a',null,f.lab);fa.setAttribute('href',f.path);af.appendChild(fa);af.appendChild(document.createTextNode(' \\u2014 '+f.headline+' ('+(f.dateLabel||'')+')'));});main.appendChild(af);}" +
+  "a.appendChild(main);" +
+  "var st=el('div','ledger-col-status');st.appendChild(el('span','col-lbl','Status'));st.appendChild(el('span','status-val status-'+r.kind,(r.kindLabel||'').toUpperCase()));a.appendChild(st);" +
+  "var dt=el('div','ledger-col-data');dt.appendChild(el('span','col-lbl','Brief'));dt.appendChild(el('span','data-val',r.briefNo));" +
+  "var cite=el('button','btn-cite','Cite');cite.setAttribute('type','button');cite.setAttribute('data-cite',r.headline+' ('+r.lab+', '+r.dateLabel+') \\u2014 '+siteUrl+r.path);cite.setAttribute('aria-label','Copy citation');cite.setAttribute('title','Copy citation');dt.appendChild(cite);a.appendChild(dt);" +
+  "return a;" +
+  "}" +
+  "function refreshRows(){rows=[].slice.call((board||document).querySelectorAll('.row[data-search]'));}" +
+  "function loadIndex(){" +
+  "if(indexDone||!feed||!window.fetch)return;" +
+  "indexDone=true;" +
+  "fetch('/search-index.json').then(function(res){return res.json();}).then(function(d){" +
+  "if(!d||!Array.isArray(d.rows))return;" +
+  "siteUrl=d.site||'';spriteUrl=d.sprite||'';" +
+  "var frag=document.createDocumentFragment();" +
+  "d.rows.forEach(function(r){frag.appendChild(rowEl(r));});" +
+  "feed.textContent='';feed.appendChild(frag);" +
+  "refreshRows();bindCites();apply();" +
+  "}).catch(function(){});" +
+  "}" +
+  "loadIndex();" +
   "function updateClocks(){" +
   "var d=new Date();" +
   "var hs=d.getUTCHours().toString().padStart(2,'0');" +
@@ -318,11 +378,17 @@ export function shell({
   ].join("");
 }
 
-export function rowHtml(b) {
+export function searchText(b) {
   // The board search matches the row's lab, headline, dek, kind and topics —
   // and, when the row is a cluster primary, the labs of its other filings,
   // so searching "TechCrunch" also finds the story TechCrunch filed second.
-  const search = [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel), ...((b.alsoFiled || []).map((f) => f.lab))].join(" ").toLowerCase();
+  // Shared by rowHtml and searchIndexRow so the server row and the index
+  // entry can never disagree about what a brief matches.
+  return [b.lab, b.headline, b.dek, kindLabel(b.kind), ...(b.topics || []).map(topicLabel), ...((b.alsoFiled || []).map((f) => f.lab))].join(" ").toLowerCase();
+}
+
+export function rowHtml(b) {
+  const search = searchText(b);
   const citeData = b.headline + " (" + b.lab + ", " + b.dateLabel + ") \u2014 " + SITE + b.path;
   const statusText = kindLabel(b.kind).toUpperCase();
   return [
@@ -350,4 +416,32 @@ export function rowHtml(b) {
     "<button type=\"button\" class=\"btn-cite\" data-cite=\"", esc(citeData), "\" aria-label=\"Copy citation\" title=\"Copy citation\">Cite</button>",
     "</div></article>",
   ].join("");
+}
+
+// One row of search-index.json: the fields the client-side row builder
+// needs, nothing more. Labels are precomputed here (kindLabel, topicLabel,
+// the clipped also-filed headline) so the client never re-derives them and
+// can never disagree with the server about what a row shows. The `search`
+// string is searchText(b), identical to the data-search attribute rowHtml
+// writes, so a brief matches the same queries in the index as on the page.
+export function searchIndexRow(b) {
+  return {
+    lab: b.lab,
+    labId: b.labId,
+    headline: b.headline,
+    dek: b.dek,
+    kind: b.kind,
+    kindLabel: kindLabel(b.kind),
+    topics: b.topics || [],
+    topicLabels: (b.topics || []).map(topicLabel),
+    dateLabel: b.dateLabel,
+    datetime: b.year + "-" + b.month + "-" + b.day,
+    path: b.path,
+    briefNo: b.briefNo,
+    mark: b.mark,
+    markFile: b.markFile || null,
+    color: b.color || null,
+    search: searchText(b),
+    alsoFiled: (b.alsoFiled || []).map((f) => ({ lab: f.lab, path: f.path, headline: clip(f.headline || "", 80), dateLabel: f.dateLabel || "" })),
+  };
 }
